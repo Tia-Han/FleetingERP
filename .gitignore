@@ -1,0 +1,9 @@
+node_modules/
+db/fragrance.db
+db/fragrance.db-shm
+db/fragrance.db-wal
+db/fragrance_backup_*.db
+db/backups/
+db/fragrance_before_restore.db
+.env
+logs/
