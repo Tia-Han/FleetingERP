@@ -27,6 +27,81 @@ FleetingERP 是一套面向香氛零售行业的库存管理工具，覆盖从�
 | 进程管理 | PM2 | 自动重启、开机自启、日志管理 |
 | 条码识别 | BarcodeDetector API + Canvas 解码 | 原生优先，Canvas 回退 |
 
+## 系统架构图
+
+### 整体架构
+
+```mermaid
+graph TB
+    subgraph 客户端["客户端（浏览器）"]
+        UI["单页应用<br/>HTML + CSS + JS"]
+        Scanner["扫码模块<br/>USB扫码枪 / 摄像头"]
+        UI --> Scanner
+    end
+
+    subgraph 服务端["服务端（Node.js）"]
+        Express["Express 服务器<br/>server.js"]
+        Auth["JWT 认证中间件<br/>middleware/auth.js"]
+        Router["RESTful 路由层<br/>routes/*.js (13个模块)"]
+        Express --> Auth --> Router
+    end
+
+    subgraph 数据层["数据层"]
+        SQLite[("SQLite 数据库<br/>better-sqlite3<br/>WAL模式")]
+        Backups["自动备份<br/>db/backups/"]
+        SQLite --> Backups
+    end
+
+    subgraph 外部服务["外部服务"]
+        OBF["Open Beauty Facts API"]
+        UPC["UPCitemdb API"]
+    end
+
+    UI -->|"HTTP/HTTPS<br/>RESTful JSON"| Express
+    Scanner -->|"条码字符串"| Router
+    Router --> SQLite
+    Router -->|"条码查询<br/>Promise.allSettled"| OBF
+    Router -->|"条码查询<br/>Promise.allSettled"| UPC
+    Router -->|"备份/恢复"| Backups
+
+    style 客户端 fill:#e3f2fd,stroke:#1565c0
+    style 服务端 fill:#fff3e0,stroke:#e65100
+    style 数据层 fill:#e8f5e9,stroke:#2e7d32
+    style 外部服务 fill:#fce4ec,stroke:#c62828
+```
+
+### 业务流程图
+
+```mermaid
+flowchart LR
+    subgraph 采购入库
+        A1["扫码/搜索商品"] --> A2["录入数量+成本"] --> A3["创建入库单"]
+    end
+
+    subgraph 库存管理
+        B1["库存查询"] --> B2["变动流水"]
+        B3["库存盘点"] --> B4["自动调整差异"]
+        B5["库存调拨"] --> B6["场所间转移"]
+        B7["分装操作"] --> B8["整装→分装SKU"]
+    end
+
+    subgraph 销售出库
+        C1["选商品+客户"] --> C2["积分抵扣"] --> C3["确认收款"]
+        C4["出库/损耗登记"] --> C5["扣减库存"]
+    end
+
+    A3 --> B1
+    B4 --> B2
+    B6 --> B2
+    B8 --> B2
+    C3 --> B2
+    C5 --> B2
+
+    style 采购入库 fill:#e3f2fd,stroke:#1565c0
+    style 库存管理 fill:#fff3e0,stroke:#e65100
+    style 销售出库 fill:#e8f5e9,stroke:#2e7d32
+```
+
 ## 项目结构
 
 ```
@@ -95,28 +170,104 @@ FleetingERP/
 
 ## 数据模型
 
-系统包含 13 张核心数据表，关系如下：
+系统包含 13 张核心数据表，ER 关系如下：
 
-```
-brands 1───n products 1───n skus
-                                 │
-locations 1───n stock_balances ──┘
-           │
-           └───n stock_movements ──── skus
+```mermaid
+erDiagram
+    brands ||--o{ products : "1:n"
+    products ||--o{ skus : "1:n"
+    products }o--o| categories : "属于"
 
-stock_in_orders 1───n stock_in_items ──── skus
+    locations ||--o{ stock_balances : "持有"
+    skus ||--o{ stock_balances : "存在于"
+    locations ||--o{ stock_movements : "记录"
+    skus ||--o{ stock_movements : "变动"
 
-sales 1───n sale_items ──── skus
-  │
-  ├───n payments
-  └─── customers
+    locations ||--o{ stock_in_orders : "入库至"
+    stock_in_orders ||--o{ stock_in_items : "包含"
+    skus ||--o{ stock_in_items : "入库商品"
 
-transfers 1───n transfer_items ──── skus
+    locations ||--o{ sales : "销售于"
+    customers ||--o{ sales : "购买"
+    sales ||--o{ sale_items : "包含"
+    skus ||--o{ sale_items : "销售商品"
+    sales ||--o{ payments : "支付"
 
-split_orders 1───n split_items ──── skus
+    locations ||--o{ transfers : "发出/接收"
+    transfers ||--o{ transfer_items : "包含"
+    skus ||--o{ transfer_items : "调拨商品"
 
-users (独立表，认证用)
-categories (独立表，分类用)
+    locations ||--o{ split_orders : "分装于"
+    skus ||--o{ split_orders : "源商品"
+    split_orders ||--o{ split_items : "产出"
+    skus ||--o{ split_items : "分装产物"
+
+    users {
+        int id PK
+        text username UK
+        text password_hash
+        text role
+        text name
+    }
+    brands {
+        int id PK
+        text name
+        int is_deleted
+    }
+    products {
+        int id PK
+        int brand_id FK
+        text name
+        text category
+        int is_splittable
+    }
+    skus {
+        int id PK
+        int product_id FK
+        text sku_code UK
+        text barcode
+        text spec_type
+        text volume
+        real cost_price
+        real retail_price
+        int low_stock_threshold
+    }
+    locations {
+        int id PK
+        text name
+        text type
+        text address
+    }
+    stock_balances {
+        int location_id FK
+        int sku_id FK
+        int quantity
+    }
+    stock_movements {
+        int id PK
+        int location_id FK
+        int sku_id FK
+        text movement_type
+        int quantity
+        text operator
+    }
+    customers {
+        int id PK
+        text wechat_name
+        text phone
+        int points
+        real total_spent
+    }
+    sales {
+        int id PK
+        int location_id FK
+        int customer_id FK
+        real total_amount
+        real discount
+        real final_amount
+        int points_earned
+        int points_used
+    }
 ```
 
 ### 库存变动类型
@@ -207,35 +358,48 @@ bash deploy.sh
 
 系统最重要的功能是扫码入库，完整链路如下：
 
-```
-扫码枪/相机输入
-    │
-    ▼
-Scanner.usbScan() / Scanner.cameraScan()
-    │
-    ├── USB扫码枪: keydown 事件监听 → 80ms间隔缓冲 → Enter触发
-    │
-    └── 摄像头: getUserMedia → BarcodeDetector(原生) → Canvas解码(回退)
-         │                                        ↓
-         └── 连续2帧识别同一条码 ──→ 确认成功
-                                    │
-                                    ▼
-              XxxPage.onBarcodeScan(code)
-                                    │
-                                    ▼
-              App.handleBarcodeScan(code, onFound)
-                                    │
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-              本地数据库查询    外部API并行查询    手动输入回退
-              (即时)          (OpenBeautyFacts     (兜底)
-                              + UPCitemdb, ~8s)
-                    │               │
-                    ▼               ▼
-              找到 → onFound(sku) → 弹窗创建商品
-                    │
-                    ▼
-              addItem(sku) → 入库/销售/出库 流程
+```mermaid
+flowchart TD
+    Start(["扫码触发"]) --> InputType{输入方式}
+
+    InputType -->|"USB扫码枪"| USB["keydown事件监听<br/>80ms间隔缓冲<br/>≥4字符 + Enter触发"]
+    InputType -->|"摄像头"| Cam["getUserMedia 启动相机"]
+    InputType -->|"手动输入"| Manual["手动输入条码<br/>兜底方案"]
+
+    Cam --> Detect{检测方式}
+    Detect -->|"BarcodeDetector<br/>可用"| Native["原生API检测"]
+    Detect -->|"不可用"| Canvas["Canvas 解码回退"]
+    Native --> Frame["每250ms检测一帧"]
+    Canvas --> Frame
+    Frame --> Confirm{"连续2帧<br/>识别同一条码?"}
+    Confirm -->|"是"| Success("扫码成功")
+    Confirm -->|"1.5s宽限期内<br/>继续等待"| Frame
+
+    USB --> Success
+    Manual --> Success
+
+    Success --> Callback["callback(code)<br/>→ onBarcodeScan(code)"]
+    Callback --> Handle["App.handleBarcodeScan(code, onFound)"]
+    Handle --> Local{本地数据库<br/>查询条码}
+
+    Local -->|"找到"| Found["onFound(sku)<br/>→ addItem(sku)"]
+    Local -->|"未找到"| External["外部API并行查询<br/>Promise.allSettled"]
+
+    External --> ExtResult{查询结果}
+    ExtResult -->|"Open Beauty Facts<br/>或 UPCitemdb 找到"| Popup["弹窗显示商品信息<br/>用户确认创建商品"]
+    ExtResult -->|"均未找到"| NotFound["提示未找到<br/>引导前往商品管理"]
+
+    Popup --> Found
+    Found --> Flow{业务流程}
+    Flow -->|"入库"| StockIn["StockInPage.addItem()"]
+    Flow -->|"销售"| Sales["SalesPage.addItem()"]
+    Flow -->|"出库"| StockOut["StockOutPage.addItem()"]
+    Flow -->|"分装"| Split["SplitPage.setSource()"]
+
+    style Start fill:#e3f2fd,stroke:#1565c0
+    style Success fill:#e8f5e9,stroke:#2e7d32
+    style NotFound fill:#ffebee,stroke:#c62828
+    style Found fill:#e8f5e9,stroke:#2e7d32
 ```
 
 ### 扫码稳定性保障
