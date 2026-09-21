@@ -17,6 +17,15 @@ const StockQueryPage = {
       </div>
       <div id="sq-results">加载中...</div>`;
     this.load();
+    const searchInput = document.getElementById('sq-search');
+    if (searchInput) {
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          this.load();
+        }
+      });
+    }
     SearchSuggest.attach({
       inputId: 'sq-search', minLength: 1,
       searchFn: async (kw) => {

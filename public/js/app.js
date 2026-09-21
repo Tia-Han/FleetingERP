@@ -198,9 +198,70 @@ const App = {
       console.error('外部条码查询失败:', e);
     }
 
-    if (confirm('未找到条码 ' + code + ' 对应的商品信息。\n\n是否前往商品管理页面手动新增商品？')) {
-      this.navigate('products');
-    }
+    this.showQuickCreateProduct(code, onFound);
+  },
+
+  showQuickCreateProduct(barcode, onFound) {
+    const self = this;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10001;display:flex;align-items:center;justify-content:center';
+
+    API.getBrands().then(brandsData => {
+      const brands = brandsData.success ? brandsData.data : [];
+      const brandOptions = brands.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+
+      API.getCategories().then(catData => {
+        const categories = catData.success ? catData.data : [];
+        const catOptions = categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+
+        overlay.innerHTML = `<div class="modal-card" style="width:480px;max-height:90vh;overflow-y:auto">
+          <h2 style="margin-bottom:8px">新品快速入库</h2>
+          <p style="color:#999;margin-bottom:16px">条码 <strong>${esc(barcode)}</strong> 未在数据库中找到，请填写商品信息直接创建并入库</p>
+          <div class="form-group"><label>商品名</label><input type="text" id="bp-name" placeholder="输入商品名称" autofocus></div>
+          <div class="form-group"><label>品牌</label>
+            <select id="bp-brand">
+              <option value="">-- 选择品牌 --</option>
+              ${brandOptions}
+              <option value="__new__">+ 新建品牌</option>
+            </select>
+            <input type="text" id="bp-new-brand" placeholder="输入新品牌名" style="display:none;margin-top:8px">
+          </div>
+          <div class="form-group"><label>品类</label>
+            <select id="bp-category">
+              ${catOptions || '<option value="香水">香水</option><option value="散香">散香</option><option value="蜡烛">蜡烛</option><option value="护理">护理</option>'}
+            </select>
+          </div>
+          <div class="form-group"><label>规格/容量</label><input type="text" id="bp-volume" placeholder="如 100ml"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group"><label>成本价</label><input type="number" id="bp-cost" value="0" step="0.01"></div>
+            <div class="form-group"><label>零售价</label><input type="number" id="bp-retail" value="0" step="0.01"></div>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn" id="bp-cancel-btn">取消</button>
+            <button class="btn btn-primary" id="bp-confirm-btn">创建并添加到入库</button>
+          </div>
+        </div>`;
+
+        document.body.appendChild(overlay);
+
+        document.getElementById('bp-brand').addEventListener('change', function() {
+          const newInput = document.getElementById('bp-new-brand');
+          newInput.style.display = this.value === '__new__' ? 'block' : 'none';
+        });
+
+        document.getElementById('bp-cancel-btn').addEventListener('click', function() {
+          overlay.remove();
+        });
+
+        document.getElementById('bp-confirm-btn').addEventListener('click', function() {
+          App.confirmBarcodeCreate(barcode, overlay, onFound);
+        });
+
+        const nameInput = document.getElementById('bp-name');
+        if (nameInput) nameInput.focus();
+      });
+    });
   },
 
   showBarcodeLookupResult(data, barcode, onFound) {
