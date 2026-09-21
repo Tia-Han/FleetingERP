@@ -38,7 +38,7 @@ function getLanIPs() {
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public'), {
-  maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0
+  maxAge: 0
 }));
 
 // 路由注册
