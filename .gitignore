@@ -7,3 +7,4 @@ db/backups/
 db/fragrance_before_restore.db
 .env
 logs/
+ssl/

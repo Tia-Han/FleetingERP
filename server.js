@@ -17,11 +17,33 @@ try {
 const express = require('express');
 const path = require('path');
 const os = require('os');
+const https = require('https');
+const { execSync } = require('child_process');
 const { initDatabase } = require('./utils/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
+const SSL_PORT = process.env.SSL_PORT || 3443;
+
+function ensureSSLCerts() {
+  const certDir = path.join(__dirname, 'ssl');
+  const keyPath = path.join(certDir, 'key.pem');
+  const certPath = path.join(certDir, 'cert.pem');
+  if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    return { keyPath, certPath };
+  }
+  if (!fs.existsSync(certDir)) fs.mkdirSync(certDir, { recursive: true });
+  console.log('生成自签名SSL证书...');
+  const subj = '/CN=fragrance-inventory/O=FragranceERP/C=CN';
+  try {
+    execSync(`openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -days 3650 -nodes -subj "${subj}" 2>/dev/null`);
+  } catch(e) {
+    execSync(`openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -days 3650 -nodes -subj "${subj}"`);
+  }
+  console.log('SSL证书已生成');
+  return { keyPath, certPath };
+}
 
 function getLanIPs() {
   const interfaces = os.networkInterfaces();
@@ -76,20 +98,36 @@ app.use((err, req, res, next) => {
 initDatabase();
 const systemRouter = require('./routes/system');
 if (systemRouter._autoBackup) systemRouter._autoBackup();
+const lanIPs = getLanIPs();
 
 app.listen(PORT, HOST, () => {
   console.log(`\n香氛库存管理系统运行中:\n`);
-  console.log(`  本机访问:   http://localhost:${PORT}`);
-  const lanIPs = getLanIPs();
+  console.log(`  HTTP:  http://localhost:${PORT}`);
   if (lanIPs.length > 0) {
     for (const ip of lanIPs) {
-      console.log(`  局域网访问: http://${ip}:${PORT}`);
+      console.log(`  HTTP:  http://${ip}:${PORT}`);
     }
   }
-  if (process.env.NODE_ENV === 'production') {
-    console.log(`\n  生产模式已启动 (PID: ${process.pid})`);
-  } else {
-    console.log(`\n  首次使用请用默认账号登录`);
-  }
+  console.log(`\n  首次使用请用默认账号登录`);
   console.log('');
 });
+
+try {
+  const { keyPath, certPath } = ensureSSLCerts();
+  const sslOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
+  };
+  https.createServer(sslOptions, app).listen(SSL_PORT, HOST, () => {
+    console.log(`  HTTPS: https://localhost:${SSL_PORT}`);
+    if (lanIPs.length > 0) {
+      for (const ip of lanIPs) {
+        console.log(`  HTTPS: https://${ip}:${SSL_PORT}`);
+      }
+    }
+    console.log(`\n  ⚠️  自签名证书，浏览器会提示"不安全"，点"高级"→"继续访问"即可`);
+    console.log(`  📷 相机扫码请使用 HTTPS 地址访问\n`);
+  });
+} catch(e) {
+  console.log('  HTTPS 启动失败（openssl 可能未安装）:', e.message);
+}
