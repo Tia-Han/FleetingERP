@@ -7,17 +7,18 @@ const StockOutPage = {
     document.getElementById('content').innerHTML = `
       <div class="card">
         <h2>出库/损耗登记</h2>
-        <div class="form-group"><label>场所</label><select id="so-location"></select></div>
-        <div class="form-group">
-          <label>添加商品（扫码或搜索）</label>
-          <div style="display:flex;gap:8px">
-            <input type="text" id="so-search" placeholder="扫码或搜索商品名/条码" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px" onkeydown="StockOutPage.onSearchKey(event)">
-            <button class="btn btn-primary" onclick="StockOutPage.searchProduct()">搜索</button>
-            <button class="btn btn-success" onclick="Scanner.usbScan(code => StockOutPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info" onclick="Scanner.cameraScan(code => StockOutPage.onBarcodeScan(code))">相机扫码</button>
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
+          <div class="form-group" style="flex:0 0 200px;margin:0"><label>场所</label><select id="so-location" style="width:100%"></select></div>
+          <div class="form-group" style="flex:1;min-width:200px;margin:0"><label>添加商品（扫码或搜索）</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="so-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px" onkeydown="StockOutPage.onSearchKey(event)">
+              <button class="btn btn-primary btn-sm" onclick="StockOutPage.searchProduct()">搜索</button>
+              <button class="btn btn-success btn-sm" onclick="Scanner.usbScan(code => StockOutPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info btn-sm" onclick="Scanner.cameraScan(code => StockOutPage.onBarcodeScan(code))">相机</button>
+            </div>
           </div>
-          <div id="so-search-results" style="margin-top:12px"></div>
         </div>
-        <div id="so-batch-section" style="margin-top:16px">
+        <div id="so-search-results" style="margin-bottom:12px"></div>
+        <div id="so-batch-section">
           <h3>出库明细</h3>
           <div class="table-wrapper">
             <table id="so-batch-table">

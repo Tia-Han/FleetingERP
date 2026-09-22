@@ -2,10 +2,11 @@ const CustomersPage = {
   async render() {
     document.getElementById('content').innerHTML = `
       <div class="card">
-        <h2>客户管理 <button class="btn btn-primary" style="float:right" onclick="CustomersPage.showAdd()">+ 新增客户</button></h2>
+        <h2>客户管理</h2>
         <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input type="text" id="cu-search" placeholder="搜索微信名/手机号（支持单字模糊）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
+          <input type="text" id="cu-search" placeholder="搜索微信名/手机号" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
           <button class="btn btn-primary" onclick="CustomersPage.search()">搜索</button>
+          <button class="btn btn-success" onclick="CustomersPage.showAdd()">+ 新增客户</button>
         </div>
         <div id="cu-list">加载中...</div>
       </div>`;

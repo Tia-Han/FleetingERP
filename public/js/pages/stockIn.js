@@ -5,24 +5,22 @@ const StockInPage = {
     this.items = [];
     const locId = App.currentLocation || 1;
     const now = new Date();
-    const nowLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().substring(0, 16);
+    const nowLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().substring(0, 10);
     document.getElementById('content').innerHTML = `
-      <div class="card">
-        <h2>入库登记</h2>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div class="form-group"><label>入库到场所</label><select id="si-location"></select></div>
-          <div class="form-group"><label>供应商</label><input type="text" id="si-supplier" placeholder="供应商名称"></div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
-          <div class="form-group"><label>入库时间</label><input type="datetime-local" id="si-date" value="${nowLocal}"></div>
-          <div class="form-group"><label>备注</label><input type="text" id="si-remark" placeholder="备注（可选）"></div>
+      <div class="card" style="background:#f8f9fa;padding:12px 16px">
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:0 0 200px;margin-bottom:0"><label>入库到场所</label><select id="si-location"></select></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>入库时间</label><input type="date" id="si-date" value="${nowLocal}" style="width:100%"></div>
+          <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>供应商</label><input type="text" id="si-supplier" placeholder="供应商" style="width:100%"></div>
+          <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0"><label>备注</label><input type="text" id="si-remark" placeholder="备注（可选）" style="width:100%"></div>
         </div>
       </div>
       <div class="card">
         <h2>添加商品</h2>
         <div style="display:flex;gap:8px">
-          <input type="text" id="si-search" placeholder="扫码或搜索商品名/条码（支持单字模糊）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
+          <input type="text" id="si-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
           <button class="btn btn-success" onclick="Scanner.usbScan(code => StockInPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info" onclick="Scanner.cameraScan(code => StockInPage.onBarcodeScan(code))">相机扫码</button>
+          <button class="btn btn-primary" onclick="StockInPage.showManualAdd()">手动添加</button>
         </div>
         <div id="si-search-results" style="margin-top:12px"></div>
       </div>
@@ -96,9 +94,10 @@ const StockInPage = {
   },
 
   addItem(sku) {
+    const qty = sku._stockQty || 1;
     const existing = this.items.find(i => i.sku_id === sku.id);
-    if (existing) { existing.quantity++; } else {
-      this.items.push({ sku_id: sku.id, product_name: sku.product_name, volume: sku.volume, sku_code: sku.sku_code, quantity: 1, unit_cost: sku.cost_price });
+    if (existing) { existing.quantity += qty; } else {
+      this.items.push({ sku_id: sku.id, product_name: sku.product_name, volume: sku.volume, sku_code: sku.sku_code, quantity: qty, unit_cost: sku.cost_price });
     }
     this.renderItems();
     const searchEl = document.getElementById('si-search');
@@ -145,5 +144,29 @@ const StockInPage = {
     };
     const res = await API.stockIn(data);
     if (res.success) { App.toast('入库成功'); this.render(); } else App.toast(res.message, 'error');
+  },
+
+  showManualAdd() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal-card" style="width:400px">
+      <h2 style="margin-bottom:16px">手动添加商品</h2>
+      <div class="form-group"><label style="font-size:14px">输入条码</label><input type="text" id="ma-barcode" placeholder="输入条码后回车" style="font-size:16px;padding:10px" autofocus></div>
+      <p style="color:#999;font-size:13px;margin-bottom:16px">输入条码后回车，系统将查询商品。未找到则弹出新品创建界面。</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn btn-primary" id="ma-confirm-btn">查询</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    const barcodeInput = document.getElementById('ma-barcode');
+    const doSearch = () => {
+      const code = barcodeInput.value.trim();
+      if (!code || code.length < 4) { App.toast('条码过短，请至少4位', 'error'); return; }
+      overlay.remove();
+      App.handleBarcodeScan(code, (sku) => { this.addItem(sku); });
+    };
+    document.getElementById('ma-confirm-btn').addEventListener('click', doSearch);
+    barcodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
   }
 };

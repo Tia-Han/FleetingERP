@@ -5,7 +5,7 @@ const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
-const POINTS_PER_YUAN = 1;
+const POINTS_PER_YUAN = 0.1;
 const POINTS_TO_YUAN = 0.01;
 
 router.post('/', (req, res) => {

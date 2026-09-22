@@ -11,16 +11,18 @@ const InventoryCheckPage = {
     document.getElementById('content').innerHTML = `
       <div class="card">
         <h2>库存盘点</h2>
-        <div class="form-group"><label>盘点场所</label>
-          <div style="display:flex;gap:8px">
-            <select id="ic-location" onchange="InventoryCheckPage.loadStock()" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
+        <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+          <div class="form-group" style="margin:0"><label>盘点场所</label>
+            <select id="ic-location" onchange="InventoryCheckPage.loadStock()" style="padding:8px;border:1px solid #ddd;border-radius:4px">
               <option value="">-- 选择场所 --</option>
               ${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
             </select>
-            <button class="btn btn-primary" onclick="InventoryCheckPage.loadStock()">加载库存</button>
           </div>
+          <button class="btn btn-primary" style="align-self:flex-end" onclick="InventoryCheckPage.loadStock()">加载库存</button>
+          <button class="btn btn-success" style="align-self:flex-end" onclick="InventoryCheckPage.submit()">提交盘点</button>
+          <button class="btn" style="align-self:flex-end" onclick="InventoryCheckPage.fillAllSystem()">全部填系统数</button>
         </div>
-        <div id="ic-content" style="margin-top:16px">
+        <div id="ic-content">
           <p style="color:#999;text-align:center;padding:20px">请选择场所后加载库存数据</p>
         </div>
       </div>`;
@@ -49,10 +51,8 @@ const InventoryCheckPage = {
       return;
     }
     container.innerHTML = `
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
         <input type="text" id="ic-search" placeholder="搜索商品名/条码" style="flex:1;min-width:150px;padding:8px;border:1px solid #ddd;border-radius:4px" oninput="InventoryCheckPage.filterTable()">
-        <button class="btn btn-success" onclick="InventoryCheckPage.submit()">提交盘点</button>
-        <button class="btn" onclick="InventoryCheckPage.fillAllSystem()">全部填系统数</button>
       </div>
       <div class="table-wrapper">
         <table id="ic-table">

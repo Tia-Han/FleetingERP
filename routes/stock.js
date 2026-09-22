@@ -7,10 +7,11 @@ router.use(authMiddleware);
 
 router.get('/balances', (req, res) => {
   const db = getDb();
-  const { location_id, category, brand_id, spec_type, search } = req.query;
+  const { location_id, category, brand_id, spec_type, search, sku_id } = req.query;
   let sql = `SELECT sb.*, s.sku_code, s.barcode, s.spec_type, s.volume, s.unit, s.cost_price, s.retail_price, s.low_stock_threshold, p.name as product_name, p.category, b.name as brand_name, l.name as location_name FROM stock_balances sb JOIN skus s ON sb.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN brands b ON p.brand_id = b.id JOIN locations l ON sb.location_id = l.id WHERE s.is_deleted = 0 AND p.is_deleted = 0`;
   const params = [];
   if (location_id) { sql += ' AND sb.location_id = ?'; params.push(location_id); }
+  if (sku_id) { sql += ' AND sb.sku_id = ?'; params.push(sku_id); }
   if (category) { sql += ' AND p.category = ?'; params.push(category); }
   if (brand_id) { sql += ' AND p.brand_id = ?'; params.push(brand_id); }
   if (spec_type) { sql += ' AND s.spec_type = ?'; params.push(spec_type); }
@@ -30,7 +31,7 @@ router.get('/balances', (req, res) => {
 router.get('/movements', (req, res) => {
   const db = getDb();
   const { location_id, movement_type, start_date, end_date, page, limit } = req.query;
-  let sql = `SELECT sm.*, s.volume, s.sku_code, p.name as product_name, l.name as location_name FROM stock_movements sm JOIN skus s ON sm.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN locations l ON sm.location_id = l.id WHERE 1=1`;
+  let sql = `SELECT sm.*, s.volume, s.sku_code, p.name as product_name, l.name as location_name, sio.supplier, sio.remark as order_remark FROM stock_movements sm JOIN skus s ON sm.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN locations l ON sm.location_id = l.id LEFT JOIN stock_in_orders sio ON sm.ref_type = 'stock_in' AND sm.ref_id = sio.id WHERE 1=1`;
   const params = [];
   if (location_id) { sql += ' AND sm.location_id = ?'; params.push(location_id); }
   if (movement_type) { sql += ' AND sm.movement_type = ?'; params.push(movement_type); }

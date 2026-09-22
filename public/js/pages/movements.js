@@ -66,12 +66,13 @@ const MovementsPage = {
     }
     div.innerHTML = `<div class="card">
       ${summaryHtml}
-      <div class="table-wrapper"><table><thead><tr><th>时间</th><th>场所</th><th>商品</th><th>规格</th><th>类型</th><th>数量</th><th>成本</th><th>操作人</th></tr></thead><tbody>
+      <div class="table-wrapper"><table><thead><tr><th>时间</th><th>场所</th><th>商品</th><th>规格</th><th>类型</th><th>数量</th><th>成本</th><th>操作人</th><th>供应商/备注</th></tr></thead><tbody>
         ${mvRes.data.map(m => `<tr>
           <td>${Formatter.date(m.created_at)}</td><td>${esc(m.location_name)}</td><td>${esc(m.product_name)}</td><td>${esc(m.volume)}</td>
           <td><span class="badge ${m.quantity > 0 ? 'badge-success' : 'badge-warning'}">${Formatter.movementTypeLabel(m.movement_type)}</span></td>
           <td style="color:${m.quantity > 0 ? '#27ae60' : '#e74c3c'}">${m.quantity > 0 ? '+' : ''}${m.quantity}</td>
           <td>${m.unit_cost ? Formatter.money(m.unit_cost) : '-'}</td><td>${esc(m.operator || '-')}</td>
+          <td>${m.movement_type === 'in' ? [m.supplier, m.order_remark].filter(Boolean).join(' / ') || '-' : '-'}</td>
         </tr>`).join('')}
       </tbody></table></div>
       ${paginationHtml}

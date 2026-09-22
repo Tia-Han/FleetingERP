@@ -22,7 +22,7 @@ const App = {
     document.getElementById('content').innerHTML = `
       <div class="login-container">
         <div class="card">
-          <h2>香氛库存管理系统</h2>
+          <h2>暗香·Fleeting</h2>
           <div class="form-group"><label>用户名</label><input type="text" id="login-username" placeholder="用户名"></div>
           <div class="form-group"><label>密码</label><input type="password" id="login-password" placeholder="密码"></div>
           <button class="btn btn-primary" style="width:100%" onclick="App.login()">登录</button>
@@ -52,10 +52,9 @@ const App = {
       { key: 'stockQuery', label: '库存查询', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
       { key: 'stockIn', label: '入库', roles: ['admin', 'warehouse_manager'] },
       { key: 'stockOut', label: '出库/损耗', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
-      { key: 'split', label: '分装', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
       { key: 'transfer', label: '调拨', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
       { key: 'movements', label: '变动流水', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
-      { key: 'inventoryCheck', label: '盘点', roles: ['admin', 'warehouse_manager'] },
+      { key: 'inventoryCheck', label: '库存盘点', roles: ['admin', 'warehouse_manager'] },
       { key: 'sales', label: '销售', roles: ['admin', 'store_clerk'] },
       { key: 'customers', label: '客户', roles: ['admin', 'store_clerk'] },
       { key: 'settings', label: '设置', roles: ['admin'] },
@@ -66,7 +65,7 @@ const App = {
       const locOptions = locRes.data.map(l => `<option value="${l.id}" ${l.id == this.currentLocation ? 'selected' : ''}>${l.name}</option>`).join('');
       document.getElementById('sidebar').innerHTML = `
         <div class="sidebar-header">
-          <span class="logo">香氛库存</span>
+          <span class="logo">暗香·Fleeting</span>
           <select class="location-select" onchange="App.changeLocation(this.value)">
             <option value="">全部场所</option>${locOptions}
           </select>
@@ -215,28 +214,29 @@ const App = {
         const categories = catData.success ? catData.data : [];
         const catOptions = categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
 
-        overlay.innerHTML = `<div class="modal-card" style="width:480px;max-height:90vh;overflow-y:auto">
-          <h2 style="margin-bottom:8px">新品快速入库</h2>
-          <div class="form-group"><label>条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9" autofocus></div>
+        overlay.innerHTML = `<div class="modal-card" style="width:520px;max-height:90vh;overflow-y:auto">
+          <h2 style="margin-bottom:16px">新品快速入库</h2>
+          <div class="form-group"><label style="font-size:14px">条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9;padding:10px" autofocus></div>
           <p style="color:#999;margin-bottom:16px;font-size:13px">请核对条码无误后填写商品信息，条码将永久关联此商品</p>
-          <div class="form-group"><label>商品名</label><input type="text" id="bp-name" placeholder="输入商品名称"></div>
-          <div class="form-group"><label>品牌</label>
-            <select id="bp-brand">
+          <div class="form-group"><label style="font-size:14px">商品名</label><input type="text" id="bp-name" placeholder="输入商品名称" style="font-size:16px;padding:10px"></div>
+          <div class="form-group"><label style="font-size:14px">品牌</label>
+            <select id="bp-brand" style="font-size:16px;padding:10px">
               <option value="">-- 选择品牌 --</option>
               ${brandOptions}
               <option value="__new__">+ 新建品牌</option>
             </select>
-            <input type="text" id="bp-new-brand" placeholder="输入新品牌名" style="display:none;margin-top:8px">
+            <input type="text" id="bp-new-brand" placeholder="输入新品牌名" style="display:none;margin-top:8px;font-size:16px;padding:10px">
           </div>
-          <div class="form-group"><label>品类</label>
-            <select id="bp-category">
+          <div class="form-group"><label style="font-size:14px">品类</label>
+            <select id="bp-category" style="font-size:16px;padding:10px">
               ${catOptions || '<option value="香水">香水</option><option value="散香">散香</option><option value="蜡烛">蜡烛</option><option value="护理">护理</option>'}
             </select>
           </div>
-          <div class="form-group"><label>规格/容量</label><input type="text" id="bp-volume" placeholder="如 100ml"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="form-group"><label>成本价</label><input type="number" id="bp-cost" value="0" step="0.01"></div>
-            <div class="form-group"><label>零售价</label><input type="number" id="bp-retail" value="0" step="0.01"></div>
+          <div class="form-group"><label style="font-size:14px">规格/容量</label><input type="text" id="bp-volume" placeholder="如 100ml" style="font-size:16px;padding:10px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div class="form-group"><label style="font-size:14px">成本价</label><input type="number" id="bp-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">零售价</label><input type="number" id="bp-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">入库数量</label><input type="number" id="bp-stock-qty" value="1" min="1" style="font-size:16px;font-weight:bold;color:#27ae60;padding:10px;width:100%;box-sizing:border-box"></div>
           </div>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
             <button class="btn" id="bp-cancel-btn">取消</button>
@@ -284,7 +284,7 @@ const App = {
       const brandOptions = brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
       const brandMatch = brands.find(b => b.name.toLowerCase() === brand.toLowerCase());
 
-      overlay.innerHTML = `<div class="modal-card" style="width:480px;max-height:90vh;overflow-y:auto">
+      overlay.innerHTML = `<div class="modal-card" style="width:520px;max-height:90vh;overflow-y:auto">
         <h2 style="margin-bottom:16px">条码查询结果</h2>
         <div style="display:flex;gap:16px;margin-bottom:16px">
           ${image ? `<img src="${esc(image)}" style="width:100px;height:100px;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">` : ''}
@@ -297,28 +297,31 @@ const App = {
           </div>
         </div>
         <div style="border-top:1px solid #eee;padding-top:16px">
-          <h3 style="margin-bottom:12px;color:#34495e">确认入库信息</h3>
-          <div class="form-group"><label>条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9"></div>
-          <div class="form-group"><label>商品名</label><input type="text" id="bp-name" value="${esc(name)}"></div>
-          <div class="form-group"><label>品牌</label>
-            <select id="bp-brand">
+          <h3 style="margin-bottom:12px;color:#34495e;font-size:15px">确认入库信息</h3>
+          <div class="form-group"><label style="font-size:14px">条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9;padding:10px"></div>
+          <div class="form-group"><label style="font-size:14px">商品名</label><input type="text" id="bp-name" value="${esc(name)}" style="font-size:16px;padding:10px"></div>
+          <div class="form-group"><label style="font-size:14px">品牌</label>
+            <select id="bp-brand" style="font-size:16px;padding:10px">
               <option value="">-- 选择品牌 --</option>
               ${brandOptions}
               <option value="__new__">+ 新建品牌</option>
             </select>
-            <input type="text" id="bp-new-brand" placeholder="输入新品牌名" style="display:none;margin-top:8px">
+            <input type="text" id="bp-new-brand" placeholder="输入新品牌名" style="display:none;margin-top:8px;font-size:16px;padding:10px">
           </div>
-          <div class="form-group"><label>品类</label>
-            <select id="bp-category">
+          <div class="form-group"><label style="font-size:14px">品类</label>
+            <select id="bp-category" style="font-size:16px;padding:10px">
               <option value="香水" ${category === '香水' ? 'selected' : ''}>香水</option>
               <option value="散香" ${category === '散香' ? 'selected' : ''}>散香</option>
               <option value="蜡烛" ${category === '蜡烛' ? 'selected' : ''}>蜡烛</option>
               <option value="护理" ${category === '护理' ? 'selected' : ''}>护理</option>
             </select>
           </div>
-          <div class="form-group"><label>规格/容量</label><input type="text" id="bp-volume" value="${esc(volume)}" placeholder="如 100ml"></div>
-          <div class="form-group"><label>成本价</label><input type="number" id="bp-cost" value="0" step="0.01"></div>
-          <div class="form-group"><label>零售价</label><input type="number" id="bp-retail" value="0" step="0.01"></div>
+          <div class="form-group"><label style="font-size:14px">规格/容量</label><input type="text" id="bp-volume" value="${esc(volume)}" placeholder="如 100ml" style="font-size:16px;padding:10px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+            <div class="form-group"><label style="font-size:14px">成本价</label><input type="number" id="bp-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">零售价</label><input type="number" id="bp-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">入库数量</label><input type="number" id="bp-stock-qty" value="1" min="1" style="font-size:16px;font-weight:bold;color:#27ae60;padding:10px;width:100%;box-sizing:border-box"></div>
+          </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
           <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
@@ -348,11 +351,12 @@ const App = {
     const barcode = document.getElementById('bp-barcode').value.trim() || originalBarcode;
     const name = document.getElementById('bp-name').value.trim();
     const brandVal = document.getElementById('bp-brand').value;
-    const newBrand = document.getElementById('bp-new-brand').value.trim();
+    const newBrand = document.getElementById('bp-new-brand') ? document.getElementById('bp-new-brand').value.trim() : '';
     const category = document.getElementById('bp-category').value;
     const volume = document.getElementById('bp-volume').value.trim();
     const cost = parseFloat(document.getElementById('bp-cost').value) || 0;
     const retail = parseFloat(document.getElementById('bp-retail').value) || 0;
+    const stockQty = parseInt(document.getElementById('bp-stock-qty')?.value) || 1;
 
     if (!barcode) { this.toast('条码不能为空', 'error'); return; }
     if (!name) { this.toast('商品名不能为空', 'error'); return; }
@@ -388,8 +392,9 @@ const App = {
       overlay.remove();
       const skuRes = await API.getSkuByBarcode(barcode);
       if (skuRes.success && onFound) {
+        skuRes.data._stockQty = stockQty;
         onFound(skuRes.data);
-        this.toast('已添加: ' + skuRes.data.product_name + ' ' + skuRes.data.volume, 'success');
+        this.toast('已添加: ' + skuRes.data.product_name + ' ' + skuRes.data.volume + ' x' + stockQty, 'success');
       }
     } else {
       this.toast(prodRes.message || '创建商品失败', 'error');

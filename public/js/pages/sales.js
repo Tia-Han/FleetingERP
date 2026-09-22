@@ -2,13 +2,13 @@ const SalesPage = {
   items: [],
   customer: null,
   currentTab: 'new',
-  discountMode: 'amount',
+  discountMode: 'percent',
 
   async render() {
     this.items = [];
     this.customer = null;
     this.currentTab = 'new';
-    this.discountMode = 'amount';
+    this.discountMode = 'percent';
     this._renderShell();
     await this._renderNewSale();
   },
@@ -38,26 +38,25 @@ const SalesPage = {
     const locRes = await API.getLocations();
     const stores = locRes.success ? locRes.data.filter(l => l.type === 'store') : [];
     document.getElementById('sl-tab-content').innerHTML = `
-      <div class="card">
+      <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-          <div class="form-group" style="flex:0 0 200px;margin-bottom:0"><label>门店</label><select id="sl-location">${stores.map(s => `<option value="${s.id}" ${s.id == locId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>门店</label><select id="sl-location">${stores.map(s => `<option value="${s.id}" ${s.id == locId ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
           <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0"><label>客户</label>
             <div style="display:flex;gap:8px">
-              <input type="text" id="sl-customer-search" placeholder="搜索微信名/手机号" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
+              <input type="text" id="sl-customer-search" placeholder="搜索微信名/手机号" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:250px">
               <button class="btn btn-primary btn-sm" onclick="SalesPage.showAddCustomer()">+ 新增</button>
               <button class="btn btn-sm" onclick="SalesPage.setCustomer(null)">散客</button>
             </div>
           </div>
+          <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0"><label>添加商品</label>
+            <div style="display:flex;gap:8px">
+              <input type="text" id="sl-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:250px">
+              <button class="btn btn-success btn-sm" onclick="Scanner.usbScan(code => SalesPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info btn-sm" onclick="Scanner.cameraScan(code => SalesPage.onBarcodeScan(code))">相机</button>
+            </div>
+          </div>
         </div>
         <div id="sl-customer-info" style="margin-top:8px"></div>
-      </div>
-      <div class="card">
-        <h2>添加商品</h2>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="sl-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
-          <button class="btn btn-success" onclick="Scanner.usbScan(code => SalesPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info" onclick="Scanner.cameraScan(code => SalesPage.onBarcodeScan(code))">相机扫码</button>
-        </div>
-        <div id="sl-search-results" style="margin-top:12px"></div>
+        <div id="sl-search-results" style="margin-top:8px"></div>
       </div>
       <div class="card">
         <h2>销售明细</h2>
@@ -67,15 +66,16 @@ const SalesPage = {
       </div>
       <div class="card">
         <h2>结算</h2>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
           <div class="form-group" style="margin-bottom:0"><label>商品小计</label><input type="text" id="sl-subtotal" readonly value="${Formatter.money(0)}"></div>
           <div class="form-group" style="margin-bottom:0"><label>折扣</label>
             <div style="display:flex;gap:0">
               <input type="number" id="sl-discount" value="0" min="0" step="0.01" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px 0 0 4px" oninput="SalesPage.calcAmount()">
-              <button id="sl-discount-mode" class="btn btn-sm" style="border-radius:0 4px 4px 0;border:1px solid #ddd;border-left:none" onclick="SalesPage.toggleDiscountMode()">¥</button>
+              <button id="sl-discount-mode" class="btn btn-sm" style="border-radius:0 4px 4px 0;border:1px solid #ddd;border-left:none" onclick="SalesPage.toggleDiscountMode()">%</button>
             </div>
           </div>
-          <div class="form-group" style="margin-bottom:0"><label>使用积分 (100=¥1)</label><input type="number" id="sl-points-used" value="0" min="0" oninput="SalesPage.calcAmount()"><small id="sl-points-hint"></small></div>
+          <div class="form-group" style="margin-bottom:0"><label>本次积分</label><input type="text" id="sl-points-earned" readonly value="0" style="color:#27ae60;font-weight:bold"><small id="sl-points-hint">10元=1分</small></div>
+          <div class="form-group" style="margin-bottom:0"><label>累计积分</label><input type="text" id="sl-points-total" readonly value="0" style="color:#999"></div>
         </div>
         <div style="display:flex;gap:16px;align-items:center;margin-top:16px;flex-wrap:wrap">
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>支付方式</label>
@@ -150,7 +150,7 @@ const SalesPage = {
                 <td>${Formatter.money(s.total_amount)}</td>
                 <td>${Formatter.money(s.discount)}</td>
                 <td style="font-weight:bold;color:#e74c3c">${Formatter.money(s.final_amount)}</td>
-                <td>+${s.points_earned}${s.points_used > 0 ? '/-' + s.points_used : ''}</td>
+                <td>+${s.points_earned}</td>
                 <td>${esc(s.operator || '')}</td>
                 <td>
                   <button class="btn btn-sm" onclick="SalesPage.showSaleDetail(${s.id})">详情</button>
@@ -184,10 +184,9 @@ const SalesPage = {
         <div style="margin-top:12px;text-align:right">
           <p>商品总额: ${Formatter.money(s.total_amount)}</p>
           <p>折扣: -${Formatter.money(s.discount)}</p>
-          <p>积分抵扣: -${Formatter.money(s.points_used * 0.01)}</p>
           <p style="font-size:18px;font-weight:bold;color:#e74c3c">实付: ${Formatter.money(s.final_amount)}</p>
           <p>支付方式: ${esc(paymentsStr)}</p>
-          <p>获得积分: ${s.points_earned} | 使用积分: ${s.points_used}</p>
+          <p>获得积分: ${s.points_earned}</p>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
           <button class="btn" onclick="this.closest('.modal-overlay').remove()">关闭</button>
@@ -213,7 +212,7 @@ const SalesPage = {
         h2{text-align:center;margin:8px 0}hr{border:none;border-top:1px dashed #999;margin:8px 0}
         .total{font-size:14px;font-weight:bold;text-align:right}.center{text-align:center}</style>
         </head><body>
-        <h2>香氛库存管理系统</h2>
+        <h2>暗香·Fleeting</h2>
         <p class="center">销售小票</p>
         <hr>
         <p>小票编号: #${s.id}</p>
@@ -225,7 +224,6 @@ const SalesPage = {
         <hr>
         <p style="text-align:right">商品总额: ${Formatter.money(s.total_amount)}</p>
         <p style="text-align:right">折扣: -${Formatter.money(s.discount)}</p>
-        <p style="text-align:right">积分抵扣: -${Formatter.money(s.points_used * 0.01)}</p>
         <p class="total">实付: ${Formatter.money(s.final_amount)}</p>
         <p>支付方式: ${esc(paymentsStr)}</p>
         <p>获得积分: ${s.points_earned}</p>
@@ -322,20 +320,18 @@ const SalesPage = {
     if (!info) return;
     if (c) {
       info.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(c.wechat_name || '')} ${esc(c.phone || '')} | 积分余额: ${c.points}</div>`;
-      const hintEl = document.getElementById('sl-points-hint');
-      if (hintEl) hintEl.textContent = `可用积分: ${c.points}`;
     } else {
       info.innerHTML = '<div style="padding:8px;background:#d4edda;border-radius:4px">散客（不计积分）</div>';
-      const hintEl = document.getElementById('sl-points-hint');
-      if (hintEl) hintEl.textContent = '';
     }
     this.calcAmount();
   },
 
   addItem(sku) {
     const existing = this.items.find(i => i.sku_id === sku.id);
-    if (existing) { existing.quantity++; } else {
-      this.items.push({ sku_id: sku.id, product_name: sku.product_name, volume: sku.volume, sku_code: sku.sku_code, quantity: 1, unit_price: sku.retail_price });
+    if (existing) {
+      existing.quantity++;
+    } else {
+      this.items.push({ sku_id: sku.id, product_name: sku.product_name, volume: sku.volume, sku_code: sku.sku_code, quantity: 1, unit_price: sku.retail_price, stock_qty: sku.stock_qty || 0 });
     }
     this.renderItems();
     this.calcAmount();
@@ -357,7 +353,29 @@ const SalesPage = {
       <td><button class="btn btn-danger btn-sm" onclick="SalesPage.removeItem(${idx})">删除</button></td></tr>`).join('');
   },
 
-  updateQty(idx, val) { this.items[idx].quantity = parseInt(val) || 1; this.renderItems(); this.calcAmount(); },
+  async updateQty(idx, val) {
+    const newQty = parseInt(val) || 1;
+    const item = this.items[idx];
+    const locId = document.getElementById('sl-location')?.value;
+    if (locId) {
+      try {
+        const balRes = await API.getBalances({ location_id: locId, sku_id: item.sku_id });
+        if (balRes.success && balRes.data.length > 0) {
+          const stock = balRes.data[0].quantity;
+          if (newQty > stock) {
+            App.toast('库存不足：当前剩余 ' + stock + '，需要 ' + newQty, 'error');
+            item.quantity = stock > 0 ? stock : 1;
+            this.renderItems();
+            this.calcAmount();
+            return;
+          }
+        }
+      } catch (e) { console.error('库存查询失败:', e); }
+    }
+    item.quantity = newQty;
+    this.renderItems();
+    this.calcAmount();
+  },
   updatePrice(idx, val) { this.items[idx].unit_price = parseFloat(val) || 0; this.renderItems(); this.calcAmount(); },
   removeItem(idx) { this.items.splice(idx, 1); this.renderItems(); this.calcAmount(); },
 
@@ -379,19 +397,17 @@ const SalesPage = {
     } else {
       discount = Math.min(discountInput, subtotal);
     }
-    let pointsUsed = parseInt(document.getElementById('sl-points-used')?.value || 0);
-    if (this.customer && pointsUsed > this.customer.points) {
-      App.toast('客户积分余额不足', 'error');
-      pointsUsed = this.customer.points;
-      const ptsEl = document.getElementById('sl-points-used');
-      if (ptsEl) ptsEl.value = pointsUsed;
-    }
-    const pointsValue = pointsUsed * 0.01;
-    const final = Math.max(0, subtotal - discount - pointsValue);
+    const final = Math.max(0, subtotal - discount);
     const subEl = document.getElementById('sl-subtotal');
     const finalEl = document.getElementById('sl-final');
     if (subEl) subEl.value = Formatter.money(subtotal);
     if (finalEl) finalEl.value = Formatter.money(final);
+    const pointsEarned = Math.floor(final / 10);
+    const earnedEl = document.getElementById('sl-points-earned');
+    if (earnedEl) earnedEl.value = pointsEarned + ' 分';
+    const currentPoints = this.customer ? (this.customer.points || 0) : 0;
+    const totalEl = document.getElementById('sl-points-total');
+    if (totalEl) totalEl.value = (currentPoints + pointsEarned) + ' 分';
   },
 
   async submit() {
@@ -404,16 +420,14 @@ const SalesPage = {
     } else {
       discount = Math.min(discountInput, subtotal);
     }
-    const pointsUsed = parseInt(document.getElementById('sl-points-used').value);
-    const pointsValue = pointsUsed * 0.01;
-    const final = Math.max(0, subtotal - discount - pointsValue);
+    const final = Math.max(0, subtotal - discount);
     const payMethod = document.getElementById('sl-pay-method').value;
     const data = {
       location_id: parseInt(document.getElementById('sl-location').value),
       customer_id: this.customer ? this.customer.id : null,
       items: this.items.map(i => ({ sku_id: i.sku_id, quantity: i.quantity, unit_price: i.unit_price })),
       discount: discount,
-      points_used: pointsUsed,
+      points_used: 0,
       payments: [{ method: payMethod, amount: final }],
       operator: App.currentUser.name
     };
