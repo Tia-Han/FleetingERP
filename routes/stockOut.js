@@ -24,8 +24,8 @@ router.post('/', (req, res) => {
     if (currentQty < quantity) {
       throw Object.assign(new Error(`库存不足：当前剩余 ${currentQty}，需要 ${quantity}`), { code: 'BUSINESS_ERROR' });
     }
-    db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(location_id, sku_id, type, -quantity, 'stock_out', remark || '', operator || '');
+    db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(location_id, sku_id, type, -quantity, 'stock_out', remark || '', operator || '', req.clientSource);
     db.prepare('UPDATE stock_balances SET quantity = quantity - ?, updated_at = datetime(\'now\', \'localtime\') WHERE location_id = ? AND sku_id = ?')
       .run(quantity, location_id, sku_id);
   });
@@ -70,8 +70,8 @@ router.post('/batch', (req, res) => {
         errors.push({ sku_id, message: `库存不足：${sku ? sku.volume : ''} 剩余 ${currentQty}，需要 ${quantity}` });
         continue;
       }
-      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(location_id, sku_id, type, -quantity, 'stock_out', remark || '', operator || '');
+      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(location_id, sku_id, type, -quantity, 'stock_out', remark || '', operator || '', req.clientSource);
       db.prepare('UPDATE stock_balances SET quantity = quantity - ?, updated_at = datetime(\'now\', \'localtime\') WHERE location_id = ? AND sku_id = ?')
         .run(quantity, location_id, sku_id);
       successCount++;

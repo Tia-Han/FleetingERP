@@ -58,8 +58,8 @@ router.post('/', (req, res) => {
 
     for (const item of items) {
       db.prepare('INSERT INTO sale_items (sale_id, sku_id, quantity, unit_price) VALUES (?, ?, ?, ?)').run(saleId, item.sku_id, item.quantity, item.unit_price);
-      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(location_id, item.sku_id, 'sale', -item.quantity, 'sale', saleId, operator || '');
+      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(location_id, item.sku_id, 'sale', -item.quantity, 'sale', saleId, operator || '', req.clientSource);
       db.prepare('UPDATE stock_balances SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE location_id = ? AND sku_id = ?')
         .run(item.quantity, location_id, item.sku_id);
     }

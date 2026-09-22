@@ -26,8 +26,8 @@ router.post('/', (req, res) => {
       }
       db.prepare('INSERT INTO stock_in_items (order_id, sku_id, quantity, unit_cost) VALUES (?, ?, ?, ?)')
         .run(orderId, sku_id, quantity, unit_cost);
-      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, operator, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(location_id, sku_id, 'in', quantity, 'stock_in', orderId, unit_cost, operator || '', createdAt);
+      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, operator, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(location_id, sku_id, 'in', quantity, 'stock_in', orderId, unit_cost, operator || '', req.clientSource, createdAt);
 
       const existing = db.prepare('SELECT id, quantity FROM stock_balances WHERE location_id = ? AND sku_id = ?').get(location_id, sku_id);
       if (existing) {

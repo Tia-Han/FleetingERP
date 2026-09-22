@@ -6,5 +6,8 @@ db/fragrance_backup_*.db
 db/backups/
 db/fragrance_before_restore.db
 .env
+.env.development
+.env.production
+.env.local
 logs/
 ssl/

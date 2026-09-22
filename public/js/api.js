@@ -1,11 +1,50 @@
+// OPT-1: API baseURL 可配置化
+// 网页版默认同源，小程序版可改为绝对地址
+const API_BASE = window.location.origin + '/api/v1';
+
 const API = {
   token: localStorage.getItem('token'),
+  _tokenExpiry: parseInt(localStorage.getItem('tokenExpiry')) || 0,
   _cache: {},
   _pending: {},
 
   _noCacheUrls: ['/stock/balances', '/stock/movements', '/stock/alerts', '/stock/summary', '/system/dashboard', '/sales', '/system/backups'],
 
+  // OPT-7: 检查 Token 是否已过期或即将过期
+  isTokenValid() {
+    if (!this.token) return false;
+    const now = Date.now();
+    // 提前 5 分钟判定过期，留出续签窗口
+    return now < this._tokenExpiry - 5 * 60 * 1000;
+  },
+
+  // OPT-7: 登录时保存 Token 过期时间（JWT 有效期 8 小时）
+  setToken(token) {
+    this.token = token;
+    localStorage.setItem('token', token);
+    const expiry = Date.now() + 8 * 60 * 60 * 1000;
+    this._tokenExpiry = expiry;
+    localStorage.setItem('tokenExpiry', String(expiry));
+  },
+
+  clearToken() {
+    this.token = null;
+    this._tokenExpiry = 0;
+    localStorage.removeItem('token');
+    localStorage.removeItem('tokenExpiry');
+    this._cache = {};
+  },
+
   async request(method, url, body) {
+    // OPT-7: 请求前检查 Token 有效性
+    if (this.token && !this.isTokenValid()) {
+      this.clearToken();
+      if (typeof App !== 'undefined' && App.renderLogin) {
+        App.renderLogin();
+        return { success: false, message: '登录已过期，请重新登录' };
+      }
+    }
+
     const cacheKey = method + url;
     const shouldCache = method === 'GET' && !this._noCacheUrls.some(u => url.startsWith(u));
     if (shouldCache) {
@@ -19,9 +58,11 @@ const API = {
 
     const options = { method, headers: { 'Content-Type': 'application/json' } };
     if (this.token) options.headers['Authorization'] = `Bearer ${this.token}`;
+    // OPT-11: 标记请求来源为网页端
+    options.headers['X-Client-Source'] = 'web';
     if (body) options.body = JSON.stringify(body);
 
-    const promise = fetch(`/api${url}`, options).then(async res => {
+    const promise = fetch(`${API_BASE}${url}`, options).then(async res => {
       if (res.status === 401) {
         API.clearToken();
         if (typeof App !== 'undefined' && App.renderLogin) App.renderLogin();
@@ -48,9 +89,6 @@ const API = {
     this._cache = {};
     return promise;
   },
-
-  setToken(token) { this.token = token; localStorage.setItem('token', token); },
-  clearToken() { this.token = null; localStorage.removeItem('token'); this._cache = {}; },
 
   login: (username, password) => API.request('POST', '/auth/login', { username, password }),
   changePassword: (oldPassword, newPassword) => API.request('PUT', '/auth/change-password', { old_password: oldPassword, new_password: newPassword }),
@@ -113,7 +151,12 @@ const API = {
   restoreBackup: (filename) => API.request('POST', '/system/restore', { filename }),
   inventoryCheck: (data) => API.request('POST', '/stock/check', data),
   backup: async () => {
-    const res = await fetch('/api/system/backup', { headers: { 'Authorization': `Bearer ${API.token}` } });
+    const res = await fetch(`${API_BASE}/system/backup`, {
+      headers: {
+        'Authorization': `Bearer ${API.token}`,
+        'X-Client-Source': 'web'
+      }
+    });
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

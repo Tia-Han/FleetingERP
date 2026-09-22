@@ -48,13 +48,13 @@ router.post('/', (req, res) => {
 
       db.prepare('INSERT INTO transfer_items (transfer_id, sku_id, quantity) VALUES (?, ?, ?)').run(transferId, sku_id, quantity);
 
-      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(from_location_id, sku_id, 'transfer_out', -quantity, 'transfer', transferId, operator || '');
+      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(from_location_id, sku_id, 'transfer_out', -quantity, 'transfer', transferId, operator || '', req.clientSource);
       db.prepare('UPDATE stock_balances SET quantity = quantity - ?, updated_at = datetime(\'now\', \'localtime\') WHERE location_id = ? AND sku_id = ?')
         .run(quantity, from_location_id, sku_id);
 
-      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(to_location_id, sku_id, 'transfer_in', quantity, 'transfer', transferId, operator || '');
+      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(to_location_id, sku_id, 'transfer_in', quantity, 'transfer', transferId, operator || '', req.clientSource);
       const toBalance = db.prepare('SELECT id FROM stock_balances WHERE location_id = ? AND sku_id = ?').get(to_location_id, sku_id);
       if (toBalance) {
         db.prepare('UPDATE stock_balances SET quantity = quantity + ?, updated_at = datetime(\'now\', \'localtime\') WHERE id = ?').run(quantity, toBalance.id);

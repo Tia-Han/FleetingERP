@@ -78,8 +78,8 @@ router.post('/', (req, res) => {
       db.prepare('INSERT INTO split_items (split_order_id, target_sku_id, quantity, unit_volume, subtotal_volume) VALUES (?, ?, ?, ?, ?)')
         .run(splitId, targetSkuId, item.quantity, item.unit_volume, subtotalVolume);
 
-      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-        .run(location_id, targetSkuId, 'split', item.quantity, 'split', splitId, operator || '');
+      db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+        .run(location_id, targetSkuId, 'split', item.quantity, 'split', splitId, operator || '', req.clientSource);
 
       const targetBalance = db.prepare('SELECT id, quantity FROM stock_balances WHERE location_id = ? AND sku_id = ?').get(location_id, targetSkuId);
       if (targetBalance) {
@@ -89,8 +89,8 @@ router.post('/', (req, res) => {
       }
     }
 
-    db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(location_id, source_sku_id, 'split', -source_quantity, 'split', splitId, operator || '');
+    db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(location_id, source_sku_id, 'split', -source_quantity, 'split', splitId, operator || '', req.clientSource);
     db.prepare('UPDATE stock_balances SET quantity = quantity - ?, updated_at = datetime(\'now\', \'localtime\') WHERE location_id = ? AND sku_id = ?')
       .run(source_quantity, location_id, source_sku_id);
 

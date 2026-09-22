@@ -21,7 +21,7 @@ function initDatabase() {
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
   db.exec(schema);
 
-  // 迁移：更新 stock_movements 表的 CHECK 约束，添加 check_in/check_out 类型
+  // 迁移1：更新 stock_movements 表的 CHECK 约束，添加 check_in/check_out 类型
   const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='stock_movements'").get();
   if (tableInfo && !tableInfo.sql.includes('check_in')) {
     db.exec(`
@@ -36,9 +36,11 @@ function initDatabase() {
         unit_cost REAL,
         remark TEXT,
         operator TEXT,
+        source TEXT DEFAULT 'web',
         created_at TEXT DEFAULT (datetime('now', 'localtime'))
       );
-      INSERT INTO stock_movements_new SELECT * FROM stock_movements;
+      INSERT INTO stock_movements_new (id, location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, remark, operator, created_at)
+      SELECT id, location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, remark, operator, created_at FROM stock_movements;
       DROP TABLE stock_movements;
       ALTER TABLE stock_movements_new RENAME TO stock_movements;
       CREATE INDEX IF NOT EXISTS idx_stock_movements_location ON stock_movements(location_id);
@@ -46,7 +48,13 @@ function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_stock_movements_type ON stock_movements(movement_type);
       CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at);
     `);
-    console.log('[迁移] stock_movements 表已更新，新增 check_in/check_out 类型');
+    console.log('[迁移] stock_movements 表已更新，新增 check_in/check_out 类型 + source 字段');
+  }
+
+  // 迁移2：为已有 source 字段缺失的旧表添加 source 列
+  if (tableInfo && tableInfo.sql.includes('check_in') && !tableInfo.sql.includes('source')) {
+    db.exec(`ALTER TABLE stock_movements ADD COLUMN source TEXT DEFAULT 'web'`);
+    console.log('[迁移] stock_movements 表已新增 source 字段');
   }
 
   // 初始化管理员

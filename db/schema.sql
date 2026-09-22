@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS stock_movements (
   unit_cost REAL,
   remark TEXT,
   operator TEXT,
+  source TEXT DEFAULT 'web',
   created_at TEXT DEFAULT (datetime('now', 'localtime'))
 );
 

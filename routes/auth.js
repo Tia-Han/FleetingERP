@@ -5,34 +5,116 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../utils/db');
 const { authMiddleware, SECRET } = require('../middleware/auth');
 
-const loginAttempts = {};
+/**
+ * @swagger
+ * /auth/login:
+ *   post:
+ *     summary: 用户登录
+ *     description: 使用用户名密码登录，返回 JWT Token
+ *     tags: [认证]
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username, password]
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: 登录成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     token:
+ *                       type: string
+ *                     user:
+ *                       type: object
+ */
+
+/**
+ * @swagger
+ * /auth/me:
+ *   get:
+ *     summary: 获取当前用户信息
+ *     tags: [认证]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 当前用户信息
+ *       401:
+ *         description: 未授权
+ */
+
+// OPT-6: 登录限流 — IP 维度 + 用户名维度双限制
+const loginAttemptsByIP = {};
+const loginAttemptsByUser = {};
+
+function checkRateLimit(key, store, max, windowMs) {
+  const now = Date.now();
+  if (store[key]) {
+    store[key] = store[key].filter(t => now - t < windowMs);
+    if (store[key].length >= max) return false;
+  }
+  return true;
+}
+
+function recordFailedAttempt(key, store) {
+  if (!store[key]) store[key] = [];
+  store[key].push(Date.now());
+}
+
+function clearAttempts(key, store) {
+  if (store[key]) delete store[key];
+}
 
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.json({ success: false, message: '请输入用户名和密码' });
   }
-  const ip = req.ip || req.connection.remoteAddress;
-  const now = Date.now();
-  if (loginAttempts[ip]) {
-    loginAttempts[ip] = loginAttempts[ip].filter(t => now - t < 300000);
-    if (loginAttempts[ip].length >= 5) {
-      return res.json({ success: false, message: '登录失败次数过多，请5分钟后再试' });
-    }
+
+  const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'unknown';
+
+  // IP 维度：5 分钟最多 20 次（放宽，避免 NAT 误限）
+  if (!checkRateLimit(ip, loginAttemptsByIP, 20, 300000)) {
+    return res.json({ success: false, message: '该 IP 登录失败次数过多，请5分钟后再试' });
   }
+
+  // 用户名维度：5 分钟最多 5 次
+  if (!checkRateLimit(username, loginAttemptsByUser, 5, 300000)) {
+    return res.json({ success: false, message: '该账号登录失败次数过多，请5分钟后再试' });
+  }
+
   const db = getDb();
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user) {
-    if (!loginAttempts[ip]) loginAttempts[ip] = [];
-    loginAttempts[ip].push(now);
+    recordFailedAttempt(ip, loginAttemptsByIP);
+    recordFailedAttempt(username, loginAttemptsByUser);
     return res.json({ success: false, message: '用户名或密码错误' });
   }
   if (!bcrypt.compareSync(password, user.password_hash)) {
-    if (!loginAttempts[ip]) loginAttempts[ip] = [];
-    loginAttempts[ip].push(now);
+    recordFailedAttempt(ip, loginAttemptsByIP);
+    recordFailedAttempt(username, loginAttemptsByUser);
     return res.json({ success: false, message: '用户名或密码错误' });
   }
-  if (loginAttempts[ip]) delete loginAttempts[ip];
+
+  clearAttempts(ip, loginAttemptsByIP);
+  clearAttempts(username, loginAttemptsByUser);
+
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role, name: user.name },
     SECRET,
