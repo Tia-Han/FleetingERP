@@ -1,22 +1,28 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
+// API-02: 客户列表加分页支持
 router.get('/', (req, res) => {
   const db = getDb();
-  const { search } = req.query;
-  let sql = 'SELECT * FROM customers WHERE 1=1';
+  const { search, page, limit } = req.query;
+  const pageNum = parseInt(page) || 1;
+  const pageSize = Math.min(parseInt(limit) || 20, 100);
+  const offset = (pageNum - 1) * pageSize;
+
+  let whereSql = 'FROM customers WHERE 1=1';
   const params = [];
   if (search) {
-    sql += ' AND (wechat_name LIKE ? OR phone LIKE ?)';
+    whereSql += ' AND (wechat_name LIKE ? OR phone LIKE ?)';
     params.push(`%${search}%`, `%${search}%`);
   }
-  sql += ' ORDER BY created_at DESC';
-  const customers = db.prepare(sql).all(...params);
-  res.json({ success: true, data: customers });
+  const total = db.prepare(`SELECT COUNT(*) as total ${whereSql}`).get(...params).total;
+  const customers = db.prepare(`SELECT * ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+    .all(...params, pageSize, offset);
+  res.json({ success: true, data: customers, total, page: pageNum, limit: pageSize });
 });
 
 router.post('/', (req, res) => {
@@ -37,7 +43,7 @@ router.put('/:id', (req, res) => {
   res.json({ success: true, message: '更新成功' });
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', roleMiddleware('admin'), (req, res) => {
   const db = getDb();
   const sales = db.prepare('SELECT COUNT(*) as count FROM sales WHERE customer_id = ?').get(req.params.id);
   if (sales.count > 0) return res.json({ success: false, message: '该客户有销售记录，无法删除' });

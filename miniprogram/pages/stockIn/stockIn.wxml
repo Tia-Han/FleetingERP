@@ -1,0 +1,93 @@
+<!--pages/stockIn/stockIn.wxml-->
+<view class="stockin-page">
+  <!-- 表单区 -->
+  <view class="form-card">
+    <view class="form-row">
+      <text class="row-label">场所</text>
+      <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
+        <view class="row-value">
+          {{locations[locationIndex].name || '请选择'}} ▾
+        </view>
+      </picker>
+    </view>
+    <view class="form-row">
+      <text class="row-label">入库日期</text>
+      <picker mode="date" value="{{stockInDate}}" bindchange="onDateChange">
+        <view class="row-value">{{stockInDate}} ▾</view>
+      </picker>
+    </view>
+    <view class="form-row">
+      <text class="row-label">供应商</text>
+      <input class="row-input" placeholder="选填" value="{{supplier}}" bindinput="onSupplierInput" />
+    </view>
+    <view class="form-row">
+      <text class="row-label">备注</text>
+      <input class="row-input" placeholder="选填" value="{{remark}}" bindinput="onRemarkInput" />
+    </view>
+  </view>
+
+  <!-- 扫码按钮 -->
+  <view class="scan-btn" bindtap="scanAdd">
+    <text class="scan-icon">📷</text>
+    <text>扫码添加商品</text>
+  </view>
+
+  <!-- 入库明细 -->
+  <view class="items-card" wx:if="{{items.length > 0}}">
+    <view class="items-title">
+      入库明细（{{items.length}}）
+    </view>
+    <view class="item-row" wx:for="{{items}}" wx:key="sku_id">
+      <view class="item-info">
+        <view class="item-name">{{item.product_name}}</view>
+        <view class="item-spec">{{item.volume}} {{item.spec_type}} · 当前: {{item.current_qty}}</view>
+      </view>
+      <view class="item-qty">
+        <text class="qty-label">x</text>
+        <input
+          class="qty-input"
+          type="number"
+          value="{{item.quantity}}"
+          data-index="{{index}}"
+          bindinput="onQtyChange"
+        />
+      </view>
+      <view class="item-cost">
+        <text class="cost-label">¥</text>
+        <input
+          class="cost-input"
+          type="digit"
+          value="{{item.unit_cost}}"
+          data-index="{{index}}"
+          bindinput="onCostChange"
+        />
+      </view>
+      <view class="item-del" data-index="{{index}}" bindtap="deleteItem">×</view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{items.length === 0}}">
+    <view class="empty-icon">📥</view>
+    <view class="empty-text">请扫码或搜索添加商品</view>
+  </view>
+
+  <!-- 合计区 -->
+  <view class="summary-card" wx:if="{{items.length > 0}}">
+    <view class="summary-row">
+      <text>合计数量</text>
+      <text class="sum-val">{{totalQty}} 件</text>
+    </view>
+    <view class="summary-row total">
+      <text>合计金额</text>
+      <text class="sum-val">¥{{totalCost}}</text>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-bar" wx:if="{{items.length > 0}}">
+    <button class="btn-primary" bindtap="submitStockIn" disabled="{{submitting}}" loading="{{submitting}}">
+      提交入库
+    </button>
+  </view>
+</view>

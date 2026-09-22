@@ -62,6 +62,7 @@ const { authMiddleware, SECRET } = require('../middleware/auth');
 // OPT-6: 登录限流 — IP 维度 + 用户名维度双限制
 const loginAttemptsByIP = {};
 const loginAttemptsByUser = {};
+const wxApiAttemptsByIP = {};
 
 function checkRateLimit(key, store, max, windowMs) {
   const now = Date.now();
@@ -79,6 +80,16 @@ function recordFailedAttempt(key, store) {
 
 function clearAttempts(key, store) {
   if (store[key]) delete store[key];
+}
+
+// SEC-01: 微信接口通用限流检查
+function checkWxRateLimit(req) {
+  const ip = req.ip || (req.socket && req.socket.remoteAddress) || 'unknown';
+  if (!checkRateLimit(ip, wxApiAttemptsByIP, 20, 300000)) {
+    return { limited: true, message: '该 IP 请求过于频繁，请5分钟后再试' };
+  }
+  recordFailedAttempt(ip, wxApiAttemptsByIP);
+  return { limited: false };
 }
 
 router.post('/login', (req, res) => {
@@ -118,7 +129,7 @@ router.post('/login', (req, res) => {
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role, name: user.name },
     SECRET,
-    { expiresIn: '8h' }
+    { expiresIn: '2h' }
   );
   res.json({
     success: true,
@@ -150,6 +161,129 @@ router.post('/logout', authMiddleware, (req, res) => {
 
 router.get('/me', authMiddleware, (req, res) => {
   res.json({ success: true, data: req.user });
+});
+
+// 微信小程序登录：用 code 换 openid，已绑定则签发 Token
+router.post('/wx-login', async (req, res) => {
+  const rateLimit = checkWxRateLimit(req);
+  if (rateLimit.limited) {
+    return res.json({ success: false, message: rateLimit.message });
+  }
+
+  const { code } = req.body;
+  if (!code) {
+    return res.json({ success: false, message: '缺少微信 code' });
+  }
+
+  const appid = process.env.WX_APPID;
+  const secret = process.env.WX_APPSECRET;
+
+  if (!appid || !secret) {
+    return res.json({ success: false, message: '微信小程序未配置 AppID/AppSecret' });
+  }
+
+  try {
+    const https = require('https');
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+
+    const wxData = await new Promise((resolve, reject) => {
+      https.get(url, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => { data += chunk; });
+        resp.on('end', () => { resolve(JSON.parse(data)); });
+      }).on('error', reject);
+    });
+
+    if (wxData.errcode) {
+      return res.json({ success: false, message: `微信登录失败：${wxData.errmsg}` });
+    }
+
+    const { openid } = wxData;
+    if (!openid) {
+      return res.json({ success: false, message: '未获取到 openid' });
+    }
+
+    const db = getDb();
+    const user = db.prepare('SELECT id, username, role, name FROM users WHERE openid = ?').get(openid);
+
+    if (user) {
+      const token = jwt.sign(
+        { id: user.id, username: user.username, role: user.role, name: user.name },
+        SECRET,
+        { expiresIn: '2h' }
+      );
+      return res.json({ success: true, data: { status: 'bound', token, user } });
+    }
+
+    return res.json({ success: true, data: { status: 'unbound', openid } });
+  } catch (err) {
+    return res.json({ success: false, message: `微信登录异常：${err.message}` });
+  }
+});
+
+// 微信小程序绑定：code + 用户名 + 密码 → 绑定 openid
+router.post('/wx-bind', async (req, res) => {
+  const rateLimit = checkWxRateLimit(req);
+  if (rateLimit.limited) {
+    return res.json({ success: false, message: rateLimit.message });
+  }
+
+  const { code, username, password } = req.body;
+  if (!code || !username || !password) {
+    return res.json({ success: false, message: '缺少 code、用户名或密码' });
+  }
+
+  const appid = process.env.WX_APPID;
+  const secret = process.env.WX_APPSECRET;
+
+  if (!appid || !secret) {
+    return res.json({ success: false, message: '微信小程序未配置 AppID/AppSecret' });
+  }
+
+  try {
+    const https = require('https');
+    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+
+    const wxData = await new Promise((resolve, reject) => {
+      https.get(url, (resp) => {
+        let data = '';
+        resp.on('data', (chunk) => { data += chunk; });
+        resp.on('end', () => { resolve(JSON.parse(data)); });
+      }).on('error', reject);
+    });
+
+    if (wxData.errcode) {
+      return res.json({ success: false, message: `微信登录失败：${wxData.errmsg}` });
+    }
+
+    const { openid } = wxData;
+    if (!openid) {
+      return res.json({ success: false, message: '未获取到 openid' });
+    }
+
+    const db = getDb();
+    const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+
+    if (!user || !bcrypt.compareSync(password, user.password_hash)) {
+      return res.json({ success: false, message: '用户名或密码错误' });
+    }
+
+    const existingBind = db.prepare('SELECT id FROM users WHERE openid = ? AND id != ?').get(openid, user.id);
+    if (existingBind) {
+      return res.json({ success: false, message: '该微信已绑定其他账号，请联系管理员' });
+    }
+
+    db.prepare('UPDATE users SET openid = ? WHERE id = ?').run(openid, user.id);
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role, name: user.name },
+      SECRET,
+      { expiresIn: '2h' }
+    );
+    return res.json({ success: true, data: { status: 'bound', token, user: { id: user.id, username: user.username, role: user.role, name: user.name } } });
+  } catch (err) {
+    return res.json({ success: false, message: `绑定异常：${err.message}` });
+  }
 });
 
 router.get('/users', authMiddleware, (req, res) => {

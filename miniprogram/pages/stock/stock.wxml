@@ -1,0 +1,101 @@
+<!--pages/stock/stock.wxml-->
+<view class="stock-page">
+  <!-- 搜索栏 -->
+  <view class="search-bar">
+    <text class="search-icon">🔍</text>
+    <input
+      placeholder="搜索商品名称或条码"
+      value="{{searchKey}}"
+      bindinput="onSearchInput"
+      confirm-type="search"
+    />
+  </view>
+
+  <!-- 筛选栏 - 预警状态 -->
+  <scroll-view class="filter-bar" scroll-x="{{true}}">
+    <view
+      class="filter-chip {{filterAlert === 'all' ? 'active' : ''}}"
+      data-type="all"
+      bindtap="onAlertFilter"
+    >全部</view>
+    <view
+      class="filter-chip {{filterAlert === 'low' ? 'active' : ''}}"
+      data-type="low"
+      bindtap="onAlertFilter"
+    >低库存</view>
+    <view
+      class="filter-chip {{filterAlert === 'empty' ? 'active' : ''}}"
+      data-type="empty"
+      bindtap="onAlertFilter"
+    >无库存</view>
+    <view
+      class="filter-chip {{filterSpec === 'all' ? 'active' : ''}}"
+      data-type="all"
+      bindtap="onSpecFilter"
+    >全部规格</view>
+    <view
+      class="filter-chip {{filterSpec === '整装' ? 'active' : ''}}"
+      data-type="整装"
+      bindtap="onSpecFilter"
+    >整装</view>
+    <view
+      class="filter-chip {{filterSpec === '分装' ? 'active' : ''}}"
+      data-type="分装"
+      bindtap="onSpecFilter"
+    >分装</view>
+  </scroll-view>
+
+  <!-- 品牌/品类筛选 -->
+  <view class="select-bar">
+    <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange">
+      <view class="select-item">
+        {{brands[brandIndex].name || '全部品牌'}} ▾
+      </view>
+    </picker>
+    <picker mode="selector" range="{{categories}}" range-key="name" value="{{catIndex}}" bindchange="onCategoryChange">
+      <view class="select-item">
+        {{categories[catIndex].name || '全部品类'}} ▾
+      </view>
+    </picker>
+  </view>
+
+  <!-- 列表 -->
+  <view class="stock-list">
+    <block wx:for="{{list}}" wx:key="id">
+      <view
+        class="stock-row {{item.quantity === 0 ? 'row-empty' : (item.is_low_stock ? 'row-warn' : '')}}"
+        data-id="{{item.sku_id}}"
+        bindtap="onItemTap"
+      >
+        <view class="row-info">
+          <view class="row-name">{{item.product_name}}</view>
+          <view class="row-spec">{{item.volume}} {{item.spec_type}} · {{item.brand_name}}</view>
+        </view>
+        <view class="row-qty">
+          <view class="qty-val {{item.quantity === 0 ? 'empty' : (item.is_low_stock ? 'warn' : '')}}">{{item.quantity}}</view>
+          <view class="qty-unit">{{item.unit}}</view>
+        </view>
+        <view class="row-badge" wx:if="{{item.quantity === 0}}">
+          <text class="badge badge-empty">无</text>
+        </view>
+        <view class="row-badge" wx:elif="{{item.is_low_stock}}">
+          <text class="badge badge-warn">低</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 空状态 -->
+    <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+      <view class="empty-icon">📦</view>
+      <view class="empty-text">暂无库存记录</view>
+    </view>
+
+    <!-- 加载更多 -->
+    <view class="load-more" wx:if="{{loading && list.length > 0}}">
+      <text>加载中...</text>
+    </view>
+    <view class="load-more end" wx:if="{{!hasMore && list.length > 0}}">
+      — 没有更多了 —
+    </view>
+  </view>
+</view>

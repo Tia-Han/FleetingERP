@@ -8,6 +8,18 @@ router.use(authMiddleware);
 const POINTS_PER_YUAN = 0.1;
 const POINTS_TO_YUAN = 0.01;
 
+// CODE-02: 积分配置接口，前端从接口获取而非硬编码
+router.get('/config', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      points_per_yuan: POINTS_PER_YUAN,
+      points_to_yuan: POINTS_TO_YUAN,
+      points_exchange_rate: 10 // 10积分=1元，前端展示用
+    }
+  });
+});
+
 router.post('/', (req, res) => {
   const { location_id, customer_id, items, discount, points_used, payments, operator, remark } = req.body;
   if (!location_id || !items || items.length === 0) {
@@ -79,7 +91,7 @@ router.post('/', (req, res) => {
   });
 
   try {
-    const saleId = transaction();
+    const saleId = transaction.immediate();
     res.json({ success: true, data: { id: saleId }, message: '销售成功' });
   } catch (err) {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
@@ -98,6 +110,18 @@ router.get('/', (req, res) => {
   sql += ' ORDER BY s.created_at DESC';
   const sales = db.prepare(sql).all(...params);
   res.json({ success: true, data: sales });
+});
+
+// 今日销售汇总（小程序首页用）
+router.get('/summary', (req, res) => {
+  const db = getDb();
+  const { date, location_id } = req.query;
+  const targetDate = date || new Date().toISOString().substring(0, 10);
+  let sql = `SELECT COUNT(*) as order_count, COALESCE(SUM(final_amount), 0) as total_amount FROM sales WHERE DATE(created_at) = ?`;
+  const params = [targetDate];
+  if (location_id) { sql += ' AND location_id = ?'; params.push(location_id); }
+  const summary = db.prepare(sql).get(...params);
+  res.json({ success: true, data: summary });
 });
 
 router.get('/:id', (req, res) => {

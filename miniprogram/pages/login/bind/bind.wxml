@@ -1,0 +1,38 @@
+<!--pages/login/bind/bind.wxml-->
+<view class="bind-container">
+  <view class="bind-info">
+    首次使用，请绑定您的 ERP 账号。绑定后可使用微信快捷登录。
+  </view>
+
+  <view class="bind-form">
+    <view class="input-group">
+      <text class="input-label">用户名</text>
+      <input
+        class="input-field"
+        placeholder="请输入用户名"
+        value="{{username}}"
+        bindinput="onUsernameInput"
+        confirm-type="next"
+      />
+    </view>
+
+    <view class="input-group">
+      <text class="input-label">密码</text>
+      <input
+        class="input-field"
+        placeholder="请输入密码"
+        password="{{true}}"
+        value="{{password}}"
+        bindinput="onPasswordInput"
+        confirm-type="go"
+        bindconfirm="doBind"
+      />
+    </view>
+
+    <button class="btn-primary" style="margin-top: 48rpx;" bindtap="doBind" disabled="{{loading}}" loading="{{loading}}">
+      确认绑定
+    </button>
+
+    <text class="bind-tip">绑定后将自动登录，无需再次输入</text>
+  </view>
+</view>

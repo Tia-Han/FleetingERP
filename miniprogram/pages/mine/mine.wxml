@@ -1,0 +1,42 @@
+<!--pages/mine/mine.wxml-->
+<view class="mine-page">
+  <!-- 用户信息头部 -->
+  <view class="mine-header">
+    <view class="mine-avatar">
+      {{userInfo.name ? userInfo.name.charAt(0) : '?'}}
+    </view>
+    <view class="mine-info">
+      <view class="mine-name">{{userInfo.name || '用户'}}</view>
+      <view class="mine-role">
+        <block wx:if="{{userInfo.role === 'admin'}}">管理员</block>
+        <block wx:elif="{{userInfo.role === 'warehouse_manager'}}">仓库管理员</block>
+        <block wx:else>店员</block>
+      </view>
+    </view>
+  </view>
+
+  <!-- 功能菜单 -->
+  <view class="mine-menu-group" wx:for="{{menuGroups}}" wx:for-item="group" wx:key="title">
+    <view class="menu-title" wx:if="{{group.title}}">{{group.title}}</view>
+    <view class="mine-menu">
+      <view
+        class="menu-item {{item.danger ? 'danger' : ''}}"
+        wx:for="{{group.items}}"
+        wx:for-item="item"
+        wx:key="text"
+        data-path="{{item.path}}"
+        data-action="{{item.action}}"
+        data-danger="{{item.danger}}"
+        bindtap="onMenuTap"
+      >
+        <view class="menu-icon">{{item.icon}}</view>
+        <view class="menu-text">{{item.text}}</view>
+        <view class="menu-arrow">›</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="version-info">
+    FleetingERP v1.0 · 小程序版
+  </view>
+</view>

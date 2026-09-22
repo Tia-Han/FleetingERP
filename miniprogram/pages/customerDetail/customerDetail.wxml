@@ -1,0 +1,56 @@
+<!--pages/customerDetail/customerDetail.wxml-->
+<view class="cd-page" wx:if="{{customer}}">
+  <view class="cd-header">
+    <view class="cd-avatar">{{customer.wechat_name ? customer.wechat_name.charAt(0) : (customer.phone ? customer.phone.charAt(customer.phone.length-1) : '?')}}</view>
+    <view class="cd-info">
+      <block wx:if="{{editing}}">
+        <input class="edit-name" placeholder="微信名" value="{{editWechatName}}" bindinput="onWechatInput" />
+        <input class="edit-phone" placeholder="手机号" type="number" value="{{editPhone}}" bindinput="onPhoneInput" />
+      </block>
+      <block wx:else>
+        <view class="cd-name">{{customer.wechat_name || customer.phone}}</view>
+        <view class="cd-phone">{{customer.phone || '无手机号'}}</view>
+      </block>
+    </view>
+  </view>
+
+  <view class="cd-stats">
+    <view class="stat-item">
+      <view class="stat-val">{{customer.points || 0}}</view>
+      <view class="stat-lbl">积分</view>
+    </view>
+    <view class="stat-item">
+      <view class="stat-val">{{purchases.length}}</view>
+      <view class="stat-lbl">购买次数</view>
+    </view>
+    <view class="stat-item">
+      <view class="stat-val">¥{{customer.total_spent || 0}}</view>
+      <view class="stat-lbl">累计消费</view>
+    </view>
+  </view>
+
+  <view class="cd-section">
+    <view class="section-title">购买记录</view>
+    <view class="purchase-item" wx:for="{{purchases}}" wx:key="id">
+      <view class="pur-info">
+        <view class="pur-date">{{item.created_at}}</view>
+        <view class="pur-items">{{item.item_count || 0}} 件商品</view>
+      </view>
+      <view class="pur-amount">¥{{item.total_amount || 0}}</view>
+    </view>
+    <view class="empty-state" wx:if="{{purchases.length === 0}}">
+      <view class="empty-text">暂无购买记录</view>
+    </view>
+  </view>
+
+  <view class="cd-actions">
+    <block wx:if="{{editing}}">
+      <button class="btn-outline" bindtap="cancelEdit">取消</button>
+      <button class="btn-primary" bindtap="saveEdit">保存</button>
+    </block>
+    <block wx:else>
+      <button class="btn-outline" bindtap="startEdit">编辑资料</button>
+      <button class="btn-outline danger" bindtap="deleteCustomer">删除客户</button>
+    </block>
+  </view>
+</view>

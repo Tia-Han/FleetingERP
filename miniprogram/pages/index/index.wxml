@@ -1,0 +1,41 @@
+<!--pages/index/index.wxml-->
+<view class="home-page">
+  <!-- 顶部数据卡 -->
+  <view class="home-header">
+    <view class="greeting">
+      早上好，{{userName || '店员'}} 👋
+    </view>
+    <view class="home-cards">
+      <view class="home-card">
+        <view class="card-val">¥{{todaySales}}</view>
+        <view class="card-lbl">今日销售</view>
+      </view>
+      <view class="home-card warn">
+        <view class="card-val">{{alertCount}}</view>
+        <view class="card-lbl">预警库存</view>
+      </view>
+      <view class="home-card">
+        <view class="card-val">{{todoCount}}</view>
+        <view class="card-lbl">待办事项</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 九宫格功能区 -->
+  <view class="grid-section">
+    <view class="section-title">功能入口</view>
+    <view class="nine-grid">
+      <view
+        class="grid-item"
+        wx:for="{{gridItems}}"
+        wx:key="text"
+        data-path="{{item.path}}"
+        data-tab="{{item.tab}}"
+        bindtap="onGridTap"
+      >
+        <view class="grid-icon {{item.iconBg}}">{{item.icon}}</view>
+        <view class="grid-text">{{item.text}}</view>
+      </view>
+    </view>
+  </view>
+</view>

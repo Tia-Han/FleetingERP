@@ -1,0 +1,45 @@
+<!--pages/customer/customer.wxml-->
+<view class="cust-page">
+  <view class="search-bar">
+    <text class="search-icon">🔍</text>
+    <input placeholder="搜索手机号或微信名" value="{{searchKey}}" bindinput="onSearchInput" confirm-type="search" />
+  </view>
+
+  <view class="add-bar">
+    <button class="btn-primary add-btn" bindtap="openAdd">+ 新增客户</button>
+  </view>
+
+  <view class="cust-list">
+    <view class="cust-item" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="onItemTap">
+      <view class="cust-avatar">{{item.wechat_name ? item.wechat_name.charAt(0) : (item.phone ? item.phone.charAt(item.phone.length-1) : '?')}}</view>
+      <view class="cust-info">
+        <view class="cust-name">{{item.wechat_name || item.phone}}</view>
+        <view class="cust-phone">{{item.phone || '无手机号'}}</view>
+      </view>
+      <view class="cust-points">
+        <text class="points-val">{{item.points || 0}}</text>
+        <text class="points-lbl">积分</text>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+      <view class="empty-icon">👥</view>
+      <view class="empty-text">暂无客户</view>
+    </view>
+
+    <view class="load-more" wx:if="{{loading && list.length > 0}}">加载中...</view>
+    <view class="load-more end" wx:if="{{!hasMore && list.length > 0}}">— 没有更多了 —</view>
+  </view>
+
+  <!-- 新增弹窗 -->
+  <view class="picker-mask" wx:if="{{showAdd}}" bindtap="closeAdd"></view>
+  <view class="add-dialog {{showAdd ? 'show' : ''}}" wx:if="{{showAdd}}">
+    <view class="dialog-title">新增客户</view>
+    <input class="dialog-input" placeholder="手机号（选填）" type="number" value="{{newCustomer.phone}}" bindinput="onPhoneInput" />
+    <input class="dialog-input" placeholder="微信名（选填）" value="{{newCustomer.wechat_name}}" bindinput="onWechatInput" />
+    <view class="dialog-actions">
+      <button class="btn-outline" bindtap="closeAdd">取消</button>
+      <button class="btn-primary" bindtap="addCustomer">确认</button>
+    </view>
+  </view>
+</view>

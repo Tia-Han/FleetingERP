@@ -1,0 +1,156 @@
+/* pages/stock/stock.wxss */
+.stock-page {
+  min-height: 100vh;
+  background: #f5f7f6;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  margin: 16rpx;
+  padding: 16rpx 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.search-bar .search-icon {
+  font-size: 28rpx;
+  color: #6b7d7d;
+  margin-right: 12rpx;
+}
+
+.search-bar input {
+  flex: 1;
+  font-size: 28rpx;
+}
+
+.filter-bar {
+  white-space: nowrap;
+  padding: 0 16rpx 8rpx;
+}
+
+.filter-bar .filter-chip {
+  display: inline-block;
+  font-size: 24rpx;
+  padding: 10rpx 24rpx;
+  border-radius: 24rpx;
+  background: #fff;
+  color: #6b7d7d;
+  margin-right: 12rpx;
+  border: 2rpx solid #e0e6e4;
+}
+
+.filter-bar .filter-chip.active {
+  background: #0d9488;
+  color: #fff;
+  border-color: #0d9488;
+}
+
+.select-bar {
+  display: flex;
+  gap: 16rpx;
+  padding: 0 16rpx 12rpx;
+}
+
+.select-item {
+  flex: 1;
+  background: #fff;
+  border: 2rpx solid #e0e6e4;
+  border-radius: 12rpx;
+  padding: 14rpx 20rpx;
+  font-size: 26rpx;
+  color: #1a2b2b;
+  text-align: center;
+}
+
+.stock-list {
+  padding: 0 16rpx 40rpx;
+}
+
+.stock-row {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+  gap: 16rpx;
+}
+
+.stock-row:active {
+  background: #f9fafb;
+}
+
+.stock-row.row-warn {
+  border-left: 6rpx solid #d97706;
+}
+
+.stock-row.row-empty {
+  border-left: 6rpx solid #dc2626;
+  opacity: 0.8;
+}
+
+.row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1a2b2b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row-spec {
+  font-size: 24rpx;
+  color: #6b7d7d;
+  margin-top: 4rpx;
+}
+
+.row-qty {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.qty-val {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1a2b2b;
+  line-height: 1.2;
+}
+
+.qty-val.warn {
+  color: #d97706;
+}
+
+.qty-val.empty {
+  color: #dc2626;
+}
+
+.qty-unit {
+  font-size: 22rpx;
+  color: #6b7d7d;
+  margin-top: 2rpx;
+}
+
+.row-badge {
+  width: 36rpx;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.load-more {
+  text-align: center;
+  padding: 24rpx;
+  font-size: 24rpx;
+  color: #6b7d7d;
+}
+
+.load-more.end {
+  color: #bbb;
+}

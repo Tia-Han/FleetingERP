@@ -18,8 +18,28 @@ function initDatabase() {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
+  // PERF-03: 开启 WAL 模式的并发优化
+  db.pragma('busy_timeout = 5000');
+  db.pragma('cache_size = -64000');
+
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
   db.exec(schema);
+
+  // PERF-03: 补充关键索引
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id);
+    CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+    CREATE INDEX IF NOT EXISTS idx_products_deleted ON products(is_deleted);
+    CREATE INDEX IF NOT EXISTS idx_skus_product ON skus(product_id);
+    CREATE INDEX IF NOT EXISTS idx_skus_deleted ON skus(is_deleted);
+    CREATE INDEX IF NOT EXISTS idx_stock_balances_loc_sku ON stock_balances(location_id, sku_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_location ON sales(location_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
+    CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+    CREATE INDEX IF NOT EXISTS idx_stock_movements_ref ON stock_movements(ref_type, ref_id);
+    CREATE INDEX IF NOT EXISTS idx_stock_movements_created_type ON stock_movements(created_at, movement_type);
+  `);
 
   // 迁移1：更新 stock_movements 表的 CHECK 约束，添加 check_in/check_out 类型
   const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='stock_movements'").get();
@@ -55,6 +75,14 @@ function initDatabase() {
   if (tableInfo && tableInfo.sql.includes('check_in') && !tableInfo.sql.includes('source')) {
     db.exec(`ALTER TABLE stock_movements ADD COLUMN source TEXT DEFAULT 'web'`);
     console.log('[迁移] stock_movements 表已新增 source 字段');
+  }
+
+  // 迁移3：users 表新增 openid 字段（微信小程序登录）
+  const userTableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
+  if (userTableInfo && !userTableInfo.sql.includes('openid')) {
+    db.exec(`ALTER TABLE users ADD COLUMN openid TEXT`);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL`);
+    console.log('[迁移] users 表已新增 openid 字段');
   }
 
   // 初始化管理员

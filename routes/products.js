@@ -1,31 +1,68 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 const { generateSkuCode, generateBarcode } = require('../utils/barcode');
 
 router.use(authMiddleware);
 
+// API-01/PERF-02: 商品列表加分页 + 优化 N+1 查询
 router.get('/', (req, res) => {
   const db = getDb();
-  const { category, brand_id } = req.query;
-  let sql = `SELECT p.*, b.name as brand_name FROM products p JOIN brands b ON p.brand_id = b.id WHERE p.is_deleted = 0`;
+  const { category, brand_id, search, page, limit } = req.query;
+  const pageNum = parseInt(page) || 1;
+  const pageSize = Math.min(parseInt(limit) || 20, 100);
+  const offset = (pageNum - 1) * pageSize;
+
+  let whereSql = `FROM products p JOIN brands b ON p.brand_id = b.id WHERE p.is_deleted = 0`;
   const params = [];
-  if (category) { sql += ' AND p.category = ?'; params.push(category); }
-  if (brand_id) { sql += ' AND p.brand_id = ?'; params.push(brand_id); }
-  sql += ' ORDER BY p.created_at DESC';
-  const products = db.prepare(sql).all(...params);
-  for (const product of products) {
-    product.skus = db.prepare('SELECT * FROM skus WHERE product_id = ? AND is_deleted = 0 ORDER BY volume_ml').all(product.id);
+  if (category) { whereSql += ' AND p.category = ?'; params.push(category); }
+  if (brand_id) { whereSql += ' AND p.brand_id = ?'; params.push(brand_id); }
+  if (search) { whereSql += ' AND p.name LIKE ?'; params.push(`%${search}%`); }
+
+  const countSql = `SELECT COUNT(*) as total ${whereSql}`;
+  const total = db.prepare(countSql).get(...params).total;
+
+  const products = db.prepare(`SELECT p.*, b.name as brand_name ${whereSql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`)
+    .all(...params, pageSize, offset);
+
+  if (products.length > 0) {
+    const productIds = products.map(p => p.id);
+    const placeholders = productIds.map(() => '?').join(',');
+    const allSkus = db.prepare(`SELECT * FROM skus WHERE product_id IN (${placeholders}) AND is_deleted = 0 ORDER BY volume_ml`)
+      .all(...productIds);
+    const skuMap = {};
+    for (const sku of allSkus) {
+      if (!skuMap[sku.product_id]) skuMap[sku.product_id] = [];
+      skuMap[sku.product_id].push(sku);
+    }
+    for (const product of products) {
+      product.skus = skuMap[product.id] || [];
+    }
   }
-  res.json({ success: true, data: products });
+
+  res.json({ success: true, data: products, total, page: pageNum, limit: pageSize });
+});
+
+// 获取单个商品详情（含 SKU）
+router.get('/:id', (req, res) => {
+  const db = getDb();
+  const product = db.prepare(`SELECT p.*, b.name as brand_name FROM products p JOIN brands b ON p.brand_id = b.id WHERE p.id = ? AND p.is_deleted = 0`).get(req.params.id);
+  if (!product) {
+    return res.json({ success: false, message: '商品不存在' });
+  }
+  const skus = db.prepare('SELECT * FROM skus WHERE product_id = ? AND is_deleted = 0 ORDER BY volume_ml').all(product.id);
+  product.skus = skus;
+  res.json({ success: true, data: product });
 });
 
 router.post('/', (req, res) => {
-  const { brand_id, name, category, is_splittable, skus } = req.body;
+  const { brand_id, name, category, skus } = req.body;
+  // 兼容 is_split 和 is_splittable 两种字段名
+  const isSplittable = req.body.is_split !== undefined ? req.body.is_split : req.body.is_splittable;
   if (!brand_id || !name || !category) return res.json({ success: false, message: '品牌、商品名、品类不能为空' });
   const db = getDb();
-  const result = db.prepare('INSERT INTO products (brand_id, name, category, is_splittable) VALUES (?, ?, ?, ?)').run(brand_id, name, category, is_splittable ? 1 : 0);
+  const result = db.prepare('INSERT INTO products (brand_id, name, category, is_splittable) VALUES (?, ?, ?, ?)').run(brand_id, name, category, isSplittable ? 1 : 0);
   const productId = result.lastInsertRowid;
 
   if (skus && Array.isArray(skus) && skus.length > 0) {
@@ -42,13 +79,51 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const { brand_id, name, category, is_splittable } = req.body;
+  const { brand_id, name, category, skus } = req.body;
+  const isSplittable = req.body.is_split !== undefined ? req.body.is_split : req.body.is_splittable;
   const db = getDb();
-  db.prepare('UPDATE products SET brand_id = ?, name = ?, category = ?, is_splittable = ? WHERE id = ?').run(brand_id, name, category, is_splittable ? 1 : 0, req.params.id);
+
+  const updParams = [brand_id, name, category];
+  let updSql = 'UPDATE products SET brand_id = ?, name = ?, category = ?';
+  if (isSplittable !== undefined) {
+    updSql += ', is_splittable = ?';
+    updParams.push(isSplittable ? 1 : 0);
+  }
+  updSql += ' WHERE id = ?';
+  updParams.push(req.params.id);
+  db.prepare(updSql).run(...updParams);
+
+  // 如果传了 skus，全量替换该商品的 SKU
+  if (skus && Array.isArray(skus)) {
+    const transaction = db.transaction(() => {
+      db.prepare('UPDATE skus SET is_deleted = 1 WHERE product_id = ?').run(req.params.id);
+      for (const sku of skus) {
+        if (sku.id) {
+          // 已存在的 SKU：恢复并更新
+          const existing = db.prepare('SELECT * FROM skus WHERE id = ? AND product_id = ?').get(sku.id, req.params.id);
+          if (existing) {
+            db.prepare(`UPDATE skus SET is_deleted = 0, spec_type = ?, volume = ?, volume_ml = ?, unit = ?, cost_price = ?, retail_price = ?, low_stock_threshold = ?, barcode = ? WHERE id = ?`)
+              .run(sku.spec_type || '整装', sku.volume_desc || sku.volume || '', sku.volume_ml || 0, sku.unit || '瓶', sku.cost_price || 0, sku.retail_price || 0, sku.low_stock_threshold || 0, sku.barcode || existing.barcode, sku.id);
+          }
+        } else {
+          // 新 SKU：插入
+          const count = db.prepare('SELECT COUNT(*) as c FROM skus WHERE product_id = ?').get(req.params.id).c;
+          const { generateSkuCode, generateBarcode } = require('../utils/barcode');
+          const product = db.prepare('SELECT brand_id FROM products WHERE id = ?').get(req.params.id);
+          const skuCode = generateSkuCode(product.brand_id, req.params.id, count + 1);
+          const finalBarcode = sku.barcode || generateBarcode(Date.now() % 1000000000);
+          db.prepare(`INSERT INTO skus (product_id, sku_code, barcode, spec_type, volume, volume_ml, unit, cost_price, retail_price, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+            .run(req.params.id, skuCode, finalBarcode, sku.spec_type || '整装', sku.volume_desc || sku.volume || '', sku.volume_ml || 0, sku.unit || '瓶', sku.cost_price || 0, sku.retail_price || 0, sku.low_stock_threshold || 0);
+        }
+      }
+    });
+    transaction();
+  }
+
   res.json({ success: true, message: '更新成功' });
 });
 
-router.delete('/:id', (req, res) => {
+router.delete('/:id', roleMiddleware('admin'), (req, res) => {
   const db = getDb();
   db.prepare('UPDATE products SET is_deleted = 1 WHERE id = ?').run(req.params.id);
   db.prepare('UPDATE skus SET is_deleted = 1 WHERE product_id = ?').run(req.params.id);
@@ -75,7 +150,7 @@ router.get('/categories', (req, res) => {
   res.json({ success: true, data: cats });
 });
 
-router.post('/categories', (req, res) => {
+router.post('/categories', roleMiddleware('admin'), (req, res) => {
   const { old_name, new_name } = req.body;
   if (!new_name) return res.json({ success: false, message: '品类名不能为空' });
   const db = getDb();
@@ -96,7 +171,7 @@ router.post('/categories', (req, res) => {
   }
 });
 
-router.delete('/categories/:name', (req, res) => {
+router.delete('/categories/:name', roleMiddleware('admin'), (req, res) => {
   const db = getDb();
   const cat = db.prepare('SELECT id FROM categories WHERE name = ?').get(req.params.name);
   if (!cat) return res.json({ success: false, message: '品类不存在' });

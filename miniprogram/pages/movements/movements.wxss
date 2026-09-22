@@ -1,0 +1,112 @@
+/* pages/movements/movements.wxss */
+.mv-page { min-height: 100vh; background: #f5f7f6; }
+
+.type-bar {
+  white-space: nowrap;
+  padding: 12rpx 16rpx 8rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.type-chip {
+  display: inline-block;
+  font-size: 24rpx;
+  padding: 10rpx 28rpx;
+  border-radius: 28rpx;
+  background: #f5f7f6;
+  color: #6b7d7d;
+  margin-right: 12rpx;
+  border: 2rpx solid transparent;
+}
+
+.type-chip.active {
+  background: #f0fdfa;
+  color: #0d9488;
+  border-color: #0d9488;
+  font-weight: 500;
+}
+
+.filter-card {
+  background: #fff;
+  margin: 16rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #f0f2f1;
+  gap: 12rpx;
+}
+
+.filter-row:last-child { border-bottom: none; }
+
+.filter-label {
+  width: 100rpx;
+  font-size: 26rpx;
+  color: #6b7d7d;
+  flex-shrink: 0;
+}
+
+.filter-value {
+  font-size: 26rpx;
+  color: #1a2b2b;
+}
+
+.filter-sep {
+  font-size: 24rpx;
+  color: #6b7d7d;
+}
+
+.mv-list { padding: 0 16rpx 40rpx; }
+
+.mv-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.mv-left { flex: 1; min-width: 0; }
+
+.mv-type {
+  display: inline-block;
+  font-size: 20rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  font-weight: 600;
+  margin-bottom: 8rpx;
+}
+
+.mv-type.type-in { background: #dcfce7; color: #16a34a; }
+.mv-type.type-out { background: #fee2e2; color: #dc2626; }
+.mv-type.type-loss { background: #fef3c7; color: #d97706; }
+.mv-type.type-check { background: #e0e7ff; color: #4f46e5; }
+
+.mv-product {
+  font-size: 28rpx;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-meta { font-size: 22rpx; color: #6b7d7d; margin-top: 4rpx; }
+
+.mv-right { text-align: right; flex-shrink: 0; margin-left: 16rpx; }
+
+.mv-qty { font-size: 32rpx; font-weight: 700; }
+.mv-qty.in { color: #16a34a; }
+.mv-qty.out { color: #dc2626; }
+
+.mv-ref { font-size: 20rpx; color: #6b7d7d; margin-top: 4rpx; }
+
+.load-more { text-align: center; padding: 24rpx; font-size: 24rpx; color: #6b7d7d; }
+.load-more.end { color: #bbb; }

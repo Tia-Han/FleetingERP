@@ -1,0 +1,59 @@
+/* pages/productDetail/productDetail.wxss */
+.detail-page { min-height: 100vh; background: #f5f7f6; padding-bottom: 140rpx; }
+
+.detail-header {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #fff;
+  padding: 40rpx 24rpx;
+}
+.prod-name { font-size: 40rpx; font-weight: 700; margin-bottom: 8rpx; }
+.prod-meta { font-size: 26rpx; opacity: 0.85; }
+
+.info-card {
+  background: #fff;
+  margin: 16rpx;
+  border-radius: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f0f2f1;
+  font-size: 28rpx;
+}
+.info-row:last-child { border-bottom: none; }
+.info-label { color: #6b7d7d; }
+.info-val { color: #1a2b2b; font-weight: 500; }
+
+.section-title {
+  font-size: 26rpx;
+  color: #6b7d7d;
+  padding: 8rpx 24rpx 12rpx;
+  font-weight: 500;
+}
+
+.sku-card {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f2f1;
+  margin: 0 16rpx;
+}
+.sku-card:first-of-type { border-radius: 16rpx 16rpx 0 0; }
+.sku-card:last-of-type { border-radius: 0 0 16rpx 16rpx; border-bottom: none; }
+
+.sku-main { flex: 1; }
+.sku-spec { font-size: 28rpx; font-weight: 500; }
+.sku-barcode { font-size: 22rpx; color: #6b7d7d; margin-top: 4rpx; }
+.sku-price { font-size: 30rpx; font-weight: 700; color: #0d9488; }
+
+.edit-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid #e0e6e4;
+}

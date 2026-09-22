@@ -1,0 +1,77 @@
+<!--pages/productForm/productForm.wxml-->
+<view class="form-page">
+  <view class="form-card">
+    <view class="form-row">
+      <text class="row-label">商品名称</text>
+      <input class="row-input" placeholder="请输入商品名称" value="{{name}}" bindinput="onNameInput" />
+    </view>
+    <view class="form-row" bindtap="openBrandPicker">
+      <text class="row-label">品牌</text>
+      <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange" catchchange="true">
+        <view class="row-value">{{brands[brandIndex].name || '请选择'}} ▾</view>
+      </picker>
+    </view>
+    <view class="form-row">
+      <text class="row-label">品类</text>
+      <picker mode="selector" range="{{categories}}" range-key="name" value="{{categoryIndex}}" bindchange="onCategoryChange">
+        <view class="row-value">{{categories[categoryIndex].name || '请选择'}} ▾</view>
+      </picker>
+    </view>
+    <view class="form-row">
+      <text class="row-label">可分装</text>
+      <switch checked="{{is_split}}" bindchange="onSplitChange" color="#0d9488" />
+    </view>
+  </view>
+
+  <view class="sku-section">
+    <view class="section-header">
+      <text class="section-title">SKU 规格</text>
+      <text class="add-sku" bindtap="addSku">+ 添加</text>
+    </view>
+
+    <view class="sku-form" wx:for="{{skus}}" wx:key="index" wx:for-index="idx">
+      <view class="sku-header">
+        <text class="sku-index">规格 {{idx + 1}}</text>
+        <text class="sku-del" wx:if="{{skus.length > 1}}" data-index="{{idx}}" bindtap="removeSku">删除</text>
+      </view>
+      <view class="form-row">
+        <text class="row-label">规格类型</text>
+        <input class="row-input" placeholder="如：整装/分装" value="{{item.spec_type}}" data-index="{{idx}}" data-field="spec_type" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">容量描述</text>
+        <input class="row-input" placeholder="选填" value="{{item.volume_desc}}" data-index="{{idx}}" data-field="volume_desc" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">容量(ml)</text>
+        <input class="row-input" type="digit" placeholder="0" value="{{item.volume_ml}}" data-index="{{idx}}" data-field="volume_ml" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">单位</text>
+        <input class="row-input" placeholder="瓶/支/盒" value="{{item.unit}}" data-index="{{idx}}" data-field="unit" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">成本价</text>
+        <input class="row-input" type="digit" placeholder="0.00" value="{{item.cost_price}}" data-index="{{idx}}" data-field="cost_price" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">零售价</text>
+        <input class="row-input" type="digit" placeholder="0.00" value="{{item.retail_price}}" data-index="{{idx}}" data-field="retail_price" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">预警阈值</text>
+        <input class="row-input" type="number" placeholder="0" value="{{item.low_stock_threshold}}" data-index="{{idx}}" data-field="low_stock_threshold" bindinput="onSkuInput" />
+      </view>
+      <view class="form-row">
+        <text class="row-label">条码</text>
+        <input class="row-input" placeholder="选填，不填自动生成" value="{{item.barcode}}" data-index="{{idx}}" data-field="barcode" bindinput="onSkuInput" />
+      </view>
+    </view>
+  </view>
+
+  <view class="submit-bar">
+    <button class="btn-primary" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">
+      {{isEdit ? '保存修改' : '创建商品'}}
+    </button>
+  </view>
+</view>

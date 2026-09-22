@@ -1,0 +1,76 @@
+<!--pages/inventory/inventory.wxml-->
+<view class="inv-page">
+  <!-- 场所选择 -->
+  <view class="form-card">
+    <view class="form-row">
+      <text class="row-label">盘点场所</text>
+      <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
+        <view class="row-value">{{locations[locationIndex].name || '请选择'}} ▾</view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 操作栏 -->
+  <view class="action-bar">
+    <button class="btn-outline action-btn" bindtap="fillAllSystem">全部填系统数</button>
+    <button class="btn-primary action-btn scan-btn" bindtap="scanLocate">📷 扫码定位</button>
+  </view>
+
+  <!-- 列表 -->
+  <view class="inv-table" wx:if="{{loaded}}">
+    <view class="inv-header">
+      <view class="col-name">商品</view>
+      <view class="col-sys">系统</view>
+      <view class="col-actual">实盘</view>
+      <view class="col-diff">差异</view>
+    </view>
+
+    <view
+      class="inv-row {{item.highlight ? 'highlight' : ''}}"
+      id="item-{{index}}"
+      wx:for="{{items}}"
+      wx:key="sku_id"
+    >
+      <view class="col-name">
+        <view class="name">{{item.product_name}}</view>
+        <view class="spec">{{item.volume}} {{item.spec_type}}</view>
+      </view>
+      <view class="col-sys">{{item.system_qty}}</view>
+      <view class="col-actual">
+        <input
+          class="actual-input"
+          type="number"
+          value="{{item.actual_qty}}"
+          data-index="{{index}}"
+          bindinput="onActualQtyInput"
+        />
+      </view>
+      <view class="col-diff diff-{{item.diff > 0 ? 'pos' : (item.diff < 0 ? 'neg' : 'zero')}}">
+        {{item.diff > 0 ? '+' : ''}}{{item.diff}}
+      </view>
+    </view>
+  </view>
+
+  <!-- 加载中 -->
+  <view class="empty-state" wx:if="{{loading}}">
+    <view class="empty-icon">⏳</view>
+    <view class="empty-text">正在加载库存...</view>
+  </view>
+
+  <!-- 底部统计 + 提交 -->
+  <view class="bottom-bar" wx:if="{{loaded && items.length > 0}}">
+    <view class="diff-summary">
+      有差异 {{diffCount}} 项
+      <text wx:if="{{gainCount > 0}}" class="gain">（盈{{gainCount}}）</text>
+      <text wx:if="{{lossCount > 0}}" class="loss">（亏{{lossCount}}）</text>
+    </view>
+    <button
+      class="btn-primary submit-btn"
+      bindtap="submitCheck"
+      disabled="{{submitting || diffCount === 0}}"
+      loading="{{submitting}}"
+    >
+      提交盘点
+    </button>
+  </view>
+</view>

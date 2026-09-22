@@ -1,0 +1,34 @@
+<!--pages/scan/scan.wxml-->
+<view class="scan-page">
+  <view class="scan-hero">
+    <view class="scan-icon">📷</view>
+    <view class="scan-title">扫码作业</view>
+    <view class="scan-sub">选择扫码后要执行的操作</view>
+  </view>
+
+  <view class="scan-actions">
+    <view class="scan-btn primary" bindtap="scanStockIn">
+      <view class="scan-btn-icon">📥</view>
+      <view class="scan-btn-text">
+        <view class="scan-btn-title">扫码入库</view>
+        <view class="scan-btn-desc">扫条码添加入库商品</view>
+      </view>
+    </view>
+
+    <view class="scan-btn warn" bindtap="scanStockOut">
+      <view class="scan-btn-icon">📤</view>
+      <view class="scan-btn-text">
+        <view class="scan-btn-title">扫码出库</view>
+        <view class="scan-btn-desc">扫条码添加出库商品</view>
+      </view>
+    </view>
+
+    <view class="scan-btn info" bindtap="scanQuery">
+      <view class="scan-btn-icon">🔍</view>
+      <view class="scan-btn-text">
+        <view class="scan-btn-title">扫码查询</view>
+        <view class="scan-btn-desc">扫条码查看商品详情</view>
+      </view>
+    </view>
+  </view>
+</view>

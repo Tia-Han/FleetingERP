@@ -25,4 +25,17 @@ function authMiddleware(req, res, next) {
   }
 }
 
-module.exports = { authMiddleware, SECRET };
+// SEC-04: 角色权限校验中间件
+function roleMiddleware(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: '请先登录' });
+    }
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.json({ success: false, message: '无权限执行此操作' });
+    }
+    next();
+  };
+}
+
+module.exports = { authMiddleware, roleMiddleware, SECRET };

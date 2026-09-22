@@ -1,0 +1,88 @@
+/* pages/brands/brands.wxss */
+.brand-page { min-height: 100vh; background: #f5f7f6; }
+
+.add-bar { padding: 16rpx; }
+.add-btn { padding: 20rpx; font-size: 28rpx; }
+
+.brand-list { padding: 0 16rpx 40rpx; }
+
+.brand-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 12rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.brand-info { flex: 1; }
+.brand-name { font-size: 30rpx; font-weight: 500; }
+.brand-count { font-size: 24rpx; color: #6b7d7d; margin-top: 4rpx; }
+
+.brand-actions { display: flex; gap: 24rpx; flex-shrink: 0; }
+.action-edit { font-size: 26rpx; color: #0d9488; }
+.action-del { font-size: 26rpx; color: #dc2626; }
+
+.edit-input {
+  flex: 1;
+  font-size: 28rpx;
+  padding: 12rpx 16rpx;
+  background: #f5f7f6;
+  border-radius: 8rpx;
+}
+
+.edit-actions { display: flex; gap: 20rpx; flex-shrink: 0; }
+.edit-save { font-size: 26rpx; color: #0d9488; font-weight: 500; }
+.edit-cancel { font-size: 26rpx; color: #6b7d7d; }
+
+.picker-mask {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5); z-index: 1000;
+}
+
+.add-dialog {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  width: 600rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  z-index: 1001;
+  opacity: 0;
+  transition: all 0.2s;
+}
+
+.add-dialog.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.dialog-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 24rpx;
+  text-align: center;
+}
+
+.dialog-input {
+  width: 100%;
+  padding: 20rpx;
+  background: #f5f7f6;
+  border-radius: 12rpx;
+  font-size: 28rpx;
+  margin-bottom: 24rpx;
+  box-sizing: border-box;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 16rpx;
+}
+
+.dialog-actions button {
+  flex: 1;
+  font-size: 28rpx;
+  padding: 18rpx;
+}

@@ -27,11 +27,17 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
-// OPT-2: CORS 配置 — 从环境变量读取允许的前端来源
+// OPT-2/SEC-05: CORS 配置 — 生产环境严格限制来源
 const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
   .split(',')
   .map(s => s.trim())
   .filter(Boolean);
+
+// SEC-05: 生产环境禁止通配符 origin
+if (process.env.NODE_ENV === 'production' && corsOrigins.includes('*')) {
+  console.error('[安全警告] 生产环境不允许 CORS_ORIGIN=*，请配置具体域名');
+  process.exit(1);
+}
 
 app.use(cors({
   origin: corsOrigins,

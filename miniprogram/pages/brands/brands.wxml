@@ -1,0 +1,44 @@
+<!--pages/brands/brands.wxml-->
+<view class="brand-page">
+  <view class="add-bar">
+    <button class="btn-primary add-btn" bindtap="openAdd">+ 新增品牌</button>
+  </view>
+
+  <view class="brand-list">
+    <view class="brand-item" wx:for="{{list}}" wx:key="id">
+      <block wx:if="{{editingId === item.id}}">
+        <input class="edit-input" value="{{editingName}}" bindinput="onEditNameInput" />
+        <view class="edit-actions">
+          <text class="edit-save" bindtap="saveEdit">保存</text>
+          <text class="edit-cancel" bindtap="cancelEdit">取消</text>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="brand-info">
+          <view class="brand-name">{{item.name}}</view>
+          <view class="brand-count">{{item.product_count || 0}} 个商品</view>
+        </view>
+        <view class="brand-actions">
+          <text class="action-edit" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="editBrand">编辑</text>
+          <text class="action-del" data-id="{{item.id}}" data-name="{{item.name}}" data-product-count="{{item.product_count}}" bindtap="deleteBrand">删除</text>
+        </view>
+      </block>
+    </view>
+
+    <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+      <view class="empty-icon">🏆</view>
+      <view class="empty-text">暂无品牌</view>
+    </view>
+  </view>
+
+  <!-- 新增品牌弹窗 -->
+  <view class="picker-mask" wx:if="{{showAdd}}" bindtap="closeAdd"></view>
+  <view class="add-dialog {{showAdd ? 'show' : ''}}" wx:if="{{showAdd}}">
+    <view class="dialog-title">新增品牌</view>
+    <input class="dialog-input" placeholder="请输入品牌名称" value="{{newName}}" bindinput="onNewNameInput" />
+    <view class="dialog-actions">
+      <button class="btn-outline" bindtap="closeAdd">取消</button>
+      <button class="btn-primary" bindtap="addBrand">确认</button>
+    </view>
+  </view>
+</view>

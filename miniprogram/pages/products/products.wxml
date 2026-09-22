@@ -1,0 +1,33 @@
+<!--pages/products/products.wxml-->
+<view class="prod-page">
+  <view class="search-bar">
+    <text class="search-icon">🔍</text>
+    <input placeholder="搜索商品名称" value="{{searchKey}}" bindinput="onSearchInput" confirm-type="search" />
+  </view>
+
+  <view class="select-bar">
+    <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange">
+      <view class="select-item">{{brands[brandIndex].name || '全部品牌'}} ▾</view>
+    </picker>
+    <view class="add-btn" bindtap="goAdd">+ 新增商品</view>
+  </view>
+
+  <view class="prod-list">
+    <view class="prod-item" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="onItemTap">
+      <view class="prod-info">
+        <view class="prod-name">{{item.name}}</view>
+        <view class="prod-meta">{{item.brand_name || '未分类'}} · {{item.category || '无品类'}}</view>
+        <view class="prod-skus">{{item.skus ? item.skus.length : 0}} 个规格</view>
+      </view>
+      <view class="prod-arrow">›</view>
+    </view>
+
+    <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+      <view class="empty-icon">🏷️</view>
+      <view class="empty-text">暂无商品</view>
+    </view>
+
+    <view class="load-more" wx:if="{{loading && list.length > 0}}">加载中...</view>
+    <view class="load-more end" wx:if="{{!hasMore && list.length > 0}}">— 没有更多了 —</view>
+  </view>
+</view>

@@ -1,0 +1,27 @@
+<!--pages/productDetail/productDetail.wxml-->
+<view class="detail-page" wx:if="{{product}}">
+  <view class="detail-header">
+    <view class="prod-name">{{product.name}}</view>
+    <view class="prod-meta">{{product.brand_name}} · {{product.category || '无品类'}}</view>
+  </view>
+
+  <view class="info-card">
+    <view class="info-row"><text class="info-label">是否可分装</text><text class="info-val">{{product.is_split == 1 ? '是' : '否'}}</text></view>
+    <view class="info-row"><text class="info-label">规格数量</text><text class="info-val">{{skus.length}} 个</text></view>
+  </view>
+
+  <view class="sku-section">
+    <view class="section-title">SKU 规格</view>
+    <view class="sku-card" wx:for="{{skus}}" wx:key="id" data-sku-id="{{item.id}}" bindtap="onSkuTap">
+      <view class="sku-main">
+        <view class="sku-spec">{{item.spec_type}} · {{item.volume || ''}}{{item.unit || ''}}</view>
+        <view class="sku-barcode" wx:if="{{item.barcode}}">条码：{{item.barcode}}</view>
+      </view>
+      <view class="sku-price">¥{{item.retail_price || 0}}</view>
+    </view>
+  </view>
+
+  <view class="edit-bar">
+    <button class="btn-primary" bindtap="goEdit">编辑商品</button>
+  </view>
+</view>

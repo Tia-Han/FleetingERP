@@ -31,7 +31,7 @@ router.post('/', (req, res) => {
   });
 
   try {
-    transaction();
+    transaction.immediate();
     res.json({ success: true, message: type === 'loss' ? '损耗登记成功' : '出库成功' });
   } catch (err) {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
@@ -80,7 +80,7 @@ router.post('/batch', (req, res) => {
   });
 
   try {
-    const result = transaction();
+    const result = transaction.immediate();
     res.json({ success: true, data: result, message: `成功 ${result.successCount} 条${result.errors.length ? '，失败 ' + result.errors.length + ' 条' : ''}` });
   } catch (err) {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });

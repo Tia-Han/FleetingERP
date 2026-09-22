@@ -1,0 +1,58 @@
+<!--pages/movements/movements.wxml-->
+<view class="mv-page">
+  <!-- 类型筛选 -->
+  <scroll-view class="type-bar" scroll-x="{{true}}">
+    <view class="type-chip {{typeFilter === 'all' ? 'active' : ''}}" data-type="all" bindtap="onTypeTap">全部</view>
+    <view class="type-chip {{typeFilter === 'in' ? 'active' : ''}}" data-type="in" bindtap="onTypeTap">入库</view>
+    <view class="type-chip {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">出库</view>
+    <view class="type-chip {{typeFilter === 'loss' ? 'active' : ''}}" data-type="loss" bindtap="onTypeTap">损耗</view>
+    <view class="type-chip {{typeFilter === 'check' ? 'active' : ''}}" data-type="check" bindtap="onTypeTap">盘点</view>
+  </scroll-view>
+
+  <!-- 日期/场所筛选 -->
+  <view class="filter-card">
+    <view class="filter-row">
+      <text class="filter-label">场所</text>
+      <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
+        <view class="filter-value">{{locations[locationIndex].name || '全部场所'}} ▾</view>
+      </picker>
+    </view>
+    <view class="filter-row">
+      <text class="filter-label">日期</text>
+      <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+        <text class="filter-value">{{startDate}}</text>
+      </picker>
+      <text class="filter-sep">至</text>
+      <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+        <text class="filter-value">{{endDate}}</text>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 流水列表 -->
+  <view class="mv-list">
+    <view class="mv-item" wx:for="{{list}}" wx:key="id">
+      <view class="mv-left">
+        <view class="mv-type type-{{item.movement_type}}">
+          {{item.movement_type === 'in' ? '入库' : (item.movement_type === 'out' ? '出库' : (item.movement_type === 'loss' ? '损耗' : (item.movement_type === 'check' ? '盘点' : item.movement_type)))}}
+        </view>
+        <view class="mv-product">{{item.product_name || '商品'}}</view>
+        <view class="mv-meta">{{item.location_name}} · {{item.created_at}}</view>
+      </view>
+      <view class="mv-right">
+        <view class="mv-qty {{item.movement_type === 'in' ? 'in' : 'out'}}">
+          {{item.movement_type === 'in' ? '+' : '-'}}{{item.quantity}}
+        </view>
+        <view class="mv-ref">{{item.ref_type || ''}}</view>
+      </view>
+    </view>
+
+    <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+      <view class="empty-icon">📊</view>
+      <view class="empty-text">暂无变动记录</view>
+    </view>
+
+    <view class="load-more" wx:if="{{loading && list.length > 0}}">加载中...</view>
+    <view class="load-more end" wx:if="{{!hasMore && list.length > 0}}">— 没有更多了 —</view>
+  </view>
+</view>

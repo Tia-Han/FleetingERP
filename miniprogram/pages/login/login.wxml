@@ -1,0 +1,17 @@
+<!--pages/login/login.wxml-->
+<view class="login-container">
+  <view class="login-logo">
+    <image src="/fleeting-logo.jpg" mode="aspectFill"></image>
+  </view>
+  <text class="login-title">FleetingERP</text>
+  <text class="login-sub">香氛零售门店管理系统</text>
+
+  <button class="login-btn-wx" bindtap="wxLogin" disabled="{{loading}}" loading="{{loading}}">
+    微信一键登录
+  </button>
+  <button class="login-btn-bind" bindtap="goBind">
+    账号密码绑定
+  </button>
+
+  <text class="login-footer">登录即表示同意用户协议和隐私政策</text>
+</view>

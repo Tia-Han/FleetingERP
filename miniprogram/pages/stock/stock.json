@@ -1,0 +1,5 @@
+{
+  "navigationBarTitleText": "库存查询",
+  "enablePullDownRefresh": true,
+  "onReachBottomDistance": 100
+}

@@ -1,0 +1,80 @@
+<!--pages/stockOut/stockOut.wxml-->
+<view class="stockout-page">
+  <!-- 表单区 -->
+  <view class="form-card">
+    <view class="form-row">
+      <text class="row-label">出库场所</text>
+      <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
+        <view class="row-value">{{locations[locationIndex].name || '请选择'}} ▾</view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 类型选择 -->
+  <view class="type-selector">
+    <view class="type-btn {{outType === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">出库</view>
+    <view class="type-btn {{outType === 'loss' ? 'active' : ''}}" data-type="loss" bindtap="onTypeTap">损耗</view>
+  </view>
+
+  <!-- 扫码按钮 -->
+  <view class="scan-btn" bindtap="scanAdd">
+    <text class="scan-icon">📷</text>
+    <text>扫码添加商品</text>
+  </view>
+
+  <!-- 出库明细 -->
+  <view class="items-card" wx:if="{{items.length > 0}}">
+    <view class="items-title">出库明细（{{items.length}}）</view>
+    <view class="item-row" wx:for="{{items}}" wx:key="sku_id">
+      <view class="item-info">
+        <view class="item-name">{{item.product_name}}</view>
+        <view class="item-spec">{{item.volume}} {{item.spec_type}} · 库存: {{item.current_qty}}</view>
+        <!-- F-02: 逐行类型切换 -->
+        <view class="item-type-switch">
+          <view class="mini-type-btn {{item.out_type === 'out' ? 'active-out' : ''}}" data-index="{{index}}" data-type="out" bindtap="onItemTypeChange">出库</view>
+          <view class="mini-type-btn {{item.out_type === 'loss' ? 'active-loss' : ''}}" data-index="{{index}}" data-type="loss" bindtap="onItemTypeChange">损耗</view>
+        </view>
+      </view>
+      <view class="item-qty">
+        <text class="qty-label">x</text>
+        <input
+          class="qty-input"
+          type="number"
+          value="{{item.quantity}}"
+          data-index="{{index}}"
+          bindinput="onQtyChange"
+        />
+      </view>
+      <view class="item-del" data-index="{{index}}" bindtap="deleteItem">×</view>
+    </view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-state" wx:if="{{items.length === 0}}">
+    <view class="empty-icon">📤</view>
+    <view class="empty-text">请扫码或搜索添加商品</view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="form-card" wx:if="{{items.length > 0}}">
+    <view class="form-row">
+      <text class="row-label">备注</text>
+      <input class="row-input" placeholder="选填" value="{{remark}}" bindinput="onRemarkInput" />
+    </view>
+  </view>
+
+  <!-- 合计 -->
+  <view class="summary-card" wx:if="{{items.length > 0}}">
+    <view class="summary-row total">
+      <text>合计数量</text>
+      <text class="sum-val">{{totalQty}} 件</text>
+    </view>
+  </view>
+
+  <!-- 提交 -->
+  <view class="submit-bar" wx:if="{{items.length > 0}}">
+    <button class="btn-primary" bindtap="submitStockOut" disabled="{{submitting}}" loading="{{submitting}}">
+      提交{{outType === 'loss' ? '损耗' : '出库'}}
+    </button>
+  </view>
+</view>

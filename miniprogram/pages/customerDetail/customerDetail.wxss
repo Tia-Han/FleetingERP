@@ -1,0 +1,84 @@
+/* pages/customerDetail/customerDetail.wxss */
+.cd-page { min-height: 100vh; background: #f5f7f6; padding-bottom: 40rpx; }
+
+.cd-header {
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #fff;
+  padding: 48rpx 32rpx;
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+
+.cd-avatar {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.cd-info { flex: 1; }
+.cd-name { font-size: 36rpx; font-weight: 600; }
+.cd-phone { font-size: 26rpx; opacity: 0.85; margin-top: 4rpx; }
+
+.edit-name, .edit-phone {
+  background: rgba(255,255,255,0.2);
+  border-radius: 8rpx;
+  padding: 8rpx 16rpx;
+  font-size: 28rpx;
+  color: #fff;
+  margin-bottom: 8rpx;
+}
+
+.cd-stats {
+  display: flex;
+  background: #fff;
+  margin: -24rpx 16rpx 16rpx;
+  border-radius: 16rpx;
+  padding: 24rpx 0;
+  box-shadow: 0 4rpx 16rpx rgba(0,0,0,0.06);
+}
+
+.stat-item { flex: 1; text-align: center; }
+.stat-val { font-size: 36rpx; font-weight: 700; color: #0d9488; }
+.stat-lbl { font-size: 24rpx; color: #6b7d7d; margin-top: 4rpx; }
+
+.section-title {
+  font-size: 26rpx;
+  color: #6b7d7d;
+  padding: 8rpx 24rpx 12rpx;
+  font-weight: 500;
+}
+
+.purchase-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f2f1;
+  margin: 0 16rpx;
+}
+.purchase-item:first-of-type { border-radius: 16rpx 16rpx 0 0; }
+.purchase-item:last-of-type { border-radius: 0 0 16rpx 16rpx; border-bottom: none; }
+
+.pur-info { flex: 1; }
+.pur-date { font-size: 26rpx; font-weight: 500; }
+.pur-items { font-size: 22rpx; color: #6b7d7d; margin-top: 4rpx; }
+.pur-amount { font-size: 28rpx; font-weight: 600; color: #0d9488; }
+
+.cd-actions {
+  display: flex;
+  gap: 16rpx;
+  padding: 24rpx 16rpx;
+}
+
+.cd-actions button { flex: 1; font-size: 28rpx; padding: 20rpx; }
+
+.btn-outline.danger { color: #dc2626; border-color: #dc2626; }

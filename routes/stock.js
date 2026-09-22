@@ -20,12 +20,22 @@ router.get('/balances', (req, res) => {
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
   sql += ' ORDER BY sb.updated_at DESC, p.name, s.volume_ml';
-  const balances = db.prepare(sql).all(...params);
+
+  // PERF-01: 支持分页，避免一次性加载全部库存
+  const pageNum = parseInt(req.query.page) || 1;
+  const pageSize = Math.min(parseInt(req.query.limit) || 500, 500);
+  const offset = (pageNum - 1) * pageSize;
+
+  const countSql = `SELECT COUNT(*) as total ${sql.substring(sql.indexOf('FROM'), sql.indexOf('ORDER BY'))}`;
+  const total = db.prepare(countSql).get(...params).total;
+
+  sql += ' LIMIT ? OFFSET ?';
+  const balances = db.prepare(sql).all(...params, pageSize, offset);
   for (const b of balances) {
     b.stock_value = b.quantity * b.cost_price;
     b.is_low_stock = b.quantity <= b.low_stock_threshold && b.low_stock_threshold > 0;
   }
-  res.json({ success: true, data: balances });
+  res.json({ success: true, data: balances, total, page: pageNum, limit: pageSize });
 });
 
 router.get('/movements', (req, res) => {
@@ -106,7 +116,7 @@ router.post('/check', (req, res) => {
   });
 
   try {
-    const result = transaction();
+    const result = transaction.immediate();
     res.json({ success: true, data: result, message: `盘点完成，调整 ${result.adjustedCount} 项` });
   } catch (err) {
     res.json({ success: false, message: '盘点失败: ' + err.message });

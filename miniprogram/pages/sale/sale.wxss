@@ -1,0 +1,369 @@
+/* pages/sale/sale.wxss */
+.sale-page {
+  min-height: 100vh;
+  background: #f5f7f6;
+  padding-bottom: 180rpx;
+}
+
+.customer-row {
+  display: flex;
+  align-items: center;
+  padding: 24rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.customer-row:active { background: #f9fafb; }
+
+.row-label {
+  width: 120rpx;
+  font-size: 28rpx;
+  color: #6b7d7d;
+  flex-shrink: 0;
+}
+
+.customer-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-name {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1a2b2b;
+}
+
+.customer-name.placeholder { color: #bbb; }
+
+.customer-points {
+  font-size: 24rpx;
+  color: #0d9488;
+  margin-top: 2rpx;
+}
+
+.row-arrow {
+  color: #6b7d7d;
+  font-size: 36rpx;
+  flex-shrink: 0;
+}
+
+.location-row {
+  padding: 12rpx 24rpx;
+  font-size: 24rpx;
+  color: #6b7d7d;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.scan-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  background: #0d9488;
+  color: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 16rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.scan-btn:active { background: #0f766e; }
+.scan-icon { font-size: 36rpx; }
+
+.section-title {
+  font-size: 26rpx;
+  color: #6b7d7d;
+  padding: 8rpx 24rpx 12rpx;
+  font-weight: 500;
+}
+
+.items-section {
+  margin-top: 16rpx;
+}
+
+.sale-item {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f2f1;
+  gap: 12rpx;
+}
+
+.si-info { flex: 1; min-width: 0; }
+
+.si-name {
+  font-size: 28rpx;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.si-spec { font-size: 22rpx; color: #6b7d7d; margin-top: 4rpx; }
+
+.si-qty {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.qty-btn {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #f0f2f1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: #1a2b2b;
+  font-weight: 500;
+}
+
+.qty-btn:active { background: #e0e6e4; }
+
+.qty-num {
+  font-size: 28rpx;
+  font-weight: 600;
+  min-width: 48rpx;
+  text-align: center;
+}
+
+.si-subtotal {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #0d9488;
+  flex-shrink: 0;
+  min-width: 120rpx;
+  text-align: right;
+}
+
+.calc-section {
+  margin-top: 16rpx;
+  background: #fff;
+  padding-bottom: 16rpx;
+}
+
+.discount-modes {
+  display: flex;
+  gap: 12rpx;
+  padding: 0 24rpx 16rpx;
+}
+
+.mode-btn {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx;
+  border: 2rpx solid #e0e6e4;
+  border-radius: 12rpx;
+  font-size: 26rpx;
+  color: #6b7d7d;
+  background: #fff;
+}
+
+.mode-btn.active {
+  border-color: #0d9488;
+  color: #0d9488;
+  background: #f0fdfa;
+}
+
+.discount-input-row, .points-row {
+  display: flex;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  border-top: 1rpx solid #f0f2f1;
+}
+
+.discount-label, .points-label {
+  width: 160rpx;
+  font-size: 26rpx;
+  color: #6b7d7d;
+  flex-shrink: 0;
+}
+
+.discount-input-wrap, .points-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.discount-input, .points-input {
+  width: 160rpx;
+  text-align: right;
+  font-size: 28rpx;
+  padding: 8rpx 12rpx;
+  background: #f5f7f6;
+  border-radius: 8rpx;
+}
+
+.points-row.disabled .points-input { color: #bbb; }
+
+.discount-unit, .points-unit {
+  font-size: 24rpx;
+  color: #6b7d7d;
+  margin-left: 8rpx;
+  flex-shrink: 0;
+}
+
+.summary-section {
+  margin-top: 16rpx;
+  background: #fff;
+  padding: 16rpx 24rpx;
+}
+
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 26rpx;
+  color: #6b7d7d;
+  padding: 8rpx 0;
+}
+
+.sum-row.total {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #0d9488;
+  padding: 16rpx 0;
+  border-top: 1rpx solid #f0f2f1;
+  margin-top: 8rpx;
+}
+
+.sum-row.points-earn {
+  font-size: 24rpx;
+  color: #16a34a;
+  padding-top: 4rpx;
+}
+
+.pay-section {
+  margin-top: 16rpx;
+  background: #fff;
+  padding-bottom: 16rpx;
+}
+
+.pay-methods {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12rpx;
+  padding: 0 24rpx;
+}
+
+.pay-method {
+  text-align: center;
+  padding: 16rpx 8rpx;
+  border: 2rpx solid #e0e6e4;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #6b7d7d;
+  background: #fff;
+}
+
+.pay-method.active {
+  border-color: #0d9488;
+  color: #0d9488;
+  background: #f0fdfa;
+}
+
+.submit-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  border-top: 1rpx solid #e0e6e4;
+}
+
+/* 客户选择弹窗 */
+.picker-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 1000;
+}
+
+.customer-picker {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  z-index: 1001;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(100%);
+  transition: transform 0.3s;
+}
+
+.customer-picker.show {
+  transform: translateY(0);
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.picker-title {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.picker-close {
+  font-size: 26rpx;
+  color: #6b7d7d;
+}
+
+.picker-search {
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.picker-search input {
+  background: #f5f7f6;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 28rpx;
+}
+
+.picker-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 50vh;
+}
+
+.picker-loading, .picker-empty {
+  text-align: center;
+  padding: 48rpx;
+  font-size: 26rpx;
+  color: #6b7d7d;
+}
+
+.picker-item {
+  padding: 20rpx 24rpx;
+  border-bottom: 1rpx solid #f0f2f1;
+}
+
+.picker-item:active { background: #f9fafb; }
+
+.pi-name {
+  font-size: 28rpx;
+  font-weight: 500;
+}
+
+.pi-phone {
+  font-size: 24rpx;
+  color: #6b7d7d;
+  margin-top: 4rpx;
+}
+
+.picker-footer {
+  padding: 16rpx 24rpx calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #f0f2f1;
+}
