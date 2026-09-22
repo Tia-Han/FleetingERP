@@ -101,15 +101,29 @@ router.post('/', (req, res) => {
 
 router.get('/', (req, res) => {
   const db = getDb();
-  const { location_id, start_date, end_date } = req.query;
+  const { location_id, start_date, end_date, page, limit } = req.query;
+  const hasPagination = page !== undefined;
   let sql = 'SELECT s.*, l.name as location_name, c.wechat_name as customer_name FROM sales s JOIN locations l ON s.location_id = l.id LEFT JOIN customers c ON s.customer_id = c.id WHERE 1=1';
   const params = [];
   if (location_id) { sql += ' AND s.location_id = ?'; params.push(location_id); }
   if (start_date) { sql += ' AND s.created_at >= ?'; params.push(start_date); }
   if (end_date) { sql += ' AND s.created_at <= ?'; params.push(end_date); }
-  sql += ' ORDER BY s.created_at DESC';
-  const sales = db.prepare(sql).all(...params);
-  res.json({ success: true, data: sales });
+
+  const pageNum = parseInt(page) || 1;
+  const pageSize = Math.min(parseInt(limit) || 20, 100);
+
+  if (hasPagination) {
+    const offset = (pageNum - 1) * pageSize;
+    const countSql = `SELECT COUNT(*) as total ${sql.substring(sql.indexOf('FROM'))}`;
+    const total = db.prepare(countSql).get(...params).total;
+    const paginatedSql = sql + ' ORDER BY s.created_at DESC LIMIT ? OFFSET ?';
+    const sales = db.prepare(paginatedSql).all(...params, pageSize, offset);
+    res.json({ success: true, data: sales, total, page: pageNum, limit: pageSize });
+  } else {
+    const fullSql = sql + ' ORDER BY s.created_at DESC';
+    const sales = db.prepare(fullSql).all(...params);
+    res.json({ success: true, data: sales });
+  }
 });
 
 // 今日销售汇总（小程序首页用）

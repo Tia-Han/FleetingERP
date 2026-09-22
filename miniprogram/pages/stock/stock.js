@@ -104,11 +104,12 @@ Page({
       const res = await get('/stock/balances', params);
       const data = res.data || [];
       const list = refresh ? data : this.data.list.concat(data);
+      const total = res.total || 0;
 
       this.setData({
         list: list,
         page: page + 1,
-        hasMore: data.length === this.data.pageSize,
+        hasMore: page * this.data.pageSize < total,
         loading: false
       });
     } catch (err) {

@@ -6,9 +6,11 @@ const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 router.use(authMiddleware);
 
 // API-02: 客户列表加分页支持
+// 向后兼容：不传 page 参数时返回全部数据
 router.get('/', (req, res) => {
   const db = getDb();
   const { search, page, limit } = req.query;
+  const hasPagination = page !== undefined;
   const pageNum = parseInt(page) || 1;
   const pageSize = Math.min(parseInt(limit) || 20, 100);
   const offset = (pageNum - 1) * pageSize;
@@ -19,17 +21,43 @@ router.get('/', (req, res) => {
     whereSql += ' AND (wechat_name LIKE ? OR phone LIKE ?)';
     params.push(`%${search}%`, `%${search}%`);
   }
-  const total = db.prepare(`SELECT COUNT(*) as total ${whereSql}`).get(...params).total;
-  const customers = db.prepare(`SELECT * ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-    .all(...params, pageSize, offset);
-  res.json({ success: true, data: customers, total, page: pageNum, limit: pageSize });
+
+  if (hasPagination) {
+    const total = db.prepare(`SELECT COUNT(*) as total ${whereSql}`).get(...params).total;
+    const customers = db.prepare(`SELECT * ${whereSql} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, pageSize, offset);
+    res.json({ success: true, data: customers, total, page: pageNum, limit: pageSize });
+  } else {
+    const customers = db.prepare(`SELECT * ${whereSql} ORDER BY created_at DESC`).all(...params);
+    res.json({ success: true, data: customers });
+  }
+});
+
+// 获取单个客户详情
+router.get('/:id', (req, res) => {
+  const db = getDb();
+  const customer = db.prepare('SELECT * FROM customers WHERE id = ?').get(req.params.id);
+  if (!customer) {
+    return res.json({ success: false, message: '客户不存在' });
+  }
+  // 统计累计消费和累计积分
+  const stats = db.prepare(`
+    SELECT 
+      COALESCE(SUM(total_amount), 0) as total_spent,
+      COALESCE(SUM(points_earned), 0) as total_points_earned,
+      COUNT(*) as order_count
+    FROM sales WHERE customer_id = ?
+  `).get(req.params.id);
+  customer.total_spent = stats.total_spent;
+  customer.total_points = stats.total_points_earned;
+  customer.order_count = stats.order_count;
+  res.json({ success: true, data: customer });
 });
 
 router.post('/', (req, res) => {
   const { wechat_name, phone, remark } = req.body;
-  if (!wechat_name) return res.json({ success: false, message: '微信名不能为空' });
-  if (phone && !/^1[3-9]\d{9}$/.test(phone)) return res.json({ success: false, message: '手机号格式不正确' });
   if (!wechat_name && !phone) return res.json({ success: false, message: '微信名或手机号至少填一个' });
+  if (phone && !/^1[3-9]\d{9}$/.test(phone)) return res.json({ success: false, message: '手机号格式不正确' });
   const db = getDb();
   const result = db.prepare('INSERT INTO customers (wechat_name, phone, remark) VALUES (?, ?, ?)').run(wechat_name || '', phone || '', remark || '');
   res.json({ success: true, data: { id: result.lastInsertRowid } });

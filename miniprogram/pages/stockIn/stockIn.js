@@ -205,7 +205,7 @@ Page({
             location_id: location.id,
             supplier: this.data.supplier,
             remark: this.data.remark,
-            stock_in_date: this.data.stockDate,
+            stock_in_date: this.data.stockInDate,
             operator: user ? user.name : '',
             items: this.data.items.map(it => ({
               sku_id: it.sku_id,

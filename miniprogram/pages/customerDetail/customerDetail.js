@@ -59,7 +59,7 @@ Page({
   onWechatInput(e) { this.setData({ editWechatName: e.detail.value }); },
 
   async saveEdit() {
-    if (!this.editPhone && !this.editWechatName) {
+    if (!this.data.editPhone && !this.data.editWechatName) {
       wx.showToast({ title: '至少填写一项', icon: 'none' });
       return;
     }

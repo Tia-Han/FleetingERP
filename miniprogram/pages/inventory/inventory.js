@@ -100,13 +100,14 @@ Page({
       }));
 
       const items = refresh ? newItems : this.data.items.concat(newItems);
+      const total = res.total || 0;
       this.setData({
         items,
         loaded: true,
         loading: false,
         page: page + 1,
-        hasMore: data.length === this.data.pageSize,
-        total: res.total || 0
+        hasMore: page * this.data.pageSize < total,
+        total
       });
       this.calcDiff();
     } catch (err) {

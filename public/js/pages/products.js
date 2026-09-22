@@ -312,7 +312,7 @@ const ProductsPage = {
     let brandId = brandVal;
     if (brandVal === '__new__') {
       if (!newBrand) return App.toast('请输入品牌名', 'error');
-      const bRes = await API.createBrand({ name: newBrand });
+      const bRes = await API.createBrand(newBrand);
       if (bRes.success) brandId = bRes.data.id; else return App.toast(bRes.message || '创建品牌失败', 'error');
     }
     if (!brandId) return App.toast('请选择品牌', 'error');

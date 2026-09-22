@@ -11,3 +11,6 @@ db/fragrance_before_restore.db
 .env.local
 logs/
 ssl/
+
+# 微信开发者工具私有配置
+project.private.config.json

@@ -63,9 +63,13 @@ Page({
   async loadProduct(id) {
     try {
       const res = await get('/products/' + id);
-      const data = res.data || {};
-      const product = data.product || data;
-      const skus = data.skus || [];
+      const product = res.data || {};
+      const rawSkus = product.skus || [];
+      // 后端返回 volume 字段，前端使用 volume_desc，做映射
+      const skus = rawSkus.map(sku => ({
+        ...sku,
+        volume_desc: sku.volume_desc || sku.volume || ''
+      }));
 
       const brandIdx = this.data.brands.findIndex(b => b.id === product.brand_id);
       const catIdx = this.data.categories.findIndex(c => c.name === product.category);

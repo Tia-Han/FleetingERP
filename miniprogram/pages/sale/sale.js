@@ -22,7 +22,8 @@ Page({
     pointsEarned: 0,
     payMethod: 'wechat',
     submitting: false,
-    pointsExchangeRate: 10 // CODE-02: 从接口获取
+    pointsExchangeRate: 10, // 积分抵扣汇率：多少积分=1元
+    pointsPerYuan: 0.1 // 每消费1元获得多少积分（从配置获取）
   },
 
   onLoad() {
@@ -52,14 +53,25 @@ Page({
     }
   },
 
-  // CODE-02: 从接口获取积分配置
+  // 从接口获取积分配置
   async loadPointsConfig() {
     try {
       const res = await get('/sales/config');
-      if (res.data && res.data.points_exchange_rate) {
-        this.setData({ pointsExchangeRate: res.data.points_exchange_rate });
+      if (res.data) {
+        const updates = {};
+        if (res.data.points_exchange_rate) {
+          updates.pointsExchangeRate = res.data.points_exchange_rate;
+        }
+        if (res.data.points_per_yuan !== undefined) {
+          updates.pointsPerYuan = res.data.points_per_yuan;
+        }
+        if (Object.keys(updates).length > 0) {
+          this.setData(updates);
+        }
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('积分配置加载失败，使用默认值');
+    }
   },
 
   onLocationChange(e) {
@@ -237,7 +249,7 @@ Page({
     let val = e.detail.value;
     this.setData({ discountValue: val });
     let amount = 0;
-    const num = parseFloat(val) || 0;
+    let num = parseFloat(val) || 0;
     if (this.data.discountMode === 'percent') {
       if (num > 100) num = 100;
       amount = this.data.subtotal * num / 100;
@@ -282,7 +294,7 @@ Page({
     let finalAmount = subtotal - discountAmount - pointsValue;
     if (finalAmount < 0) finalAmount = 0;
 
-    const pointsEarned = Math.floor(finalAmount / 10);
+    const pointsEarned = Math.floor(finalAmount * this.data.pointsPerYuan);
 
     this.setData({ subtotal, finalAmount: finalAmount.toFixed(2), pointsEarned });
   },

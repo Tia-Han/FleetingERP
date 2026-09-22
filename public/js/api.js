@@ -18,11 +18,11 @@ const API = {
     return now < this._tokenExpiry - 5 * 60 * 1000;
   },
 
-  // OPT-7: 登录时保存 Token 过期时间（JWT 有效期 8 小时）
+  // OPT-7: 登录时保存 Token 过期时间（JWT 有效期 2 小时）
   setToken(token) {
     this.token = token;
     localStorage.setItem('token', token);
-    const expiry = Date.now() + 8 * 60 * 60 * 1000;
+    const expiry = Date.now() + 2 * 60 * 60 * 1000;
     this._tokenExpiry = expiry;
     localStorage.setItem('tokenExpiry', String(expiry));
   },

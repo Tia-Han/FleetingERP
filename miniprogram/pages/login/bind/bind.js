@@ -36,13 +36,11 @@ Page({
     this.setData({ loading: true });
 
     try {
-      let code = this.data.code;
-      if (!code) {
-        const loginRes = await new Promise((resolve, reject) => {
-          wx.login({ success: resolve, fail: reject });
-        });
-        code = loginRes.code;
-      }
+      // 提交前重新获取 code，避免 code 过期（有效期约5分钟）
+      const loginRes = await new Promise((resolve, reject) => {
+        wx.login({ success: resolve, fail: reject });
+      });
+      const code = loginRes.code;
 
       const res = await post('/auth/wx-bind', { code, username, password });
 

@@ -7,7 +7,8 @@ router.use(authMiddleware);
 
 router.get('/balances', (req, res) => {
   const db = getDb();
-  const { location_id, category, brand_id, spec_type, search, sku_id } = req.query;
+  const { location_id, category, brand_id, spec_type, search, sku_id, page, limit, alert_type } = req.query;
+  const hasPagination = page !== undefined;
   let sql = `SELECT sb.*, s.sku_code, s.barcode, s.spec_type, s.volume, s.unit, s.cost_price, s.retail_price, s.low_stock_threshold, p.name as product_name, p.category, b.name as brand_name, l.name as location_name FROM stock_balances sb JOIN skus s ON sb.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN brands b ON p.brand_id = b.id JOIN locations l ON sb.location_id = l.id WHERE s.is_deleted = 0 AND p.is_deleted = 0`;
   const params = [];
   if (location_id) { sql += ' AND sb.location_id = ?'; params.push(location_id); }
@@ -19,48 +20,74 @@ router.get('/balances', (req, res) => {
     sql += ' AND (p.name LIKE ? OR s.barcode LIKE ? OR s.sku_code LIKE ?)';
     params.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
+  // 库存预警筛选：low=低库存，empty=缺货
+  if (alert_type === 'low') {
+    sql += ' AND sb.quantity <= s.low_stock_threshold AND s.low_stock_threshold > 0 AND sb.quantity > 0';
+  } else if (alert_type === 'empty') {
+    sql += ' AND sb.quantity = 0';
+  }
   sql += ' ORDER BY sb.updated_at DESC, p.name, s.volume_ml';
 
-  // PERF-01: 支持分页，避免一次性加载全部库存
-  const pageNum = parseInt(req.query.page) || 1;
-  const pageSize = Math.min(parseInt(req.query.limit) || 500, 500);
-  const offset = (pageNum - 1) * pageSize;
+  let balances;
+  let total = null;
+  const pageNum = parseInt(page) || 1;
+  const pageSize = Math.min(parseInt(limit) || 50, 500);
 
-  const countSql = `SELECT COUNT(*) as total ${sql.substring(sql.indexOf('FROM'), sql.indexOf('ORDER BY'))}`;
-  const total = db.prepare(countSql).get(...params).total;
+  if (hasPagination) {
+    const offset = (pageNum - 1) * pageSize;
+    const countSql = `SELECT COUNT(*) as total ${sql.substring(sql.indexOf('FROM'), sql.indexOf('ORDER BY'))}`;
+    total = db.prepare(countSql).get(...params).total;
+    const paginatedSql = sql + ' LIMIT ? OFFSET ?';
+    balances = db.prepare(paginatedSql).all(...params, pageSize, offset);
+  } else {
+    balances = db.prepare(sql).all(...params);
+  }
 
-  sql += ' LIMIT ? OFFSET ?';
-  const balances = db.prepare(sql).all(...params, pageSize, offset);
   for (const b of balances) {
     b.stock_value = b.quantity * b.cost_price;
     b.is_low_stock = b.quantity <= b.low_stock_threshold && b.low_stock_threshold > 0;
   }
-  res.json({ success: true, data: balances, total, page: pageNum, limit: pageSize });
+
+  if (hasPagination) {
+    res.json({ success: true, data: balances, total, page: pageNum, limit: pageSize });
+  } else {
+    res.json({ success: true, data: balances });
+  }
 });
 
 router.get('/movements', (req, res) => {
   const db = getDb();
   const { location_id, movement_type, start_date, end_date, page, limit } = req.query;
+  const hasPagination = page !== undefined;
   let sql = `SELECT sm.*, s.volume, s.sku_code, p.name as product_name, l.name as location_name, sio.supplier, sio.remark as order_remark, sm.source FROM stock_movements sm JOIN skus s ON sm.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN locations l ON sm.location_id = l.id LEFT JOIN stock_in_orders sio ON sm.ref_type = 'stock_in' AND sm.ref_id = sio.id WHERE 1=1`;
   const params = [];
   if (location_id) { sql += ' AND sm.location_id = ?'; params.push(location_id); }
   if (movement_type) { sql += ' AND sm.movement_type = ?'; params.push(movement_type); }
   if (start_date) { sql += ' AND sm.created_at >= ?'; params.push(start_date); }
   if (end_date) { sql += ' AND sm.created_at <= ?'; params.push(end_date); }
+
   const pageNum = parseInt(page) || 1;
   const pageSize = parseInt(limit) || 50;
-  const offset = (pageNum - 1) * pageSize;
-  let countSql = `SELECT COUNT(*) as total FROM stock_movements sm WHERE 1=1`;
-  const countParams = [];
-  if (location_id) { countSql += ' AND sm.location_id = ?'; countParams.push(location_id); }
-  if (movement_type) { countSql += ' AND sm.movement_type = ?'; countParams.push(movement_type); }
-  if (start_date) { countSql += ' AND sm.created_at >= ?'; countParams.push(start_date); }
-  if (end_date) { countSql += ' AND sm.created_at <= ?'; countParams.push(end_date); }
-  const total = db.prepare(countSql).get(...countParams).total;
-  sql += ' ORDER BY sm.created_at DESC LIMIT ? OFFSET ?';
-  params.push(pageSize, offset);
-  const movements = db.prepare(sql).all(...params);
-  res.json({ success: true, data: movements, total, page: pageNum, limit: pageSize });
+  let movements;
+  let total = null;
+
+  if (hasPagination) {
+    const offset = (pageNum - 1) * pageSize;
+    let countSql = `SELECT COUNT(*) as total FROM stock_movements sm WHERE 1=1`;
+    const countParams = [];
+    if (location_id) { countSql += ' AND sm.location_id = ?'; countParams.push(location_id); }
+    if (movement_type) { countSql += ' AND sm.movement_type = ?'; countParams.push(movement_type); }
+    if (start_date) { countSql += ' AND sm.created_at >= ?'; countParams.push(start_date); }
+    if (end_date) { countSql += ' AND sm.created_at <= ?'; countParams.push(end_date); }
+    total = db.prepare(countSql).get(...countParams).total;
+    const paginatedSql = sql + ' ORDER BY sm.created_at DESC LIMIT ? OFFSET ?';
+    movements = db.prepare(paginatedSql).all(...params, pageSize, offset);
+    res.json({ success: true, data: movements, total, page: pageNum, limit: pageSize });
+  } else {
+    const fullSql = sql + ' ORDER BY sm.created_at DESC';
+    movements = db.prepare(fullSql).all(...params);
+    res.json({ success: true, data: movements });
+  }
 });
 
 router.get('/alerts', (req, res) => {

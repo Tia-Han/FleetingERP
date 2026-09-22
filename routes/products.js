@@ -7,9 +7,11 @@ const { generateSkuCode, generateBarcode } = require('../utils/barcode');
 router.use(authMiddleware);
 
 // API-01/PERF-02: 商品列表加分页 + 优化 N+1 查询
+// 向后兼容：不传 page 参数时返回全部数据（网页端依赖全量加载）
 router.get('/', (req, res) => {
   const db = getDb();
   const { category, brand_id, search, page, limit } = req.query;
+  const hasPagination = page !== undefined;
   const pageNum = parseInt(page) || 1;
   const pageSize = Math.min(parseInt(limit) || 20, 100);
   const offset = (pageNum - 1) * pageSize;
@@ -20,11 +22,18 @@ router.get('/', (req, res) => {
   if (brand_id) { whereSql += ' AND p.brand_id = ?'; params.push(brand_id); }
   if (search) { whereSql += ' AND p.name LIKE ?'; params.push(`%${search}%`); }
 
-  const countSql = `SELECT COUNT(*) as total ${whereSql}`;
-  const total = db.prepare(countSql).get(...params).total;
+  let total = null;
+  let products;
 
-  const products = db.prepare(`SELECT p.*, b.name as brand_name ${whereSql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`)
-    .all(...params, pageSize, offset);
+  if (hasPagination) {
+    const countSql = `SELECT COUNT(*) as total ${whereSql}`;
+    total = db.prepare(countSql).get(...params).total;
+    products = db.prepare(`SELECT p.*, b.name as brand_name ${whereSql} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`)
+      .all(...params, pageSize, offset);
+  } else {
+    products = db.prepare(`SELECT p.*, b.name as brand_name ${whereSql} ORDER BY p.created_at DESC`)
+      .all(...params);
+  }
 
   if (products.length > 0) {
     const productIds = products.map(p => p.id);
@@ -41,7 +50,49 @@ router.get('/', (req, res) => {
     }
   }
 
-  res.json({ success: true, data: products, total, page: pageNum, limit: pageSize });
+  if (hasPagination) {
+    res.json({ success: true, data: products, total, page: pageNum, limit: pageSize });
+  } else {
+    res.json({ success: true, data: products });
+  }
+});
+
+// 品类管理（注意：必须在 /:id 动态路由之前定义，否则 "categories" 会被当作 id 匹配）
+router.get('/categories', (req, res) => {
+  const db = getDb();
+  const cats = db.prepare('SELECT * FROM categories ORDER BY sort_order, name').all();
+  res.json({ success: true, data: cats });
+});
+
+router.post('/categories', roleMiddleware('admin'), (req, res) => {
+  const { old_name, new_name } = req.body;
+  if (!new_name) return res.json({ success: false, message: '品类名不能为空' });
+  const db = getDb();
+  if (old_name) {
+    const cat = db.prepare('SELECT id FROM categories WHERE name = ?').get(old_name);
+    if (!cat) return res.json({ success: false, message: '原品类不存在' });
+    const dup = db.prepare('SELECT id FROM categories WHERE name = ? AND id != ?').get(new_name, cat.id);
+    if (dup) return res.json({ success: false, message: '品类名已存在' });
+    db.prepare('UPDATE categories SET name = ? WHERE id = ?').run(new_name, cat.id);
+    db.prepare('UPDATE products SET category = ? WHERE category = ? AND is_deleted = 0').run(new_name, old_name);
+    res.json({ success: true, message: '品类重命名成功' });
+  } else {
+    const dup = db.prepare('SELECT id FROM categories WHERE name = ?').get(new_name);
+    if (dup) return res.json({ success: false, message: '品类名已存在' });
+    const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM categories').get();
+    db.prepare('INSERT INTO categories (name, sort_order) VALUES (?, ?)').run(new_name, (maxOrder.m || 0) + 1);
+    res.json({ success: true, message: '品类添加成功' });
+  }
+});
+
+router.delete('/categories/:name', roleMiddleware('admin'), (req, res) => {
+  const db = getDb();
+  const cat = db.prepare('SELECT id FROM categories WHERE name = ?').get(req.params.name);
+  if (!cat) return res.json({ success: false, message: '品类不存在' });
+  const count = db.prepare('SELECT COUNT(*) as c FROM products WHERE category = ? AND is_deleted = 0').get(req.params.name).c;
+  if (count > 0) return res.json({ success: false, message: `该品类下有 ${count} 个商品，无法删除` });
+  db.prepare('DELETE FROM categories WHERE id = ?').run(cat.id);
+  res.json({ success: true, message: '品类已删除' });
 });
 
 // 获取单个商品详情（含 SKU）
@@ -71,11 +122,15 @@ router.post('/', (req, res) => {
       const skuCode = generateSkuCode(brand_id, productId, count + 1);
       const finalBarcode = sku.barcode || generateBarcode(Date.now() % 1000000000);
       db.prepare(`INSERT INTO skus (product_id, sku_code, barcode, spec_type, volume, volume_ml, unit, cost_price, retail_price, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(productId, skuCode, finalBarcode, sku.spec_type || '整装', sku.volume || '', sku.volume_ml || 0, sku.unit || '瓶', sku.cost_price || 0, sku.retail_price || 0, sku.low_stock_threshold || 0);
+        .run(productId, skuCode, finalBarcode, sku.spec_type || '整装', sku.volume_desc || sku.volume || '', sku.volume_ml || 0, sku.unit || '瓶', sku.cost_price || 0, sku.retail_price || 0, sku.low_stock_threshold || 0);
     }
   }
 
-  res.json({ success: true, data: { id: productId } });
+  // 查询刚创建的商品及SKU，返回给前端
+  const createdProduct = db.prepare(`SELECT p.*, b.name as brand_name FROM products p JOIN brands b ON p.brand_id = b.id WHERE p.id = ?`).get(productId);
+  const createdSkus = db.prepare('SELECT * FROM skus WHERE product_id = ? AND is_deleted = 0 ORDER BY volume_ml').all(productId);
+  createdProduct.skus = createdSkus;
+  res.json({ success: true, data: createdProduct });
 });
 
 router.put('/:id', (req, res) => {
@@ -142,43 +197,6 @@ router.post('/:id/skus', (req, res) => {
   const finalBarcode = barcode || generateBarcode(Date.now() % 1000000000);
   const result = db.prepare(`INSERT INTO skus (product_id, sku_code, barcode, spec_type, volume, volume_ml, unit, cost_price, retail_price, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(productId, skuCode, finalBarcode, spec_type, volume, volume_ml || 0, unit, cost_price || 0, retail_price || 0, low_stock_threshold || 0);
   res.json({ success: true, data: { id: result.lastInsertRowid, sku_code: skuCode, barcode: finalBarcode } });
-});
-
-router.get('/categories', (req, res) => {
-  const db = getDb();
-  const cats = db.prepare('SELECT * FROM categories ORDER BY sort_order, name').all();
-  res.json({ success: true, data: cats });
-});
-
-router.post('/categories', roleMiddleware('admin'), (req, res) => {
-  const { old_name, new_name } = req.body;
-  if (!new_name) return res.json({ success: false, message: '品类名不能为空' });
-  const db = getDb();
-  if (old_name) {
-    const cat = db.prepare('SELECT id FROM categories WHERE name = ?').get(old_name);
-    if (!cat) return res.json({ success: false, message: '原品类不存在' });
-    const dup = db.prepare('SELECT id FROM categories WHERE name = ? AND id != ?').get(new_name, cat.id);
-    if (dup) return res.json({ success: false, message: '品类名已存在' });
-    db.prepare('UPDATE categories SET name = ? WHERE id = ?').run(new_name, cat.id);
-    db.prepare('UPDATE products SET category = ? WHERE category = ? AND is_deleted = 0').run(new_name, old_name);
-    res.json({ success: true, message: '品类重命名成功' });
-  } else {
-    const dup = db.prepare('SELECT id FROM categories WHERE name = ?').get(new_name);
-    if (dup) return res.json({ success: false, message: '品类名已存在' });
-    const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM categories').get();
-    db.prepare('INSERT INTO categories (name, sort_order) VALUES (?, ?)').run(new_name, (maxOrder.m || 0) + 1);
-    res.json({ success: true, message: '品类添加成功' });
-  }
-});
-
-router.delete('/categories/:name', roleMiddleware('admin'), (req, res) => {
-  const db = getDb();
-  const cat = db.prepare('SELECT id FROM categories WHERE name = ?').get(req.params.name);
-  if (!cat) return res.json({ success: false, message: '品类不存在' });
-  const count = db.prepare('SELECT COUNT(*) as c FROM products WHERE category = ? AND is_deleted = 0').get(req.params.name).c;
-  if (count > 0) return res.json({ success: false, message: `该品类下有 ${count} 个商品，无法删除` });
-  db.prepare('DELETE FROM categories WHERE id = ?').run(cat.id);
-  res.json({ success: true, message: '品类已删除' });
 });
 
 module.exports = router;
