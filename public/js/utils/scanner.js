@@ -44,7 +44,16 @@ const Scanner = {
     document.getElementById('usb-cancel-btn').addEventListener('click', function() { self.stopUsbScan(); });
     if (input) {
       input.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); self.submitManual(); }
+        if (self._timeoutTimer) { clearTimeout(self._timeoutTimer); self._timeoutTimer = setTimeout(function() { if (self._active) self.stopUsbScan(); }, 120000); }
+        if (e.key === 'Enter') {
+          e.preventDefault(); e.stopPropagation();
+          var code = input.value.trim();
+          if (code.length >= 4 && self._active) {
+            self._active = false;
+            self.stopUsbScan();
+            if (self._callback) self._callback(code);
+          }
+        }
       });
     }
 
@@ -58,7 +67,8 @@ const Scanner = {
       if (e.key === 'Enter') {
         if (isInput) {
           var inputVal = e.target.value.trim();
-          if (inputVal.length >= 4) {
+          if (inputVal.length >= 4 && self._active) {
+            self._active = false;
             e.preventDefault(); e.stopPropagation();
             self.stopUsbScan();
             if (self._callback) self._callback(inputVal);
@@ -66,6 +76,7 @@ const Scanner = {
           return;
         }
         if (self._buffer.length >= 4) {
+          self._active = false;
           e.preventDefault(); e.stopPropagation();
           var code = self._buffer.trim();
           self.stopUsbScan();
@@ -89,10 +100,12 @@ const Scanner = {
   },
 
   submitManual() {
+    if (!this._active) return;
     var input = document.getElementById('manual-barcode');
     if (!input) return;
     var code = input.value.trim();
     if (!code) return;
+    this._active = false;
     this.stopUsbScan();
     if (this._callback) this._callback(code);
   },
@@ -196,6 +209,7 @@ const Scanner = {
     });
     closeBtn.addEventListener('click', function() { self.stopCamera(); });
 
+    this._cameraTimeout = setTimeout(function() { if (self._cameraStream) self.stopCamera(); }, 180000);
     var getUserMedia = null;
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
@@ -396,6 +410,7 @@ const Scanner = {
   },
 
   stopCamera() {
+    if (this._cameraTimeout) { clearTimeout(this._cameraTimeout); this._cameraTimeout = null; }
     if (this._cameraStopLoop) { this._cameraStopLoop(); this._cameraStopLoop = null; }
     if (this._cameraInterval) { clearInterval(this._cameraInterval); this._cameraInterval = null; }
     this._barcodeDetector = null;
