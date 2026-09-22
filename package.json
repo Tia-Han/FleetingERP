@@ -5,7 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js",
+    "dev": "node --watch --watch-path=routes --watch-path=utils --watch-path=middleware server.js",
     "pm2:start": "pm2 start ecosystem.config.js",
     "pm2:stop": "pm2 stop fragrance-inventory",
     "pm2:restart": "pm2 restart fragrance-inventory",
@@ -23,5 +23,8 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.12.1",
     "swagger-jsdoc": "^6.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
   }
 }

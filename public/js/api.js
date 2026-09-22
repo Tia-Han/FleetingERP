@@ -127,8 +127,11 @@ const API = {
   getSummary: (params) => API.request('GET', '/stock/summary' + (params ? '?' + new URLSearchParams(params) : '')),
 
   stockIn: (data) => API.request('POST', '/stock-in', data),
+  getStockInList: (params) => API.request('GET', '/stock-in' + (params ? '?' + new URLSearchParams(params) : '')),
+  getStockInDetail: (id) => API.request('GET', `/stock-in/${id}`),
   stockOut: (data) => API.request('POST', '/stock-out', data),
   stockOutBatch: (data) => API.request('POST', '/stock-out/batch', data),
+  getStockOutList: (params) => API.request('GET', '/stock-out' + (params ? '?' + new URLSearchParams(params) : '')),
 
   split: (data) => API.request('POST', '/split', data),
   getSplit: (id) => API.request('GET', `/split/${id}`),
@@ -147,6 +150,7 @@ const API = {
   getCustomerPurchases: (id) => API.request('GET', `/customers/${id}/purchases`),
 
   getDashboard: (params) => API.request('GET', '/system/dashboard' + (params ? '?' + new URLSearchParams(params) : '')),
+  getOperators: () => API.request('GET', '/system/operators'),
   getBackups: () => API.request('GET', '/system/backups'),
   restoreBackup: (filename) => API.request('POST', '/system/restore', { filename }),
   inventoryCheck: (data) => API.request('POST', '/stock/check', data),

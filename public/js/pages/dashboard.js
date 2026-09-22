@@ -21,7 +21,7 @@ const DashboardPage = {
       <div class="card">
         <h2>今日操作</h2>
         ${d.today_movements.length === 0 ? '<p>今日暂无操作</p>' : `<table><thead><tr><th>操作类型</th><th>次数</th></tr></thead><tbody>
-          ${d.today_movements.map(m => `<tr><td>${Formatter.movementTypeLabel(m.movement_type)}</td><td>${m.count}</td></tr>`).join('')}
+          ${d.today_movements.map(m => `<tr><td><a href="#" onclick="DashboardPage.jumpToMovement('${m.movement_type}');return false;" style="color:#0d9488;text-decoration:none">${Formatter.movementTypeLabel(m.movement_type)}</a></td><td>${m.count}</td></tr>`).join('')}
         </tbody></table>`}
       </div>
       <div class="card">
@@ -33,5 +33,36 @@ const DashboardPage = {
           <button class="btn btn-primary" onclick="App.navigate('transfer')">调拨</button>
         </div>
       </div>`;
+  },
+
+  jumpToMovement(movementType) {
+    const today = new Date().toISOString().substring(0, 10);
+    switch (movementType) {
+      case 'in':
+        App.navigate('stockIn', { tab: 'history', filters: { start_date: today, end_date: today } });
+        break;
+      case 'out':
+        App.navigate('stockOut', { tab: 'history', filters: { start_date: today, end_date: today, type: 'out' } });
+        break;
+      case 'loss':
+        App.navigate('stockOut', { tab: 'history', filters: { start_date: today, end_date: today, type: 'loss' } });
+        break;
+      case 'sale':
+        App.navigate('sales');
+        break;
+      case 'split':
+        App.navigate('split');
+        break;
+      case 'transfer_in':
+      case 'transfer_out':
+        App.navigate('transfer');
+        break;
+      case 'check_in':
+      case 'check_out':
+        App.navigate('inventoryCheck');
+        break;
+      default:
+        App.navigate('movements');
+    }
   }
 };

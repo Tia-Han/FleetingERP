@@ -1,12 +1,46 @@
 const StockInPage = {
   items: [],
+  currentTab: 'form', // form / history
 
   async render() {
+    // 支持导航参数：tab, filters
+    const navParams = App._navParams || {};
+    if (navParams.tab === 'history') {
+      this.currentTab = 'history';
+    }
+    if (navParams.filters) {
+      Object.assign(this.historyFilters, navParams.filters);
+    }
+    App._navParams = null;
+
     this.items = [];
     const locId = App.currentLocation || 1;
     const now = new Date();
     const nowLocal = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().substring(0, 10);
     document.getElementById('content').innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tab-bar" style="display:flex;border-bottom:1px solid #e5e7eb">
+          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" onclick="StockInPage.switchTab('form')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">入库开单</div>
+          <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" onclick="StockInPage.switchTab('history')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
+        </div>
+      </div>
+      <div id="si-tab-content"></div>`;
+
+    if (this.currentTab === 'form') {
+      this.renderForm(locId, nowLocal);
+    } else {
+      this.renderHistory();
+    }
+  },
+
+  switchTab(tab) {
+    this.currentTab = tab;
+    this.render();
+  },
+
+  // ===== 入库开单 =====
+  async renderForm(locId, nowLocal) {
+    document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
           <div class="form-group" style="flex:0 0 200px;margin-bottom:0"><label>入库到场所</label><select id="si-location"></select></div>
@@ -30,6 +64,7 @@ const StockInPage = {
         <div id="si-total" style="margin-top:12px;font-size:16px;font-weight:bold"></div>
         <button class="btn btn-success" style="margin-top:12px" onclick="StockInPage.submit()">确认入库</button>
       </div>`;
+
     const locRes = await API.getLocations();
     if (locRes.success) {
       document.getElementById('si-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
@@ -143,7 +178,7 @@ const StockInPage = {
       items: this.items.map(i => ({ sku_id: i.sku_id, quantity: i.quantity, unit_cost: i.unit_cost }))
     };
     const res = await API.stockIn(data);
-    if (res.success) { App.toast('入库成功'); this.render(); } else App.toast(res.message, 'error');
+    if (res.success) { App.toast('入库成功'); this.items = []; this.render(); } else App.toast(res.message, 'error');
   },
 
   showManualAdd() {
@@ -168,5 +203,195 @@ const StockInPage = {
     };
     document.getElementById('ma-confirm-btn').addEventListener('click', doSearch);
     barcodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+  },
+
+  // ===== 历史记录 =====
+  historyFilters: {
+    start_date: '',
+    end_date: '',
+    supplier: '',
+    operator: '',
+    product: '',
+    brand: ''
+  },
+  historyOperators: [],
+
+  async renderHistory() {
+    const now = new Date();
+    const endDate = now.toISOString().substring(0, 10);
+    const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+    if (!this.historyFilters.start_date) this.historyFilters.start_date = startDate;
+    if (!this.historyFilters.end_date) this.historyFilters.end_date = endDate;
+
+    // 加载操作人列表
+    if (this.historyOperators.length === 0) {
+      try {
+        const opRes = await API.getOperators();
+        if (opRes.success) {
+          this.historyOperators = opRes.data || [];
+        }
+      } catch (e) { console.warn('加载操作人列表失败', e); }
+    }
+
+    const operatorOptions = ['<option value="">全部操作人</option>']
+      .concat(this.historyOperators.map(op => 
+        `<option value="${esc(op)}" ${this.historyFilters.operator === op ? 'selected' : ''}>${esc(op)}</option>`
+      )).join('');
+
+    document.getElementById('si-tab-content').innerHTML = `
+      <div class="card" style="background:#f8f9fa;padding:12px 16px">
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>开始日期</label><input type="date" id="sih-start" value="${this.historyFilters.start_date}" style="width:100%" onchange="StockInPage.onHistoryFilterChange()"></div>
+          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>结束日期</label><input type="date" id="sih-end" value="${this.historyFilters.end_date}" style="width:100%" onchange="StockInPage.onHistoryFilterChange()"></div>
+          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>操作人</label>
+            <select id="sih-operator" style="width:100%" onchange="StockInPage.onOperatorChange()">${operatorOptions}</select>
+          </div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>供应商</label><input type="text" id="sih-supplier" placeholder="搜索供应商" style="width:100%" onkeyup="StockInPage.onSupplierSearch(event)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="sih-product" placeholder="搜索商品" style="width:100%" onkeyup="StockInPage.onProductSearch(event)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="sih-brand" placeholder="搜索品牌" style="width:100%" onkeyup="StockInPage.onBrandSearch(event)"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div id="sih-list">
+          <div style="text-align:center;padding:40px;color:#999">加载中...</div>
+        </div>
+      </div>`;
+
+    this.loadHistory();
+  },
+
+  onHistoryFilterChange() {
+    this.historyFilters.start_date = document.getElementById('sih-start').value;
+    this.historyFilters.end_date = document.getElementById('sih-end').value;
+    this.loadHistory();
+  },
+
+  onOperatorChange() {
+    this.historyFilters.operator = document.getElementById('sih-operator').value;
+    this.loadHistory();
+  },
+
+  onSupplierSearch(e) {
+    if (e.key === 'Enter') {
+      this.historyFilters.supplier = e.target.value.trim();
+      this.loadHistory();
+    }
+  },
+
+  onProductSearch(e) {
+    if (e.key === 'Enter') {
+      this.historyFilters.product = e.target.value.trim();
+      this.loadHistory();
+    }
+  },
+
+  onBrandSearch(e) {
+    if (e.key === 'Enter') {
+      this.historyFilters.brand = e.target.value.trim();
+      this.loadHistory();
+    }
+  },
+
+  async loadHistory() {
+    const listEl = document.getElementById('sih-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">加载中...</div>';
+
+    try {
+      const params = { ...this.historyFilters };
+      if (App.currentLocation) params.location_id = App.currentLocation;
+      const res = await API.getStockInList(params);
+      
+      if (!res.success || !res.data || res.data.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无入库记录</div>';
+        return;
+      }
+
+      listEl.innerHTML = `
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>入库单号</th>
+                <th>日期</th>
+                <th>场所</th>
+                <th>供应商</th>
+                <th>商品数</th>
+                <th>总成本</th>
+                <th>操作人</th>
+                <th>备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${res.data.map(order => `
+                <tr>
+                  <td>#${order.id}</td>
+                  <td>${Formatter.dateTime(order.created_at)}</td>
+                  <td>${esc(order.location_name)}</td>
+                  <td>${esc(order.supplier || '-')}</td>
+                  <td>${order.item_count} 种</td>
+                  <td style="color:#0d9488;font-weight:500">${Formatter.money(order.total_cost)}</td>
+                  <td>${esc(order.operator || '-')}</td>
+                  <td>${esc(order.remark || '-')}</td>
+                  <td><button class="btn btn-sm btn-info" onclick="StockInPage.showDetail(${order.id})">查看详情</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) {
+      listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#e74c3c">加载失败：${esc(e.message || '未知错误')}</div>`;
+    }
+  },
+
+  async showDetail(orderId) {
+    try {
+      const res = await API.getStockInDetail(orderId);
+      if (!res.success) throw new Error(res.message);
+      const order = res.data;
+
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `<div class="modal-card" style="width:600px;max-height:80vh;overflow-y:auto">
+        <h2 style="margin-bottom:16px">入库单详情 #${order.id}</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:14px">
+          <div><span style="color:#6b7d7d">日期：</span>${Formatter.dateTime(order.created_at)}</div>
+          <div><span style="color:#6b7d7d">场所：</span>${esc(order.location_name)}</div>
+          <div><span style="color:#6b7d7d">供应商：</span>${esc(order.supplier || '-')}</div>
+          <div><span style="color:#6b7d7d">操作人：</span>${esc(order.operator || '-')}</div>
+          <div style="grid-column:span 2"><span style="color:#6b7d7d">备注：</span>${esc(order.remark || '-')}</div>
+        </div>
+        <div style="font-weight:500;margin-bottom:8px">明细商品（${order.items.length} 种）</div>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>商品</th><th>规格</th><th>SKU编码</th><th>数量</th><th>成本单价</th><th>小计</th></tr>
+            </thead>
+            <tbody>
+              ${order.items.map(item => `
+                <tr>
+                  <td>${esc(item.product_name)}</td>
+                  <td>${esc(item.volume || '-')}</td>
+                  <td><code>${esc(item.sku_code)}</code></td>
+                  <td>${item.quantity} ${esc(item.unit || '')}</td>
+                  <td>${Formatter.money(item.unit_cost)}</td>
+                  <td style="font-weight:500">${Formatter.money(item.quantity * item.unit_cost)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        <div style="text-align:right;margin-top:16px;font-size:16px;font-weight:bold;color:#0d9488">
+          合计：${Formatter.money(order.total_cost)}
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:20px">
+          <button class="btn" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+    } catch (e) {
+      App.toast(e.message || '加载失败', 'error');
+    }
   }
 };

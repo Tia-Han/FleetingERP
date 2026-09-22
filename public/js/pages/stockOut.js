@@ -1,10 +1,44 @@
 const StockOutPage = {
   batchItems: [],
+  currentTab: 'form', // form / history
 
   async render() {
+    // 支持导航参数：tab, filters
+    const navParams = App._navParams || {};
+    if (navParams.tab === 'history') {
+      this.currentTab = 'history';
+    }
+    if (navParams.filters) {
+      Object.assign(this.historyFilters, navParams.filters);
+    }
+    App._navParams = null;
+
     this.batchItems = [];
     const locId = App.currentLocation || 1;
     document.getElementById('content').innerHTML = `
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tab-bar" style="display:flex;border-bottom:1px solid #e5e7eb">
+          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" onclick="StockOutPage.switchTab('form')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">出库/损耗登记</div>
+          <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" onclick="StockOutPage.switchTab('history')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
+        </div>
+      </div>
+      <div id="so-tab-content"></div>`;
+
+    if (this.currentTab === 'form') {
+      this.renderForm(locId);
+    } else {
+      this.renderHistory();
+    }
+  },
+
+  switchTab(tab) {
+    this.currentTab = tab;
+    this.render();
+  },
+
+  // ===== 出库开单 =====
+  async renderForm(locId) {
+    document.getElementById('so-tab-content').innerHTML = `
       <div class="card">
         <h2>出库/损耗登记</h2>
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
@@ -34,6 +68,7 @@ const StockOutPage = {
           </div>
         </div>
       </div>`;
+
     const locRes = await API.getLocations();
     if (locRes.success) {
       document.getElementById('so-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${l.name}</option>`).join('');
@@ -153,6 +188,113 @@ const StockOutPage = {
       }
     } else {
       App.toast(res.message, 'error');
+    }
+  },
+
+  // ===== 历史记录 =====
+  historyFilters: {
+    start_date: '',
+    end_date: '',
+    type: '',
+    operator: ''
+  },
+
+  async renderHistory() {
+    const now = new Date();
+    const endDate = now.toISOString().substring(0, 10);
+    const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+    if (!this.historyFilters.start_date) this.historyFilters.start_date = startDate;
+    if (!this.historyFilters.end_date) this.historyFilters.end_date = endDate;
+
+    document.getElementById('so-tab-content').innerHTML = `
+      <div class="card" style="background:#f8f9fa;padding:12px 16px">
+        <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>开始日期</label><input type="date" id="soh-start" value="${this.historyFilters.start_date}" style="width:100%" onchange="StockOutPage.onHistoryFilterChange()"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>结束日期</label><input type="date" id="soh-end" value="${this.historyFilters.end_date}" style="width:100%" onchange="StockOutPage.onHistoryFilterChange()"></div>
+          <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>类型</label>
+            <select id="soh-type" style="width:100%" onchange="StockOutPage.onHistoryFilterChange()">
+              <option value="">全部</option>
+              <option value="out" ${this.historyFilters.type === 'out' ? 'selected' : ''}>出库</option>
+              <option value="loss" ${this.historyFilters.type === 'loss' ? 'selected' : ''}>损耗</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>操作人</label><input type="text" id="soh-operator" placeholder="搜索操作人" style="width:100%" onkeyup="StockOutPage.onOperatorSearch(event)"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div id="soh-list">
+          <div style="text-align:center;padding:40px;color:#999">加载中...</div>
+        </div>
+      </div>`;
+
+    this.loadHistory();
+  },
+
+  onHistoryFilterChange() {
+    this.historyFilters.start_date = document.getElementById('soh-start').value;
+    this.historyFilters.end_date = document.getElementById('soh-end').value;
+    this.historyFilters.type = document.getElementById('soh-type').value;
+    this.loadHistory();
+  },
+
+  onOperatorSearch(e) {
+    if (e.key === 'Enter') {
+      this.historyFilters.operator = e.target.value.trim();
+      this.loadHistory();
+    }
+  },
+
+  async loadHistory() {
+    const listEl = document.getElementById('soh-list');
+    if (!listEl) return;
+    listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">加载中...</div>';
+
+    try {
+      const params = { ...this.historyFilters };
+      if (App.currentLocation) params.location_id = App.currentLocation;
+      const res = await API.getStockOutList(params);
+      
+      if (!res.success || !res.data || res.data.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无出库/损耗记录</div>';
+        return;
+      }
+
+      const typeMap = { out: '出库', loss: '损耗' };
+      const typeClassMap = { out: 'badge-warning', loss: 'badge-danger' };
+
+      listEl.innerHTML = `
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>场所</th>
+                <th>商品</th>
+                <th>规格</th>
+                <th>类型</th>
+                <th>数量</th>
+                <th>操作人</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${res.data.map(item => `
+                <tr>
+                  <td>${Formatter.dateTime(item.created_at)}</td>
+                  <td>${esc(item.location_name)}</td>
+                  <td>${esc(item.brand_name)} ${esc(item.product_name)}</td>
+                  <td>${esc(item.volume || '-')}</td>
+                  <td><span class="badge ${typeClassMap[item.movement_type] || ''}">${typeMap[item.movement_type] || item.movement_type}</span></td>
+                  <td style="color:#e74c3c;font-weight:500">${Math.abs(item.quantity)}</td>
+                  <td>${esc(item.operator || '-')}</td>
+                  <td>${esc(item.remark || '-')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+    } catch (e) {
+      listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#e74c3c">加载失败：${esc(e.message || '未知错误')}</div>`;
     }
   }
 };

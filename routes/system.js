@@ -69,6 +69,21 @@ router.get('/dashboard', (req, res) => {
   });
 });
 
+// GET /system/operators - 获取所有操作人列表
+router.get('/operators', (req, res) => {
+  const db = getDb();
+  const operators = db.prepare(`
+    SELECT DISTINCT operator FROM (
+      SELECT operator FROM stock_in_orders WHERE operator IS NOT NULL AND operator != ''
+      UNION
+      SELECT operator FROM stock_movements WHERE operator IS NOT NULL AND operator != ''
+      UNION
+      SELECT operator FROM sales WHERE operator IS NOT NULL AND operator != ''
+    ) ORDER BY operator
+  `).all().map(row => row.operator);
+  res.json({ success: true, data: operators });
+});
+
 router.get('/backup', (req, res) => {
   if (req.user.role !== 'admin') {
     return res.json({ success: false, message: '无权限' });

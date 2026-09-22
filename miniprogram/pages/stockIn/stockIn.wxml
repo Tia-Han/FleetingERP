@@ -1,5 +1,14 @@
 <!--pages/stockIn/stockIn.wxml-->
 <view class="stockin-page">
+  <!-- 历史记录入口 -->
+  <view class="history-entry" bindtap="goToHistory">
+    <view class="entry-left">
+      <text class="entry-icon">📋</text>
+      <text class="entry-text">入库历史记录</text>
+    </view>
+    <text class="entry-arrow">查看全部 ›</text>
+  </view>
+
   <!-- 表单区 -->
   <view class="form-card">
     <view class="form-row">

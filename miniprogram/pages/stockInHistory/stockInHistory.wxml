@@ -1,0 +1,109 @@
+<!--pages/stockInHistory/stockInHistory.wxml-->
+<view class="page">
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-row">
+      <view class="filter-item">
+        <text class="filter-label">开始日期</text>
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+          <view class="picker-text">{{startDate}}</view>
+        </picker>
+      </view>
+      <view class="filter-item">
+        <text class="filter-label">结束日期</text>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="picker-text">{{endDate}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="filter-row">
+      <view class="filter-item flex-1">
+        <text class="filter-label">场所</text>
+        <picker range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
+          <view class="picker-text">{{locations[locationIndex].name || '全部场所'}}</view>
+        </picker>
+      </view>
+      <view class="filter-item flex-1">
+        <text class="filter-label">操作人</text>
+        <picker range="{{operatorNames}}" value="{{operatorIndex}}" bindchange="onOperatorChange">
+          <view class="picker-text">{{operatorNames[operatorIndex] || '全部操作人'}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="filter-row">
+      <view class="filter-item flex-1">
+        <text class="filter-label">供应商</text>
+        <view class="search-box">
+          <input class="search-input" placeholder="搜索供应商" value="{{supplier}}" bindinput="onSupplierInput" confirm-type="search" bindconfirm="onSupplierSearch" />
+        </view>
+      </view>
+      <view class="filter-item flex-1">
+        <text class="filter-label">商品名称</text>
+        <view class="search-box">
+          <input class="search-input" placeholder="搜索商品" value="{{product}}" bindinput="onProductInput" confirm-type="search" bindconfirm="onProductSearch" />
+        </view>
+      </view>
+    </view>
+    <view class="filter-row">
+      <view class="filter-item flex-1">
+        <text class="filter-label">品牌</text>
+        <view class="search-box">
+          <input class="search-input" placeholder="搜索品牌" value="{{brand}}" bindinput="onBrandInput" confirm-type="search" bindconfirm="onBrandSearch" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 列表 -->
+  <view class="list-container">
+    <block wx:if="{{list.length > 0}}">
+      <view class="order-card" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="onItemTap">
+        <view class="order-header">
+          <view class="order-id">#{{item.id}}</view>
+          <view class="order-date">{{item.created_at}}</view>
+        </view>
+        <view class="order-body">
+          <view class="order-row">
+            <text class="order-label">场所：</text>
+            <text class="order-value">{{item.location_name}}</text>
+          </view>
+          <view class="order-row" wx:if="{{item.supplier}}">
+            <text class="order-label">供应商：</text>
+            <text class="order-value">{{item.supplier}}</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">商品数：</text>
+            <text class="order-value">{{item.item_count}} 种</text>
+          </view>
+          <view class="order-row">
+            <text class="order-label">总成本：</text>
+            <text class="order-value amount">¥{{item.total_cost}}</text>
+          </view>
+          <view class="order-row" wx:if="{{item.operator}}">
+            <text class="order-label">操作人：</text>
+            <text class="order-value">{{item.operator}}</text>
+          </view>
+          <view class="order-row" wx:if="{{item.remark}}">
+            <text class="order-label">备注：</text>
+            <text class="order-value">{{item.remark}}</text>
+          </view>
+        </view>
+        <view class="order-footer">
+          <text class="view-detail">查看详情 ›</text>
+        </view>
+      </view>
+    </block>
+
+    <view wx:elif="{{!loading}}" class="empty-state">
+      <text class="empty-text">暂无入库记录</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-state">
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:if="{{!hasMore && list.length > 0}}" class="no-more">
+      <text class="no-more-text">没有更多了</text>
+    </view>
+  </view>
+</view>

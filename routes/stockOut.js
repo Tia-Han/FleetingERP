@@ -5,6 +5,48 @@ const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
+// GET /stock-out - 出库/损耗记录列表
+router.get('/', (req, res) => {
+  const { location_id, start_date, end_date, type, operator, page, limit } = req.query;
+  const db = getDb();
+
+  let sql = `SELECT sm.*, l.name as location_name, s.sku_code, s.volume, s.unit, p.name as product_name, b.name as brand_name
+             FROM stock_movements sm
+             JOIN locations l ON sm.location_id = l.id
+             JOIN skus s ON sm.sku_id = s.id
+             JOIN products p ON s.product_id = p.id
+             JOIN brands b ON p.brand_id = b.id
+             WHERE sm.movement_type IN ('out', 'loss')`;
+  const params = [];
+
+  if (location_id) { sql += ' AND sm.location_id = ?'; params.push(location_id); }
+  if (type && ['out', 'loss'].includes(type)) { sql += ' AND sm.movement_type = ?'; params.push(type); }
+  if (operator) { sql += ' AND sm.operator LIKE ?'; params.push('%' + operator + '%'); }
+  if (start_date) { sql += ' AND sm.created_at >= ?'; params.push(start_date + ' 00:00:00'); }
+  if (end_date) { sql += ' AND sm.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
+
+  sql += ' ORDER BY sm.created_at DESC';
+
+  // 分页支持
+  const pageNum = parseInt(page) || 0;
+  const limitNum = parseInt(limit) || 0;
+
+  if (pageNum > 0 && limitNum > 0) {
+    const offset = (pageNum - 1) * limitNum;
+    // 构建 count SQL：从主表 FROM 开始取
+    const fromIndex = sql.indexOf('FROM stock_movements');
+    const countSql = 'SELECT COUNT(*) as cnt ' + sql.substring(fromIndex).replace('ORDER BY sm.created_at DESC', '');
+    const total = db.prepare(countSql).get(...params).cnt;
+    sql += ' LIMIT ? OFFSET ?';
+    params.push(limitNum, offset);
+    const data = db.prepare(sql).all(...params);
+    res.json({ success: true, data, total, page: pageNum, limit: limitNum });
+  } else {
+    const data = db.prepare(sql).all(...params);
+    res.json({ success: true, data });
+  }
+});
+
 router.post('/', (req, res) => {
   const { location_id, sku_id, quantity, type, remark, operator } = req.body;
   if (!location_id || !sku_id || !quantity || !type) {

@@ -5,6 +5,65 @@ const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
+// GET /stock-in - 入库单列表
+router.get('/', (req, res) => {
+  const { location_id, start_date, end_date, supplier, operator, product, brand, page, limit } = req.query;
+  const db = getDb();
+
+  let sql = `SELECT sio.*, l.name as location_name, 
+             (SELECT COUNT(*) FROM stock_in_items WHERE order_id = sio.id) as item_count
+             FROM stock_in_orders sio 
+             JOIN locations l ON sio.location_id = l.id 
+             WHERE 1=1`;
+  const params = [];
+
+  if (location_id) { sql += ' AND sio.location_id = ?'; params.push(location_id); }
+  if (supplier) { sql += ' AND sio.supplier LIKE ?'; params.push('%' + supplier + '%'); }
+  if (operator) { sql += ' AND sio.operator LIKE ?'; params.push('%' + operator + '%'); }
+  if (start_date) { sql += ' AND sio.created_at >= ?'; params.push(start_date + ' 00:00:00'); }
+  if (end_date) { sql += ' AND sio.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
+  if (product) {
+    sql += ` AND EXISTS (
+      SELECT 1 FROM stock_in_items sii
+      JOIN skus s ON sii.sku_id = s.id
+      JOIN products p ON s.product_id = p.id
+      WHERE sii.order_id = sio.id AND p.name LIKE ?
+    )`;
+    params.push('%' + product + '%');
+  }
+  if (brand) {
+    sql += ` AND EXISTS (
+      SELECT 1 FROM stock_in_items sii
+      JOIN skus s ON sii.sku_id = s.id
+      JOIN products p ON s.product_id = p.id
+      JOIN brands b ON p.brand_id = b.id
+      WHERE sii.order_id = sio.id AND b.name LIKE ?
+    )`;
+    params.push('%' + brand + '%');
+  }
+
+  sql += ' ORDER BY sio.created_at DESC';
+
+  // 分页支持
+  const pageNum = parseInt(page) || 0;
+  const limitNum = parseInt(limit) || 0;
+
+  if (pageNum > 0 && limitNum > 0) {
+    const offset = (pageNum - 1) * limitNum;
+    // 构建 count SQL：从 FROM 开始取（跳过子查询中的 FROM）
+    const fromIndex = sql.indexOf('FROM stock_in_orders');
+    const countSql = 'SELECT COUNT(*) as cnt ' + sql.substring(fromIndex).replace('ORDER BY sio.created_at DESC', '');
+    const total = db.prepare(countSql).get(...params).cnt;
+    sql += ' LIMIT ? OFFSET ?';
+    params.push(limitNum, offset);
+    const data = db.prepare(sql).all(...params);
+    res.json({ success: true, data, total, page: pageNum, limit: limitNum });
+  } else {
+    const data = db.prepare(sql).all(...params);
+    res.json({ success: true, data });
+  }
+});
+
 router.post('/', (req, res) => {
   const { location_id, supplier, remark, items, operator, stock_in_date } = req.body;
   if (!location_id || !items || items.length === 0) {

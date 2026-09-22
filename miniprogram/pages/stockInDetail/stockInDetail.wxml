@@ -1,0 +1,56 @@
+<!--pages/stockInDetail/stockInDetail.wxml-->
+<view class="page" wx:if="{{order}}">
+  <!-- 基本信息 -->
+  <view class="info-card">
+    <view class="info-title">入库单 #{{order.id}}</view>
+    <view class="info-row">
+      <text class="info-label">日期</text>
+      <text class="info-value">{{order.created_at}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">场所</text>
+      <text class="info-value">{{order.location_name}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.supplier}}">
+      <text class="info-label">供应商</text>
+      <text class="info-value">{{order.supplier}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.operator}}">
+      <text class="info-label">操作人</text>
+      <text class="info-value">{{order.operator}}</text>
+    </view>
+    <view class="info-row" wx:if="{{order.remark}}">
+      <text class="info-label">备注</text>
+      <text class="info-value">{{order.remark}}</text>
+    </view>
+  </view>
+
+  <!-- 明细列表 -->
+  <view class="detail-card">
+    <view class="detail-title">商品明细（{{items.length}} 种）</view>
+    <view class="item-row" wx:for="{{items}}" wx:key="id">
+      <view class="item-info">
+        <view class="item-name">{{item.product_name}}</view>
+        <view class="item-spec">{{item.volume || '-'}} · {{item.sku_code}}</view>
+      </view>
+      <view class="item-right">
+        <view class="item-qty">{{item.quantity}} {{item.unit || ''}}</view>
+        <view class="item-cost">¥{{item.unit_cost}} × {{item.quantity}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 合计 -->
+  <view class="total-bar">
+    <text class="total-label">合计</text>
+    <text class="total-amount">¥{{order.total_cost}}</text>
+  </view>
+</view>
+
+<view wx:elif="{{!loading}}" class="empty-state">
+  <text class="empty-text">加载失败</text>
+</view>
+
+<view wx:if="{{loading}}" class="loading-state">
+  <text class="loading-text">加载中...</text>
+</view>

@@ -62,6 +62,11 @@ Page({
     this.setData({ remark: e.detail.value });
   },
 
+  // 跳转到历史记录
+  goToHistory() {
+    wx.navigateTo({ url: '/pages/stockInHistory/stockInHistory' });
+  },
+
   // 扫码添加
   async scanAdd() {
     try {

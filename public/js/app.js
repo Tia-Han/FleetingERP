@@ -111,7 +111,12 @@ const App = {
     return map[page];
   },
 
-  navigate(page) {
+  navigate(page, params) {
+    if (params) {
+      this._navParams = params;
+    } else {
+      this._navParams = null;
+    }
     if (this.currentPage && this.currentPage !== page) {
       const pagesWithData = ['stockIn', 'stockOut', 'split', 'transfer', 'sales'];
       if (pagesWithData.includes(this.currentPage)) {

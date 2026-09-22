@@ -1,0 +1,175 @@
+/* pages/stockOutHistory/stockOutHistory.wxss */
+.page {
+  min-height: 100vh;
+  background: #f5f7f6;
+}
+
+.filter-bar {
+  background: #fff;
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #e8ecec;
+}
+
+.filter-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.filter-item {
+  flex: 1;
+}
+
+.filter-label {
+  font-size: 22rpx;
+  color: #6b7d7d;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.picker-text {
+  font-size: 28rpx;
+  color: #1a2b2b;
+  padding: 12rpx 16rpx;
+  background: #f5f7f6;
+  border-radius: 8rpx;
+}
+
+.type-tabs {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.type-tab {
+  flex: 1;
+  text-align: center;
+  padding: 14rpx 0;
+  font-size: 26rpx;
+  color: #6b7d7d;
+  background: #f5f7f6;
+  border-radius: 8rpx;
+  transition: all 0.2s;
+}
+
+.type-tab.active {
+  color: #fff;
+  background: #0d9488;
+  font-weight: 500;
+}
+
+.list-container {
+  padding: 16rpx 24rpx;
+}
+
+.record-card {
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.record-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.record-type {
+  font-size: 24rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+  font-weight: 500;
+}
+
+.record-type.type-out {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.record-type.type-loss {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.record-date {
+  font-size: 24rpx;
+  color: #9bb0b0;
+}
+
+.record-body {
+  padding: 20rpx 24rpx;
+}
+
+.record-product {
+  margin-bottom: 8rpx;
+}
+
+.product-brand {
+  font-size: 24rpx;
+  color: #0d9488;
+  margin-right: 8rpx;
+}
+
+.product-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a2b2b;
+}
+
+.record-spec {
+  font-size: 24rpx;
+  color: #6b7d7d;
+  margin-bottom: 12rpx;
+}
+
+.record-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8rpx;
+}
+
+.record-location {
+  font-size: 24rpx;
+  color: #6b7d7d;
+}
+
+.record-label {
+  color: #9bb0b0;
+}
+
+.record-qty {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #e74c3c;
+}
+
+.record-remark, .record-operator {
+  font-size: 24rpx;
+  color: #6b7d7d;
+  margin-top: 6rpx;
+}
+
+.empty-state, .loading-state {
+  text-align: center;
+  padding: 120rpx 0;
+}
+
+.empty-text, .loading-text {
+  font-size: 28rpx;
+  color: #9bb0b0;
+}
+
+.no-more {
+  text-align: center;
+  padding: 30rpx 0;
+}
+
+.no-more-text {
+  font-size: 24rpx;
+  color: #9bb0b0;
+}

@@ -5,6 +5,38 @@
   padding-bottom: 160rpx;
 }
 
+.history-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  margin: 16rpx;
+  padding: 24rpx;
+  border-radius: 16rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.entry-left {
+  display: flex;
+  align-items: center;
+}
+
+.entry-icon {
+  font-size: 36rpx;
+  margin-right: 16rpx;
+}
+
+.entry-text {
+  font-size: 30rpx;
+  font-weight: 500;
+  color: #1a2b2b;
+}
+
+.entry-arrow {
+  font-size: 26rpx;
+  color: #0d9488;
+}
+
 .form-card {
   background: #fff;
   margin: 16rpx;

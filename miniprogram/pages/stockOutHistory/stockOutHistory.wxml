@@ -1,0 +1,91 @@
+<!--pages/stockOutHistory/stockOutHistory.wxml-->
+<view class="page">
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <view class="filter-row">
+      <view class="filter-item">
+        <text class="filter-label">开始日期</text>
+        <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+          <view class="picker-text">{{startDate}}</view>
+        </picker>
+      </view>
+      <view class="filter-item">
+        <text class="filter-label">结束日期</text>
+        <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="picker-text">{{endDate}}</view>
+        </picker>
+      </view>
+    </view>
+    <view class="filter-row">
+      <view class="filter-item">
+        <text class="filter-label">场所</text>
+        <picker range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
+          <view class="picker-text">{{locations[locationIndex].name || '全部场所'}}</view>
+        </picker>
+      </view>
+    </view>
+    <!-- 类型筛选 -->
+    <view class="type-tabs">
+      <view class="type-tab {{typeFilter === 'all' ? 'active' : ''}}" data-type="all" bindtap="onTypeTap">全部</view>
+      <view class="type-tab {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">出库</view>
+      <view class="type-tab {{typeFilter === 'loss' ? 'active' : ''}}" data-type="loss" bindtap="onTypeTap">损耗</view>
+    </view>
+    <!-- 操作人筛选 -->
+    <view class="filter-row">
+      <view class="filter-item flex-1">
+        <text class="filter-label">操作人</text>
+        <view class="search-box">
+          <input class="search-input" placeholder="搜索操作人" value="{{operator}}" bindinput="onOperatorInput" confirm-type="search" bindconfirm="onOperatorSearch" />
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 列表 -->
+  <view class="list-container">
+    <block wx:if="{{list.length > 0}}">
+      <view class="record-card" wx:for="{{list}}" wx:key="id">
+        <view class="record-header">
+          <view class="record-type type-{{item.movement_type}}">
+            {{item.movement_type === 'out' ? '出库' : '损耗'}}
+          </view>
+          <view class="record-date">{{item.created_at}}</view>
+        </view>
+        <view class="record-body">
+          <view class="record-product">
+            <text class="product-brand">{{item.brand_name}}</text>
+            <text class="product-name">{{item.product_name}}</text>
+          </view>
+          <view class="record-spec">{{item.volume || '-'}} · {{item.sku_code}}</view>
+          <view class="record-footer">
+            <view class="record-location">
+              <text class="record-label">场所：</text>
+              <text>{{item.location_name}}</text>
+            </view>
+            <view class="record-qty">-{{item.quantity}} {{item.unit || ''}}</view>
+          </view>
+          <view class="record-remark" wx:if="{{item.remark}}">
+            <text class="record-label">备注：</text>
+            <text>{{item.remark}}</text>
+          </view>
+          <view class="record-operator" wx:if="{{item.operator}}">
+            <text class="record-label">操作人：</text>
+            <text>{{item.operator}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view wx:elif="{{!loading}}" class="empty-state">
+      <text class="empty-text">暂无出库/损耗记录</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="loading-state">
+      <text class="loading-text">加载中...</text>
+    </view>
+
+    <view wx:if="{{!hasMore && list.length > 0}}" class="no-more">
+      <text class="no-more-text">没有更多了</text>
+    </view>
+  </view>
+</view>

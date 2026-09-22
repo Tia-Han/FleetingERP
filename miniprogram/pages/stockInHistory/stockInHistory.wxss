@@ -1,0 +1,147 @@
+/* pages/stockInHistory/stockInHistory.wxss */
+.page {
+  min-height: 100vh;
+  background: #f5f7f6;
+}
+
+.filter-bar {
+  background: #fff;
+  padding: 16rpx 24rpx;
+  border-bottom: 1rpx solid #e8ecec;
+}
+
+.filter-row {
+  display: flex;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.filter-row:last-child {
+  margin-bottom: 0;
+}
+
+.filter-item {
+  flex: 1;
+}
+
+.filter-item.flex-1 {
+  flex: 1;
+}
+
+.filter-item.flex-2 {
+  flex: 2;
+}
+
+.filter-label {
+  font-size: 22rpx;
+  color: #6b7d7d;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.picker-text {
+  font-size: 28rpx;
+  color: #1a2b2b;
+  padding: 12rpx 16rpx;
+  background: #f5f7f6;
+  border-radius: 8rpx;
+}
+
+.search-box {
+  background: #f5f7f6;
+  border-radius: 8rpx;
+  padding: 0 16rpx;
+}
+
+.search-input {
+  font-size: 28rpx;
+  height: 64rpx;
+  line-height: 64rpx;
+}
+
+.list-container {
+  padding: 16rpx 24rpx;
+}
+
+.order-card {
+  background: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 16rpx;
+  overflow: hidden;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.04);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 24rpx;
+  background: #f0fdfa;
+  border-bottom: 1rpx solid #e6fffa;
+}
+
+.order-id {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #0d9488;
+}
+
+.order-date {
+  font-size: 24rpx;
+  color: #6b7d7d;
+}
+
+.order-body {
+  padding: 16rpx 24rpx;
+}
+
+.order-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8rpx 0;
+  font-size: 26rpx;
+}
+
+.order-label {
+  color: #6b7d7d;
+}
+
+.order-value {
+  color: #1a2b2b;
+}
+
+.order-value.amount {
+  color: #0d9488;
+  font-weight: 600;
+}
+
+.order-footer {
+  padding: 16rpx 24rpx;
+  border-top: 1rpx solid #f0f0f0;
+  text-align: right;
+}
+
+.view-detail {
+  font-size: 24rpx;
+  color: #0d9488;
+}
+
+.empty-state, .loading-state {
+  text-align: center;
+  padding: 120rpx 0;
+}
+
+.empty-text, .loading-text {
+  font-size: 28rpx;
+  color: #9bb0b0;
+}
+
+.no-more {
+  text-align: center;
+  padding: 30rpx 0;
+}
+
+.no-more-text {
+  font-size: 24rpx;
+  color: #9bb0b0;
+}
