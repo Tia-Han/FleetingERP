@@ -28,7 +28,7 @@ const StockInPage = {
       </div>
       <div class="card">
         <h2>入库明细</h2>
-        <table><thead><tr><th>商品</th><th>规格</th><th>数量</th><th>成本单价</th><th>小计</th><th>操作</th></tr></thead><tbody id="si-items-body"></tbody></table>
+        <div class="table-wrapper"><table><thead><tr><th>商品</th><th>规格</th><th>数量</th><th>成本单价</th><th>小计</th><th>操作</th></tr></thead><tbody id="si-items-body"></tbody></table></div>
         <div id="si-total" style="margin-top:12px;font-size:16px;font-weight:bold"></div>
         <button class="btn btn-success" style="margin-top:12px" onclick="StockInPage.submit()">确认入库</button>
       </div>`;

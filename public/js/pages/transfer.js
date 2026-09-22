@@ -18,7 +18,7 @@ const TransferPage = {
           </div>
           <div id="tr-search-results" style="margin-top:12px"></div>
         </div>
-        <table><thead><tr><th>商品</th><th>规格</th><th>当前库存</th><th>数量</th><th>操作</th></tr></thead><tbody id="tr-items-body"></tbody></table>
+        <div class="table-wrapper"><table><thead><tr><th>商品</th><th>规格</th><th>当前库存</th><th>数量</th><th>操作</th></tr></thead><tbody id="tr-items-body"></tbody></table></div>
         <button class="btn btn-success" style="margin-top:12px" onclick="TransferPage.submit()">确认调拨</button>
       </div>
       <div class="card"><h2>调拨记录</h2><div id="tr-history"></div></div>`;
@@ -124,9 +124,9 @@ const TransferPage = {
     const div = document.getElementById('tr-history');
     if (!res.success || res.data.length === 0) { div.innerHTML = '<p>暂无调拨记录</p>'; return; }
     const recent = res.data.slice(0, 50);
-    div.innerHTML = `<table><thead><tr><th>时间</th><th>从</th><th>到</th><th>商品</th></tr></thead><tbody>
+    div.innerHTML = `<div class="table-wrapper"><table><thead><tr><th>时间</th><th>从</th><th>到</th><th>商品</th></tr></thead><tbody>
       ${recent.map(t => `<tr><td>${Formatter.date(t.created_at)}</td><td>${esc(t.from_name)}</td><td>${esc(t.to_name)}</td>
         <td>${t.items.map(i => `${esc(i.product_name)} ${esc(i.volume)} x${i.quantity}`).join(', ')}</td></tr>`).join('')}
-    </tbody></table>${res.data.length > 50 ? '<p style="color:#999;text-align:center">仅显示最近50条记录</p>' : ''}`;
+    </tbody></table></div>${res.data.length > 50 ? '<p style="color:#999;text-align:center">仅显示最近50条记录</p>' : ''}`;
   }
 };
