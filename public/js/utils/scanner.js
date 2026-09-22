@@ -206,7 +206,7 @@ const Scanner = {
     }
 
     if (!isHttps && !isLocalhost) {
-      statusP.textContent = '摄像头需要 HTTPS 环境支持。请手动输入条码。';
+      statusP.textContent = '相机扫码需要 HTTPS 环境。当前为 HTTP，请使用扫码枪或手动输入条码。';
       statusP.style.color = '#ffcc00';
       manualInput.focus();
       return;
