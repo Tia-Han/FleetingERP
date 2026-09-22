@@ -56,7 +56,15 @@ const Scanner = {
       self._lastTime = now;
 
       if (e.key === 'Enter') {
-        if (isInput) return;
+        if (isInput) {
+          var inputVal = e.target.value.trim();
+          if (inputVal.length >= 4) {
+            e.preventDefault(); e.stopPropagation();
+            self.stopUsbScan();
+            if (self._callback) self._callback(inputVal);
+          }
+          return;
+        }
         if (self._buffer.length >= 4) {
           e.preventDefault(); e.stopPropagation();
           var code = self._buffer.trim();
@@ -68,7 +76,10 @@ const Scanner = {
         return;
       }
       if (e.key && e.key.length === 1) {
-        if (isInput) return;
+        if (isInput) {
+          self._buffer = '';
+          return;
+        }
         self._buffer += e.key;
       }
     };
