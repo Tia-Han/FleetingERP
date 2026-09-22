@@ -217,8 +217,9 @@ const App = {
 
         overlay.innerHTML = `<div class="modal-card" style="width:480px;max-height:90vh;overflow-y:auto">
           <h2 style="margin-bottom:8px">新品快速入库</h2>
-          <p style="color:#999;margin-bottom:16px">条码 <strong>${esc(barcode)}</strong> 未在数据库中找到，请填写商品信息直接创建并入库</p>
-          <div class="form-group"><label>商品名</label><input type="text" id="bp-name" placeholder="输入商品名称" autofocus></div>
+          <div class="form-group"><label>条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9" autofocus></div>
+          <p style="color:#999;margin-bottom:16px;font-size:13px">请核对条码无误后填写商品信息，条码将永久关联此商品</p>
+          <div class="form-group"><label>商品名</label><input type="text" id="bp-name" placeholder="输入商品名称"></div>
           <div class="form-group"><label>品牌</label>
             <select id="bp-brand">
               <option value="">-- 选择品牌 --</option>
@@ -297,6 +298,7 @@ const App = {
         </div>
         <div style="border-top:1px solid #eee;padding-top:16px">
           <h3 style="margin-bottom:12px;color:#34495e">确认入库信息</h3>
+          <div class="form-group"><label>条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9"></div>
           <div class="form-group"><label>商品名</label><input type="text" id="bp-name" value="${esc(name)}"></div>
           <div class="form-group"><label>品牌</label>
             <select id="bp-brand">
@@ -342,7 +344,8 @@ const App = {
     });
   },
 
-  async confirmBarcodeCreate(barcode, overlay, onFound) {
+  async confirmBarcodeCreate(originalBarcode, overlay, onFound) {
+    const barcode = document.getElementById('bp-barcode').value.trim() || originalBarcode;
     const name = document.getElementById('bp-name').value.trim();
     const brandVal = document.getElementById('bp-brand').value;
     const newBrand = document.getElementById('bp-new-brand').value.trim();
@@ -351,6 +354,7 @@ const App = {
     const cost = parseFloat(document.getElementById('bp-cost').value) || 0;
     const retail = parseFloat(document.getElementById('bp-retail').value) || 0;
 
+    if (!barcode) { this.toast('条码不能为空', 'error'); return; }
     if (!name) { this.toast('商品名不能为空', 'error'); return; }
 
     let brandId = brandVal;
