@@ -14,3 +14,7 @@ ssl/
 
 # 微信开发者工具私有配置
 project.private.config.json
+
+# Backup files
+*.bak.*
+*.bak

@@ -25,7 +25,7 @@ const { initDatabase } = require('./utils/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
 
 // OPT-2/SEC-05: CORS 配置 — 生产环境严格限制来源
 const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
@@ -90,6 +90,9 @@ app.use(`${API_V1}/sales`, require('./routes/sales'));
 app.use(`${API_V1}/customers`, require('./routes/customers'));
 app.use(`${API_V1}/system`, require('./routes/system'));
 
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
+});
 // 向后兼容：保留 /api/ 前缀重定向到 /api/v1/
 app.use('/api', (req, res, next) => {
   const isVersioned = /^\/v\d+\//.test(req.url);
@@ -97,10 +100,6 @@ app.use('/api', (req, res, next) => {
     return res.redirect(308, `/api/v1${req.url}`);
   }
   next();
-});
-
-app.get('/api/health', (req, res) => {
-  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // OPT-8: API 文档（Swagger）

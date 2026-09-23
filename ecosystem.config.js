@@ -12,7 +12,7 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 3000,
-      HOST: '0.0.0.0'
+      HOST: '127.0.0.1'
     },
     error_file: './logs/error.log',
     out_file: './logs/output.log',
