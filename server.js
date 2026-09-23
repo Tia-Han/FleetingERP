@@ -25,7 +25,7 @@ const { initDatabase } = require('./utils/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || '0.0.0.0';
+const HOST = process.env.HOST || '127.0.0.1';
 
 // OPT-2/SEC-05: CORS 配置 — 生产环境严格限制来源
 const corsOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
