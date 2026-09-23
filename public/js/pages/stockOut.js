@@ -196,8 +196,12 @@ const StockOutPage = {
     start_date: '',
     end_date: '',
     type: '',
-    operator: ''
+    operator: '',
+    product: '',
+    brand: ''
   },
+  historyOperators: [],
+  _searchTimer: null,
 
   async renderHistory() {
     const now = new Date();
@@ -205,6 +209,21 @@ const StockOutPage = {
     const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
     if (!this.historyFilters.start_date) this.historyFilters.start_date = startDate;
     if (!this.historyFilters.end_date) this.historyFilters.end_date = endDate;
+
+    // 加载操作人列表
+    if (this.historyOperators.length === 0) {
+      try {
+        const opRes = await API.getOperators();
+        if (opRes.success) {
+          this.historyOperators = opRes.data || [];
+        }
+      } catch (e) { console.warn('加载操作人列表失败', e); }
+    }
+
+    const operatorOptions = ['<option value="">全部操作人</option>']
+      .concat(this.historyOperators.map(op =>
+        `<option value="${esc(op)}" ${this.historyFilters.operator === op ? 'selected' : ''}>${esc(op)}</option>`
+      )).join('');
 
     document.getElementById('so-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
@@ -218,7 +237,11 @@ const StockOutPage = {
               <option value="loss" ${this.historyFilters.type === 'loss' ? 'selected' : ''}>损耗</option>
             </select>
           </div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>操作人</label><input type="text" id="soh-operator" placeholder="搜索操作人" style="width:100%" onkeyup="StockOutPage.onOperatorSearch(event)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>操作人</label>
+            <select id="soh-operator" style="width:100%" onchange="StockOutPage.onOperatorChange()">${operatorOptions}</select>
+          </div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="soh-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" oninput="StockOutPage.onDebounceSearch('product', this.value)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="soh-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" oninput="StockOutPage.onDebounceSearch('brand', this.value)"></div>
         </div>
       </div>
       <div class="card">
@@ -237,11 +260,15 @@ const StockOutPage = {
     this.loadHistory();
   },
 
-  onOperatorSearch(e) {
-    if (e.key === 'Enter') {
-      this.historyFilters.operator = e.target.value.trim();
-      this.loadHistory();
-    }
+  onOperatorChange() {
+    this.historyFilters.operator = document.getElementById('soh-operator').value;
+    this.loadHistory();
+  },
+
+  onDebounceSearch(field, value) {
+    this.historyFilters[field] = value.trim();
+    clearTimeout(this._searchTimer);
+    this._searchTimer = setTimeout(() => this.loadHistory(), 400);
   },
 
   async loadHistory() {

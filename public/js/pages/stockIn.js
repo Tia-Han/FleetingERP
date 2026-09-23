@@ -215,6 +215,7 @@ const StockInPage = {
     brand: ''
   },
   historyOperators: [],
+  _searchTimer: null,
 
   async renderHistory() {
     const now = new Date();
@@ -246,9 +247,9 @@ const StockInPage = {
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>操作人</label>
             <select id="sih-operator" style="width:100%" onchange="StockInPage.onOperatorChange()">${operatorOptions}</select>
           </div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>供应商</label><input type="text" id="sih-supplier" placeholder="搜索供应商" style="width:100%" onkeyup="StockInPage.onSupplierSearch(event)"></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="sih-product" placeholder="搜索商品" style="width:100%" onkeyup="StockInPage.onProductSearch(event)"></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="sih-brand" placeholder="搜索品牌" style="width:100%" onkeyup="StockInPage.onBrandSearch(event)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>供应商</label><input type="text" id="sih-supplier" placeholder="搜索供应商" value="${esc(this.historyFilters.supplier)}" style="width:100%" oninput="StockInPage.onDebounceSearch('supplier', this.value)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="sih-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" oninput="StockInPage.onDebounceSearch('product', this.value)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="sih-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" oninput="StockInPage.onDebounceSearch('brand', this.value)"></div>
         </div>
       </div>
       <div class="card">
@@ -271,25 +272,10 @@ const StockInPage = {
     this.loadHistory();
   },
 
-  onSupplierSearch(e) {
-    if (e.key === 'Enter') {
-      this.historyFilters.supplier = e.target.value.trim();
-      this.loadHistory();
-    }
-  },
-
-  onProductSearch(e) {
-    if (e.key === 'Enter') {
-      this.historyFilters.product = e.target.value.trim();
-      this.loadHistory();
-    }
-  },
-
-  onBrandSearch(e) {
-    if (e.key === 'Enter') {
-      this.historyFilters.brand = e.target.value.trim();
-      this.loadHistory();
-    }
+  onDebounceSearch(field, value) {
+    this.historyFilters[field] = value.trim();
+    clearTimeout(this._searchTimer);
+    this._searchTimer = setTimeout(() => this.loadHistory(), 400);
   },
 
   async loadHistory() {

@@ -7,7 +7,7 @@ router.use(authMiddleware);
 
 // GET /stock-out - 出库/损耗记录列表
 router.get('/', (req, res) => {
-  const { location_id, start_date, end_date, type, operator, page, limit } = req.query;
+  const { location_id, start_date, end_date, type, operator, product, brand, page, limit } = req.query;
   const db = getDb();
 
   let sql = `SELECT sm.*, l.name as location_name, s.sku_code, s.volume, s.unit, p.name as product_name, b.name as brand_name
@@ -22,6 +22,8 @@ router.get('/', (req, res) => {
   if (location_id) { sql += ' AND sm.location_id = ?'; params.push(location_id); }
   if (type && ['out', 'loss'].includes(type)) { sql += ' AND sm.movement_type = ?'; params.push(type); }
   if (operator) { sql += ' AND sm.operator LIKE ?'; params.push('%' + operator + '%'); }
+  if (product) { sql += ' AND p.name LIKE ?'; params.push('%' + product + '%'); }
+  if (brand) { sql += ' AND b.name LIKE ?'; params.push('%' + brand + '%'); }
   if (start_date) { sql += ' AND sm.created_at >= ?'; params.push(start_date + ' 00:00:00'); }
   if (end_date) { sql += ' AND sm.created_at <= ?'; params.push(end_date + ' 23:59:59'); }
 
