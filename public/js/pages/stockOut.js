@@ -18,8 +18,8 @@ const StockOutPage = {
     document.getElementById('content').innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="tab-bar" style="display:flex;border-bottom:1px solid #e5e7eb">
-          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" onclick="StockOutPage.switchTab('form')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">出库/损耗登记</div>
-          <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" onclick="StockOutPage.switchTab('history')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
+          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" ${Formatter.event('click', 'stockOut-1')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">出库/损耗登记</div>
+          <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" ${Formatter.event('click', 'stockOut-2')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
         </div>
       </div>
       <div id="so-tab-content"></div>`;
@@ -45,9 +45,9 @@ const StockOutPage = {
           <div class="form-group" style="flex:0 0 200px;margin:0"><label>场所</label><select id="so-location" style="width:100%"></select></div>
           <div class="form-group" style="flex:1;min-width:200px;margin:0"><label>添加商品（扫码或搜索）</label>
             <div style="display:flex;gap:8px">
-              <input type="text" id="so-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px" onkeydown="StockOutPage.onSearchKey(event)">
-              <button class="btn btn-primary btn-sm" onclick="StockOutPage.searchProduct()">搜索</button>
-              <button class="btn btn-success btn-sm" onclick="Scanner.usbScan(code => StockOutPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info btn-sm" onclick="Scanner.cameraScan(code => StockOutPage.onBarcodeScan(code))">相机</button>
+              <input type="text" id="so-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px" ${Formatter.event('keydown', 'stockOut-3')} >
+              <button class="btn btn-primary btn-sm" ${Formatter.event('click', 'stockOut-4')} >搜索</button>
+              <button class="btn btn-success btn-sm" ${Formatter.event('click', 'stockOut-5')} >扫码枪</button><button class="btn btn-info btn-sm" ${Formatter.event('click', 'stockOut-6')} >相机</button>
             </div>
           </div>
         </div>
@@ -63,8 +63,8 @@ const StockOutPage = {
             </table>
           </div>
           <div style="margin-top:12px;display:flex;gap:8px">
-            <button class="btn btn-success" onclick="StockOutPage.submitBatch()">批量提交</button>
-            <button class="btn" onclick="StockOutPage.clearBatch()">清空列表</button>
+            <button class="btn btn-success" ${Formatter.event('click', 'stockOut-7')} >批量提交</button>
+            <button class="btn" ${Formatter.event('click', 'stockOut-8')} >清空列表</button>
           </div>
         </div>
       </div>`;
@@ -137,10 +137,10 @@ const StockOutPage = {
         <td>${esc(item.product_name)}</td>
         <td>${esc(item.volume)}</td>
         <td>${esc(item.stock)}</td>
-        <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px;padding:4px" onchange="StockOutPage.updateItem(${idx}, 'quantity', this.value)"></td>
-        <td><select style="padding:4px" onchange="StockOutPage.updateItem(${idx}, 'type', this.value)"><option value="out" ${item.type === 'out' ? 'selected' : ''}>出库</option><option value="loss" ${item.type === 'loss' ? 'selected' : ''}>损耗</option></select></td>
-        <td><input type="text" value="${esc(item.remark)}" style="width:100px;padding:4px" onchange="StockOutPage.updateItem(${idx}, 'remark', this.value)"></td>
-        <td><button class="btn btn-danger btn-sm" onclick="StockOutPage.removeItem(${idx})">删除</button></td>
+        <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px;padding:4px" ${Formatter.event('change', 'stockOut-9', idx)} ></td>
+        <td><select style="padding:4px" ${Formatter.event('change', 'stockOut-10', idx)} ><option value="out" ${item.type === 'out' ? 'selected' : ''}>出库</option><option value="loss" ${item.type === 'loss' ? 'selected' : ''}>损耗</option></select></td>
+        <td><input type="text" value="${esc(item.remark)}" style="width:100px;padding:4px" ${Formatter.event('change', 'stockOut-11', idx)} ></td>
+        <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'stockOut-12', idx)} >删除</button></td>
       </tr>${item.errorMsg ? `<tr style="background:#fff3cd"><td colspan="7" style="color:#e74c3c;font-size:13px;padding:4px 8px">错误: ${esc(item.errorMsg)}</td></tr>` : ''}`).join('');
   },
 
@@ -228,20 +228,20 @@ const StockOutPage = {
     document.getElementById('so-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>开始日期</label><input type="date" id="soh-start" value="${this.historyFilters.start_date}" style="width:100%" onchange="StockOutPage.onHistoryFilterChange()"></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>结束日期</label><input type="date" id="soh-end" value="${this.historyFilters.end_date}" style="width:100%" onchange="StockOutPage.onHistoryFilterChange()"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>开始日期</label><input type="date" id="soh-start" value="${this.historyFilters.start_date}" style="width:100%" ${Formatter.event('change', 'stockOut-13')} ></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>结束日期</label><input type="date" id="soh-end" value="${this.historyFilters.end_date}" style="width:100%" ${Formatter.event('change', 'stockOut-13')} ></div>
           <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>类型</label>
-            <select id="soh-type" style="width:100%" onchange="StockOutPage.onHistoryFilterChange()">
+            <select id="soh-type" style="width:100%" ${Formatter.event('change', 'stockOut-13')} >
               <option value="">全部</option>
               <option value="out" ${this.historyFilters.type === 'out' ? 'selected' : ''}>出库</option>
               <option value="loss" ${this.historyFilters.type === 'loss' ? 'selected' : ''}>损耗</option>
             </select>
           </div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>操作人</label>
-            <select id="soh-operator" style="width:100%" onchange="StockOutPage.onOperatorChange()">${operatorOptions}</select>
+            <select id="soh-operator" style="width:100%" ${Formatter.event('change', 'stockOut-14')} >${operatorOptions}</select>
           </div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="soh-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" oninput="StockOutPage.onDebounceSearch('product', this.value)"></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="soh-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" oninput="StockOutPage.onDebounceSearch('brand', this.value)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="soh-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" ${Formatter.event('input', 'stockOut-15')} ></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="soh-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" ${Formatter.event('input', 'stockOut-16')} ></div>
         </div>
       </div>
       <div class="card">
@@ -327,3 +327,21 @@ const StockOutPage = {
 };
 
 Formatter.onAction('stockOut-select', (value) => StockOutPage.addToList(value));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("stockOut-1", function(event) { return StockOutPage.switchTab('form'); });
+Formatter.onEvent("stockOut-2", function(event) { return StockOutPage.switchTab('history'); });
+Formatter.onEvent("stockOut-3", function(event) { return StockOutPage.onSearchKey(event); });
+Formatter.onEvent("stockOut-4", function(event) { return StockOutPage.searchProduct(); });
+Formatter.onEvent("stockOut-5", function(event) { return Scanner.usbScan(code => StockOutPage.onBarcodeScan(code)); });
+Formatter.onEvent("stockOut-6", function(event) { return Scanner.cameraScan(code => StockOutPage.onBarcodeScan(code)); });
+Formatter.onEvent("stockOut-7", function(event) { return StockOutPage.submitBatch(); });
+Formatter.onEvent("stockOut-8", function(event) { return StockOutPage.clearBatch(); });
+Formatter.onEvent("stockOut-9", function(event, arg0) { return StockOutPage.updateItem(arg0, 'quantity', this.value); });
+Formatter.onEvent("stockOut-10", function(event, arg0) { return StockOutPage.updateItem(arg0, 'type', this.value); });
+Formatter.onEvent("stockOut-11", function(event, arg0) { return StockOutPage.updateItem(arg0, 'remark', this.value); });
+Formatter.onEvent("stockOut-12", function(event, arg0) { return StockOutPage.removeItem(arg0); });
+Formatter.onEvent("stockOut-13", function(event) { return StockOutPage.onHistoryFilterChange(); });
+Formatter.onEvent("stockOut-14", function(event) { return StockOutPage.onOperatorChange(); });
+Formatter.onEvent("stockOut-15", function(event) { return StockOutPage.onDebounceSearch('product', this.value); });
+Formatter.onEvent("stockOut-16", function(event) { return StockOutPage.onDebounceSearch('brand', this.value); });

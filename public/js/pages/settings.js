@@ -8,22 +8,22 @@ const SettingsPage = {
           <input type="text" id="se-loc-name" placeholder="场所名称" style="flex:1;min-width:120px;padding:8px;border:1px solid #ddd;border-radius:4px">
           <select id="se-loc-type" style="padding:8px;border:1px solid #ddd;border-radius:4px"><option value="warehouse">仓库</option><option value="store">门店</option></select>
           <input type="text" id="se-loc-address" placeholder="地址（可选）" style="flex:1;min-width:120px;padding:8px;border:1px solid #ddd;border-radius:4px">
-          <button class="btn btn-success" onclick="SettingsPage.addLocation()">添加</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'settings-1')} >添加</button>
         </div>
       </div>
       <div class="card">
-        <h2>用户管理 <button class="btn btn-primary" style="float:right" onclick="SettingsPage.showAddUser()">+ 新增用户</button></h2>
+        <h2>用户管理 <button class="btn btn-primary" style="float:right" ${Formatter.event('click', 'settings-2')} >+ 新增用户</button></h2>
         <div id="se-users">加载中...</div>
-        <button class="btn btn-primary" style="margin-top:12px" onclick="SettingsPage.showChangePassword()">修改密码</button>
+        <button class="btn btn-primary" style="margin-top:12px" ${Formatter.event('click', 'settings-3')} >修改密码</button>
       </div>
       <div class="card">
         <h2>数据备份</h2>
         <p style="margin-bottom:8px;color:#7f8c8d">系统每日自动备份数据，也可手动导出。</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="SettingsPage.backupDb()">导出数据库备份(.db)</button>
-          <button class="btn btn-success" onclick="SettingsPage.exportExcel('stock')">导出库存数据(.csv)</button>
-          <button class="btn btn-success" onclick="SettingsPage.exportExcel('movements')">导出变动流水(.csv)</button>
-          <button class="btn btn-success" onclick="SettingsPage.exportExcel('sales')">导出销售记录(.csv)</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'settings-4')} >导出数据库备份(.db)</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'settings-5')} >导出库存数据(.csv)</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'settings-6')} >导出变动流水(.csv)</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'settings-7')} >导出销售记录(.csv)</button>
         </div>
         <p style="margin-top:12px;font-size:13px;color:#7f8c8d">每日自动备份已启用，服务器启动时自动执行。</p>
       </div>
@@ -48,7 +48,7 @@ const SettingsPage = {
         <td>${esc(l.address) || '-'}</td>
         <td>
           <button class="btn btn-primary btn-sm" ${Formatter.action('location-edit', l.id, l.name, l.type, l.address || '')}>修改</button>
-          <button class="btn btn-danger btn-sm" onclick="SettingsPage.deleteLocation(${l.id})">删除</button>
+          <button class="btn btn-danger btn-sm" ${Formatter.event('click', 'settings-8', l.id)} >删除</button>
         </td>
       </tr>`).join('')}
     </tbody></table>`;
@@ -77,8 +77,8 @@ const SettingsPage = {
       <div class="form-group"><label>类型</label><select id="el-type"><option value="warehouse" ${type === 'warehouse' ? 'selected' : ''}>仓库</option><option value="store" ${type === 'store' ? 'selected' : ''}>门店</option></select></div>
       <div class="form-group"><label>地址</label><input type="text" id="el-address" value="${esc(address)}"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="SettingsPage.submitEditLocation(${id})">保存</button>
+        <button class="btn" ${Formatter.event('click', 'settings-9')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'settings-10', id)} >保存</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -109,7 +109,7 @@ const SettingsPage = {
     const roleLabels = { admin: '管理员', warehouse_manager: '仓库管理员', store_clerk: '门店店员' };
     div.innerHTML = `<table><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
       ${res.data.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.name)}</td><td>${roleLabels[u.role] || u.role}</td><td>${Formatter.date(u.created_at)}</td>
-        <td>${u.username !== 'admin' ? `<button class="btn btn-danger btn-sm" onclick="SettingsPage.deleteUser(${u.id})">删除</button>` : '-'}</td></tr>`).join('')}
+        <td>${u.username !== 'admin' ? `<button class="btn btn-danger btn-sm" ${Formatter.event('click', 'settings-11', u.id)} >删除</button>` : '-'}</td></tr>`).join('')}
     </tbody></table>`;
   },
 
@@ -122,8 +122,8 @@ const SettingsPage = {
       <div class="form-group"><label>新密码</label><input type="password" id="cp-new" placeholder="至少8位"></div>
       <div class="form-group"><label>确认新密码</label><input type="password" id="cp-confirm" placeholder="再次输入新密码"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="SettingsPage.submitChangePassword()">确认</button>
+        <button class="btn" ${Formatter.event('click', 'settings-9')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'settings-12')} >确认</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -153,8 +153,8 @@ const SettingsPage = {
       <div class="form-group"><label>姓名</label><input type="text" id="u-name" placeholder="显示姓名"></div>
       <div class="form-group"><label>角色</label><select id="u-role"><option value="admin">管理员</option><option value="warehouse_manager">仓库管理员</option><option value="store_clerk">门店店员</option></select></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="SettingsPage.submitUser()">确认</button>
+        <button class="btn" ${Formatter.event('click', 'settings-9')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'settings-13')} >确认</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -223,7 +223,7 @@ const SettingsPage = {
       ${backups.map(b => `<tr>
         <td>${b.date || b.filename}</td>
         <td>${b.size_label}</td>
-        <td><button class="btn btn-warning btn-sm" onclick="SettingsPage.restoreBackup('${b.filename}')">恢复</button></td>
+        <td><button class="btn btn-warning btn-sm" ${Formatter.event('click', 'settings-14', b.filename)} >恢复</button></td>
       </tr>`).join('')}
     </tbody></table>`;
   },
@@ -240,3 +240,19 @@ const SettingsPage = {
 };
 
 Formatter.onAction('location-edit', (...args) => SettingsPage.showEditLocation(...args));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("settings-1", function(event) { return SettingsPage.addLocation(); });
+Formatter.onEvent("settings-2", function(event) { return SettingsPage.showAddUser(); });
+Formatter.onEvent("settings-3", function(event) { return SettingsPage.showChangePassword(); });
+Formatter.onEvent("settings-4", function(event) { return SettingsPage.backupDb(); });
+Formatter.onEvent("settings-5", function(event) { return SettingsPage.exportExcel('stock'); });
+Formatter.onEvent("settings-6", function(event) { return SettingsPage.exportExcel('movements'); });
+Formatter.onEvent("settings-7", function(event) { return SettingsPage.exportExcel('sales'); });
+Formatter.onEvent("settings-8", function(event, arg0) { return SettingsPage.deleteLocation(arg0); });
+Formatter.onEvent("settings-9", function(event) { return this.closest('.modal-overlay').remove(); });
+Formatter.onEvent("settings-10", function(event, arg0) { return SettingsPage.submitEditLocation(arg0); });
+Formatter.onEvent("settings-11", function(event, arg0) { return SettingsPage.deleteUser(arg0); });
+Formatter.onEvent("settings-12", function(event) { return SettingsPage.submitChangePassword(); });
+Formatter.onEvent("settings-13", function(event) { return SettingsPage.submitUser(); });
+Formatter.onEvent("settings-14", function(event, arg0) { return SettingsPage.restoreBackup(arg0); });

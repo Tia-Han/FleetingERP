@@ -21,16 +21,16 @@ const DashboardPage = {
       <div class="card">
         <h2>今日操作</h2>
         ${d.today_movements.length === 0 ? '<p>今日暂无操作</p>' : `<table><thead><tr><th>操作类型</th><th>次数</th></tr></thead><tbody>
-          ${d.today_movements.map(m => `<tr><td><a href="#" onclick="DashboardPage.jumpToMovement('${m.movement_type}');return false;" style="color:#0d9488;text-decoration:none">${Formatter.movementTypeLabel(m.movement_type)}</a></td><td>${m.count}</td></tr>`).join('')}
+          ${d.today_movements.map(m => `<tr><td><a href="#" ${Formatter.event('click', 'dashboard-1', m.movement_type)}  style="color:#0d9488;text-decoration:none">${Formatter.movementTypeLabel(m.movement_type)}</a></td><td>${m.count}</td></tr>`).join('')}
         </tbody></table>`}
       </div>
       <div class="card">
         <h2>快捷操作</h2>
         <div style="display:flex;gap:12px">
-          <button class="btn btn-primary" onclick="App.navigate('stockIn')">入库</button>
-          <button class="btn btn-primary" onclick="App.navigate('split')">分装</button>
-          <button class="btn btn-primary" onclick="App.navigate('sales')">开单</button>
-          <button class="btn btn-primary" onclick="App.navigate('transfer')">调拨</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-2')} >入库</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-3')} >分装</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-4')} >开单</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-5')} >调拨</button>
         </div>
       </div>`;
   },
@@ -66,3 +66,10 @@ const DashboardPage = {
     }
   }
 };
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("dashboard-1", function(event, arg0) { DashboardPage.jumpToMovement(arg0);return false; });
+Formatter.onEvent("dashboard-2", function(event) { return App.navigate('stockIn'); });
+Formatter.onEvent("dashboard-3", function(event) { return App.navigate('split'); });
+Formatter.onEvent("dashboard-4", function(event) { return App.navigate('sales'); });
+Formatter.onEvent("dashboard-5", function(event) { return App.navigate('transfer'); });

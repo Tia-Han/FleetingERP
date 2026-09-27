@@ -18,8 +18,8 @@ const ProductsPage = {
   _renderShell() {
     document.getElementById('content').innerHTML = `
       <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #eee">
-        <div class="pp-tab" data-sheet="products" onclick="ProductsPage.switchSheet('products')" style="padding:12px 24px;cursor:pointer;border-bottom:2px solid #3498db;font-weight:bold;margin-bottom:-2px">商品管理</div>
-        <div class="pp-tab" data-sheet="brands" onclick="ProductsPage.switchSheet('brands')" style="padding:12px 24px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">品牌管理</div>
+        <div class="pp-tab" data-sheet="products" ${Formatter.event('click', 'products-1')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid #3498db;font-weight:bold;margin-bottom:-2px">商品管理</div>
+        <div class="pp-tab" data-sheet="brands" ${Formatter.event('click', 'products-2')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">品牌管理</div>
       </div>
       <div id="pp-sheet-content"></div>`;
   },
@@ -40,8 +40,8 @@ const ProductsPage = {
       <div class="card">
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <input type="text" id="p-search" placeholder="搜索商品名/品牌/品类" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
-          <button class="btn btn-primary" onclick="ProductsPage.doSearch()">搜索</button>
-          <button class="btn btn-success" onclick='ProductsPage.showAddProduct()'>+ 新增商品</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'products-3')} >搜索</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'products-4')} >+ 新增商品</button>
         </div>
         <div id="p-search-results"></div>
         <div class="table-wrapper"><div id="p-table"><table><thead><tr><th>品牌</th><th>商品名</th><th>品类</th><th>可分装</th><th>SKU 变体</th><th>操作</th></tr></thead><tbody>
@@ -72,12 +72,12 @@ const ProductsPage = {
       <div class="card">
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <input type="text" id="brand-name" placeholder="品牌名称" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px">
-          <button class="btn btn-success" onclick="ProductsPage.addBrand()">添加品牌</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'products-5')} >添加品牌</button>
         </div>
         <div class="table-wrapper"><table><thead><tr><th>品牌</th><th>商品数</th><th>操作</th></tr></thead><tbody>
           ${brands.map(b => `<tr><td>${esc(b.name)}</td><td>${b.product_count}</td><td>
             <button class="btn btn-primary btn-sm" ${Formatter.action('brand-edit', b.id, b.name)}>修改</button>
-            <button class="btn btn-danger btn-sm" onclick="ProductsPage.deleteBrand(${b.id})">删除</button>
+            <button class="btn btn-danger btn-sm" ${Formatter.event('click', 'products-6', b.id)} >删除</button>
           </td></tr>`).join('')}
         </tbody></table></div>
       </div>`;
@@ -87,9 +87,9 @@ const ProductsPage = {
     return products.map(p => `<tr><td>${esc(p.brand_name)}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td><td>${p.is_splittable ? '是' : '否'}</td>
       <td>${p.skus.map(s => `<span class="badge badge-success" style="margin-right:4px">${esc(s.volume)} ${Formatter.money(s.retail_price)}</span>`).join('') || '<span style="color:#999">无</span>'}</td>
       <td>
-        <button class="btn btn-primary btn-sm" onclick="ProductsPage.showEditProduct(${p.id})">修改</button>
-        <button class="btn btn-sm" onclick="ProductsPage.showAddSku(${p.id})">+SKU</button>
-        <button class="btn btn-danger btn-sm" onclick="ProductsPage.deleteProduct(${p.id})">删除</button>
+        <button class="btn btn-primary btn-sm" ${Formatter.event('click', 'products-7', p.id)} >修改</button>
+        <button class="btn btn-sm" ${Formatter.event('click', 'products-8', p.id)} >+SKU</button>
+        <button class="btn btn-danger btn-sm" ${Formatter.event('click', 'products-9', p.id)} >删除</button>
       </td></tr>`).join('');
   },
 
@@ -125,8 +125,8 @@ const ProductsPage = {
       <h2>修改品牌</h2>
       <div class="form-group"><label>品牌名称</label><input type="text" id="edit-brand-name" value="${esc(name)}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="ProductsPage.submitEditBrand(${id})">保存</button>
+        <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'products-11', id)} >保存</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -183,8 +183,8 @@ const ProductsPage = {
         <div id="p-sku-list"></div>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="ProductsPage.submitProduct()">确认创建</button>
+        <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'products-12')} >确认创建</button>
       </div></div>`;
     document.body.appendChild(overlay);
 
@@ -213,14 +213,14 @@ const ProductsPage = {
         <table style="font-size:13px"><thead><tr><th>规格</th><th>容量(ml)</th><th>成本价</th><th>零售价</th><th>库存预警</th><th>操作</th></tr></thead><tbody>
           ${p.skus.map(s => `<tr>
             <td>${esc(s.volume)}</td><td>${esc(s.volume_ml)}</td><td>${Formatter.money(s.cost_price)}</td><td>${Formatter.money(s.retail_price)}</td><td>${esc(s.low_stock_threshold)}</td>
-            <td><button class="btn btn-primary btn-sm" onclick="ProductsPage.showEditSku(${s.id})">改</button></td>
+            <td><button class="btn btn-primary btn-sm" ${Formatter.event('click', 'products-13', s.id)} >改</button></td>
           </tr>`).join('') || '<tr><td colspan="6" style="color:#999;text-align:center">无SKU</td></tr>'}
         </tbody></table>
-        <button class="btn btn-sm btn-primary" style="margin-top:8px" onclick="ProductsPage.showAddSku(${id})">+ 添加 SKU</button>
+        <button class="btn btn-sm btn-primary" style="margin-top:8px" ${Formatter.event('click', 'products-8', id)} >+ 添加 SKU</button>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="ProductsPage.submitEditProduct(${id})">保存</button>
+        <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'products-14', id)} >保存</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -243,8 +243,8 @@ const ProductsPage = {
       <div class="form-group"><label>零售价</label><input type="number" id="es-retail" value="${esc(sku.retail_price)}" step="0.01"></div>
       <div class="form-group"><label>库存预警</label><input type="number" id="es-threshold" value="${esc(sku.low_stock_threshold)}"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="ProductsPage.submitEditSku(${skuId})">保存</button>
+        <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'products-15', skuId)} >保存</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -378,8 +378,8 @@ const ProductsPage = {
       <div class="form-group"><label>零售价</label><input type="number" id="s-retail" value="0" step="0.01"></div>
       <div class="form-group"><label>库存预警</label><input type="number" id="s-threshold" value="0"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="ProductsPage.submitSku(${productId})">确认</button>
+        <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'products-16', productId)} >确认</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -401,3 +401,21 @@ const ProductsPage = {
 };
 
 Formatter.onAction('brand-edit', (...args) => ProductsPage.showEditBrand(...args));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("products-1", function(event) { return ProductsPage.switchSheet('products'); });
+Formatter.onEvent("products-2", function(event) { return ProductsPage.switchSheet('brands'); });
+Formatter.onEvent("products-3", function(event) { return ProductsPage.doSearch(); });
+Formatter.onEvent("products-4", function(event) { return ProductsPage.showAddProduct(); });
+Formatter.onEvent("products-5", function(event) { return ProductsPage.addBrand(); });
+Formatter.onEvent("products-6", function(event, arg0) { return ProductsPage.deleteBrand(arg0); });
+Formatter.onEvent("products-7", function(event, arg0) { return ProductsPage.showEditProduct(arg0); });
+Formatter.onEvent("products-8", function(event, arg0) { return ProductsPage.showAddSku(arg0); });
+Formatter.onEvent("products-9", function(event, arg0) { return ProductsPage.deleteProduct(arg0); });
+Formatter.onEvent("products-10", function(event) { return this.closest('.modal-overlay').remove(); });
+Formatter.onEvent("products-11", function(event, arg0) { return ProductsPage.submitEditBrand(arg0); });
+Formatter.onEvent("products-12", function(event) { return ProductsPage.submitProduct(); });
+Formatter.onEvent("products-13", function(event, arg0) { return ProductsPage.showEditSku(arg0); });
+Formatter.onEvent("products-14", function(event, arg0) { return ProductsPage.submitEditProduct(arg0); });
+Formatter.onEvent("products-15", function(event, arg0) { return ProductsPage.submitEditSku(arg0); });
+Formatter.onEvent("products-16", function(event, arg0) { return ProductsPage.submitSku(arg0); });

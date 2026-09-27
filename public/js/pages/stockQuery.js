@@ -7,12 +7,12 @@ const StockQueryPage = {
     const categories = catRes.success ? catRes.data : [];
     document.getElementById('content').innerHTML = `
       <div class="card">
-        <h2>库存查询 <button class="btn btn-sm" style="float:right" onclick="StockQueryPage.showCategoryManager()">品类管理</button></h2>
+        <h2>库存查询 <button class="btn btn-sm" style="float:right" ${Formatter.event('click', 'stockQuery-1')} >品类管理</button></h2>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">
-          <div class="form-group" style="margin:0"><label>场所</label><select id="sq-location" onchange="StockQueryPage.load()"><option value="">全部</option>${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
-          <div class="form-group" style="margin:0"><label>品类</label><select id="sq-category" onchange="StockQueryPage.load()"><option value="">全部</option>${categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}</select></div>
-          <div class="form-group" style="margin:0"><label>规格类型</label><select id="sq-spec" onchange="StockQueryPage.load()"><option value="">全部</option><option value="整装">整装</option><option value="分装">分装</option></select></div>
-          <div class="form-group" style="margin:0"><label>预警</label><select id="sq-alert" onchange="StockQueryPage.load()"><option value="">全部</option><option value="low">低库存</option><option value="zero">无库存</option></select></div>
+          <div class="form-group" style="margin:0"><label>场所</label><select id="sq-location" ${Formatter.event('change', 'stockQuery-2')} ><option value="">全部</option>${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="margin:0"><label>品类</label><select id="sq-category" ${Formatter.event('change', 'stockQuery-2')} ><option value="">全部</option>${categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="margin:0"><label>规格类型</label><select id="sq-spec" ${Formatter.event('change', 'stockQuery-2')} ><option value="">全部</option><option value="整装">整装</option><option value="分装">分装</option></select></div>
+          <div class="form-group" style="margin:0"><label>预警</label><select id="sq-alert" ${Formatter.event('change', 'stockQuery-2')} ><option value="">全部</option><option value="low">低库存</option><option value="zero">无库存</option></select></div>
           <div class="form-group" style="margin:0"><label>搜索</label><input type="text" id="sq-search" placeholder="商品名/条码（支持单字模糊）"></div>
         </div>
       </div>
@@ -53,7 +53,7 @@ const StockQueryPage = {
       <h2>品类管理</h2>
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <input type="text" id="cat-new-name" placeholder="新品类名称" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
-        <button class="btn btn-primary" onclick="StockQueryPage.addCategory()">添加</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'stockQuery-3')} >添加</button>
       </div>
       <table><thead><tr><th>品类</th><th>操作</th></tr></thead><tbody id="cat-list">
         ${categories.map(c => `<tr id="cat-row-${c.id}"><td id="cat-cell-${c.id}">${esc(c.name)}</td><td>
@@ -62,7 +62,7 @@ const StockQueryPage = {
         </td></tr>`).join('')}
       </tbody></table>
       <div style="margin-top:12px;text-align:right">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove(); StockQueryPage.render()">关闭</button>
+        <button class="btn" ${Formatter.event('click', 'stockQuery-4')} >关闭</button>
       </div>
     </div>`;
     document.body.appendChild(overlay);
@@ -138,3 +138,9 @@ const StockQueryPage = {
 Formatter.onAction('category-edit', (...args) => StockQueryPage.editCategory(...args));
 Formatter.onAction('category-delete', (name) => StockQueryPage.deleteCategory(name));
 Formatter.onAction('category-save', (name) => StockQueryPage.saveCategoryRename(name));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("stockQuery-1", function(event) { return StockQueryPage.showCategoryManager(); });
+Formatter.onEvent("stockQuery-2", function(event) { return StockQueryPage.load(); });
+Formatter.onEvent("stockQuery-3", function(event) { return StockQueryPage.addCategory(); });
+Formatter.onEvent("stockQuery-4", function(event) { this.closest('.modal-overlay').remove(); StockQueryPage.render() });

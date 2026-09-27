@@ -16,8 +16,8 @@ const SalesPage = {
   _renderShell() {
     document.getElementById('content').innerHTML = `
       <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #eee">
-        <div class="sl-tab" data-tab="new" onclick="SalesPage.switchTab('new')" style="padding:12px 24px;cursor:pointer;border-bottom:2px solid #3498db;font-weight:bold;margin-bottom:-2px">销售开单</div>
-        <div class="sl-tab" data-tab="history" onclick="SalesPage.switchTab('history')" style="padding:12px 24px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">销售历史</div>
+        <div class="sl-tab" data-tab="new" ${Formatter.event('click', 'sales-1')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid #3498db;font-weight:bold;margin-bottom:-2px">销售开单</div>
+        <div class="sl-tab" data-tab="history" ${Formatter.event('click', 'sales-2')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">销售历史</div>
       </div>
       <div id="sl-tab-content"></div>`;
   },
@@ -44,14 +44,14 @@ const SalesPage = {
           <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0"><label>客户</label>
             <div style="display:flex;gap:8px">
               <input type="text" id="sl-customer-search" placeholder="搜索微信名/手机号" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:250px">
-              <button class="btn btn-primary btn-sm" onclick="SalesPage.showAddCustomer()">+ 新增</button>
-              <button class="btn btn-sm" onclick="SalesPage.setCustomer(null)">散客</button>
+              <button class="btn btn-primary btn-sm" ${Formatter.event('click', 'sales-3')} >+ 新增</button>
+              <button class="btn btn-sm" ${Formatter.event('click', 'sales-4')} >散客</button>
             </div>
           </div>
           <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0"><label>添加商品</label>
             <div style="display:flex;gap:8px">
               <input type="text" id="sl-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:250px">
-              <button class="btn btn-success btn-sm" onclick="Scanner.usbScan(code => SalesPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info btn-sm" onclick="Scanner.cameraScan(code => SalesPage.onBarcodeScan(code))">相机</button>
+              <button class="btn btn-success btn-sm" ${Formatter.event('click', 'sales-5')} >扫码枪</button><button class="btn btn-info btn-sm" ${Formatter.event('click', 'sales-6')} >相机</button>
             </div>
           </div>
         </div>
@@ -70,8 +70,8 @@ const SalesPage = {
           <div class="form-group" style="margin-bottom:0"><label>商品小计</label><input type="text" id="sl-subtotal" readonly value="${Formatter.money(0)}"></div>
           <div class="form-group" style="margin-bottom:0"><label>折扣</label>
             <div style="display:flex;gap:0">
-              <input type="number" id="sl-discount" value="0" min="0" step="0.01" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px 0 0 4px" oninput="SalesPage.calcAmount()">
-              <button id="sl-discount-mode" class="btn btn-sm" style="border-radius:0 4px 4px 0;border:1px solid #ddd;border-left:none" onclick="SalesPage.toggleDiscountMode()">%</button>
+              <input type="number" id="sl-discount" value="0" min="0" step="0.01" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px 0 0 4px" ${Formatter.event('input', 'sales-7')} >
+              <button id="sl-discount-mode" class="btn btn-sm" style="border-radius:0 4px 4px 0;border:1px solid #ddd;border-left:none" ${Formatter.event('click', 'sales-8')} >%</button>
             </div>
           </div>
           <div class="form-group" style="margin-bottom:0"><label>本次积分</label><input type="text" id="sl-points-earned" readonly value="0" style="color:#27ae60;font-weight:bold"><small id="sl-points-hint">10元=1分</small></div>
@@ -82,7 +82,7 @@ const SalesPage = {
             <select id="sl-pay-method"><option value="wechat">微信</option><option value="alipay">支付宝</option><option value="cash">现金</option><option value="card">银行卡</option></select>
           </div>
           <div class="form-group" style="flex:1;margin-bottom:0"><label>应付金额</label><input type="text" id="sl-final" readonly value="${Formatter.money(0)}" style="font-weight:bold;font-size:18px;color:#e74c3c"></div>
-          <button class="btn btn-success" style="flex:0 0 auto;padding:12px 32px;font-size:16px" onclick="SalesPage.submit()">确认收款</button>
+          <button class="btn btn-success" style="flex:0 0 auto;padding:12px 32px;font-size:16px" ${Formatter.event('click', 'sales-9')} >确认收款</button>
         </div>
       </div>`;
     this.renderItems();
@@ -153,8 +153,8 @@ const SalesPage = {
                 <td>+${s.points_earned}</td>
                 <td>${esc(s.operator || '')}</td>
                 <td>
-                  <button class="btn btn-sm" onclick="SalesPage.showSaleDetail(${s.id})">详情</button>
-                  <button class="btn btn-sm btn-info" onclick="SalesPage.printReceipt(${s.id})">小票</button>
+                  <button class="btn btn-sm" ${Formatter.event('click', 'sales-10', s.id)} >详情</button>
+                  <button class="btn btn-sm btn-info" ${Formatter.event('click', 'sales-11', s.id)} >小票</button>
                 </td>
               </tr>`).join('')}
             </tbody>
@@ -189,8 +189,8 @@ const SalesPage = {
           <p>获得积分: ${s.points_earned}</p>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-          <button class="btn" onclick="this.closest('.modal-overlay').remove()">关闭</button>
-          <button class="btn btn-info" onclick="SalesPage.printReceipt(${s.id})">打印小票</button>
+          <button class="btn" ${Formatter.event('click', 'sales-12')} >关闭</button>
+          <button class="btn btn-info" ${Formatter.event('click', 'sales-11', s.id)} >打印小票</button>
         </div>
       </div>`;
       document.body.appendChild(overlay);
@@ -249,8 +249,8 @@ const SalesPage = {
       <div class="form-group"><label>手机号</label><input type="text" id="sl-add-phone" placeholder="手机号"></div>
       <div class="form-group"><label>备注</label><input type="text" id="sl-add-remark" placeholder="备注（可选）"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="SalesPage.submitAddCustomer()">确认</button>
+        <button class="btn" ${Formatter.event('click', 'sales-12')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'sales-13')} >确认</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -286,8 +286,8 @@ const SalesPage = {
       <div class="form-group"><label>手机号</label><input type="text" id="sl-quick-phone" value="${esc(/^1\d{10}$/.test(keyword) ? keyword : '')}"></div>
       <div class="form-group"><label>备注</label><input type="text" id="sl-quick-remark" placeholder="备注（可选）"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="SalesPage.submitQuickAddCustomer()">确认</button>
+        <button class="btn" ${Formatter.event('click', 'sales-12')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'sales-14')} >确认</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -347,10 +347,10 @@ const SalesPage = {
     if (this.items.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999">暂无商品</td></tr>'; return; }
     tbody.innerHTML = this.items.map((item, idx) => `<tr>
       <td>${esc(item.product_name)}</td><td>${esc(item.volume)}</td>
-      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" onchange="SalesPage.updateQty(${idx}, this.value)"></td>
-      <td><input type="number" value="${item.unit_price}" min="0" step="0.01" style="width:80px" onchange="SalesPage.updatePrice(${idx}, this.value)"></td>
+      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" ${Formatter.event('change', 'sales-15', idx)} ></td>
+      <td><input type="number" value="${item.unit_price}" min="0" step="0.01" style="width:80px" ${Formatter.event('change', 'sales-16', idx)} ></td>
       <td>${Formatter.money(item.quantity * item.unit_price)}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="SalesPage.removeItem(${idx})">删除</button></td></tr>`).join('');
+      <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'sales-17', idx)} >删除</button></td></tr>`).join('');
   },
 
   async updateQty(idx, val) {
@@ -449,11 +449,31 @@ const SalesPage = {
       <h2>销售成功</h2>
       <p style="color:#666;margin:8px 0">销售单号: #${saleId}</p>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:20px">
-        <button class="btn btn-info" onclick="SalesPage.printReceipt(${saleId})">打印小票</button>
-        <button class="btn" onclick="SalesPage.switchTab('history')">查看历史</button>
-        <button class="btn btn-primary" onclick="this.closest('.modal-overlay').remove();SalesPage.render()">继续开单</button>
+        <button class="btn btn-info" ${Formatter.event('click', 'sales-11', saleId)} >打印小票</button>
+        <button class="btn" ${Formatter.event('click', 'sales-2')} >查看历史</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'sales-18')} >继续开单</button>
       </div>
     </div>`;
     document.body.appendChild(overlay);
   }
 };
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("sales-1", function(event) { return SalesPage.switchTab('new'); });
+Formatter.onEvent("sales-2", function(event) { return SalesPage.switchTab('history'); });
+Formatter.onEvent("sales-3", function(event) { return SalesPage.showAddCustomer(); });
+Formatter.onEvent("sales-4", function(event) { return SalesPage.setCustomer(null); });
+Formatter.onEvent("sales-5", function(event) { return Scanner.usbScan(code => SalesPage.onBarcodeScan(code)); });
+Formatter.onEvent("sales-6", function(event) { return Scanner.cameraScan(code => SalesPage.onBarcodeScan(code)); });
+Formatter.onEvent("sales-7", function(event) { return SalesPage.calcAmount(); });
+Formatter.onEvent("sales-8", function(event) { return SalesPage.toggleDiscountMode(); });
+Formatter.onEvent("sales-9", function(event) { return SalesPage.submit(); });
+Formatter.onEvent("sales-10", function(event, arg0) { return SalesPage.showSaleDetail(arg0); });
+Formatter.onEvent("sales-11", function(event, arg0) { return SalesPage.printReceipt(arg0); });
+Formatter.onEvent("sales-12", function(event) { return this.closest('.modal-overlay').remove(); });
+Formatter.onEvent("sales-13", function(event) { return SalesPage.submitAddCustomer(); });
+Formatter.onEvent("sales-14", function(event) { return SalesPage.submitQuickAddCustomer(); });
+Formatter.onEvent("sales-15", function(event, arg0) { return SalesPage.updateQty(arg0, this.value); });
+Formatter.onEvent("sales-16", function(event, arg0) { return SalesPage.updatePrice(arg0, this.value); });
+Formatter.onEvent("sales-17", function(event, arg0) { return SalesPage.removeItem(arg0); });
+Formatter.onEvent("sales-18", function(event) { this.closest('.modal-overlay').remove();SalesPage.render() });

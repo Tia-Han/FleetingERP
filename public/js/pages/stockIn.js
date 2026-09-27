@@ -20,8 +20,8 @@ const StockInPage = {
     document.getElementById('content').innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="tab-bar" style="display:flex;border-bottom:1px solid #e5e7eb">
-          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" onclick="StockInPage.switchTab('form')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">入库开单</div>
-          <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" onclick="StockInPage.switchTab('history')" style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
+          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" ${Formatter.event('click', 'stockIn-1')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">入库开单</div>
+          <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" ${Formatter.event('click', 'stockIn-2')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
         </div>
       </div>
       <div id="si-tab-content"></div>`;
@@ -53,8 +53,8 @@ const StockInPage = {
         <h2>添加商品</h2>
         <div style="display:flex;gap:8px">
           <input type="text" id="si-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
-          <button class="btn btn-success" onclick="Scanner.usbScan(code => StockInPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info" onclick="Scanner.cameraScan(code => StockInPage.onBarcodeScan(code))">相机扫码</button>
-          <button class="btn btn-primary" onclick="StockInPage.showManualAdd()">手动添加</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'stockIn-3')} >扫码枪</button><button class="btn btn-info" ${Formatter.event('click', 'stockIn-4')} >相机扫码</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'stockIn-5')} >手动添加</button>
         </div>
         <div id="si-search-results" style="margin-top:12px"></div>
       </div>
@@ -62,7 +62,7 @@ const StockInPage = {
         <h2>入库明细</h2>
         <div class="table-wrapper"><table><thead><tr><th>商品</th><th>规格</th><th>数量</th><th>成本单价</th><th>小计</th><th>操作</th></tr></thead><tbody id="si-items-body"></tbody></table></div>
         <div id="si-total" style="margin-top:12px;font-size:16px;font-weight:bold"></div>
-        <button class="btn btn-success" style="margin-top:12px" onclick="StockInPage.submit()">确认入库</button>
+        <button class="btn btn-success" style="margin-top:12px" ${Formatter.event('click', 'stockIn-6')} >确认入库</button>
       </div>`;
 
     const locRes = await API.getLocations();
@@ -152,10 +152,10 @@ const StockInPage = {
     }
     tbody.innerHTML = this.items.map((item, idx) => `<tr>
       <td>${esc(item.product_name)}</td><td>${esc(item.volume)}</td>
-      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" onchange="StockInPage.updateQty(${idx}, this.value)"></td>
-      <td><input type="number" value="${item.unit_cost}" min="0" step="0.01" style="width:80px" onchange="StockInPage.updateCost(${idx}, this.value)"></td>
+      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" ${Formatter.event('change', 'stockIn-7', idx)} ></td>
+      <td><input type="number" value="${item.unit_cost}" min="0" step="0.01" style="width:80px" ${Formatter.event('change', 'stockIn-8', idx)} ></td>
       <td>${Formatter.money(item.quantity * item.unit_cost)}</td>
-      <td><button class="btn btn-danger btn-sm" onclick="StockInPage.removeItem(${idx})">删除</button></td></tr>`).join('');
+      <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'stockIn-9', idx)} >删除</button></td></tr>`).join('');
     const total = this.items.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
     const totalEl = document.getElementById('si-total');
     if (totalEl) totalEl.textContent = `入库总成本: ${Formatter.money(total)}`;
@@ -189,7 +189,7 @@ const StockInPage = {
       <div class="form-group"><label style="font-size:14px">输入条码</label><input type="text" id="ma-barcode" placeholder="输入条码后回车" style="font-size:16px;padding:10px" autofocus></div>
       <p style="color:#999;font-size:13px;margin-bottom:16px">输入条码后回车，系统将查询商品。未找到则弹出新品创建界面。</p>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
+        <button class="btn" ${Formatter.event('click', 'stockIn-10')} >取消</button>
         <button class="btn btn-primary" id="ma-confirm-btn">查询</button>
       </div>
     </div>`;
@@ -242,14 +242,14 @@ const StockInPage = {
     document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>开始日期</label><input type="date" id="sih-start" value="${this.historyFilters.start_date}" style="width:100%" onchange="StockInPage.onHistoryFilterChange()"></div>
-          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>结束日期</label><input type="date" id="sih-end" value="${this.historyFilters.end_date}" style="width:100%" onchange="StockInPage.onHistoryFilterChange()"></div>
+          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>开始日期</label><input type="date" id="sih-start" value="${this.historyFilters.start_date}" style="width:100%" ${Formatter.event('change', 'stockIn-11')} ></div>
+          <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>结束日期</label><input type="date" id="sih-end" value="${this.historyFilters.end_date}" style="width:100%" ${Formatter.event('change', 'stockIn-11')} ></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>操作人</label>
-            <select id="sih-operator" style="width:100%" onchange="StockInPage.onOperatorChange()">${operatorOptions}</select>
+            <select id="sih-operator" style="width:100%" ${Formatter.event('change', 'stockIn-12')} >${operatorOptions}</select>
           </div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>供应商</label><input type="text" id="sih-supplier" placeholder="搜索供应商" value="${esc(this.historyFilters.supplier)}" style="width:100%" oninput="StockInPage.onDebounceSearch('supplier', this.value)"></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="sih-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" oninput="StockInPage.onDebounceSearch('product', this.value)"></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="sih-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" oninput="StockInPage.onDebounceSearch('brand', this.value)"></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>供应商</label><input type="text" id="sih-supplier" placeholder="搜索供应商" value="${esc(this.historyFilters.supplier)}" style="width:100%" ${Formatter.event('input', 'stockIn-13')} ></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="sih-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" ${Formatter.event('input', 'stockIn-14')} ></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="sih-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" ${Formatter.event('input', 'stockIn-15')} ></div>
         </div>
       </div>
       <div class="card">
@@ -320,7 +320,7 @@ const StockInPage = {
                   <td style="color:#0d9488;font-weight:500">${Formatter.money(order.total_cost)}</td>
                   <td>${esc(order.operator || '-')}</td>
                   <td>${esc(order.remark || '-')}</td>
-                  <td><button class="btn btn-sm btn-info" onclick="StockInPage.showDetail(${order.id})">查看详情</button></td>
+                  <td><button class="btn btn-sm btn-info" ${Formatter.event('click', 'stockIn-16', order.id)} >查看详情</button></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -372,7 +372,7 @@ const StockInPage = {
           合计：${Formatter.money(order.total_cost)}
         </div>
         <div style="display:flex;justify-content:flex-end;margin-top:20px">
-          <button class="btn" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+          <button class="btn" ${Formatter.event('click', 'stockIn-10')} >关闭</button>
         </div>
       </div>`;
       document.body.appendChild(overlay);
@@ -383,3 +383,21 @@ const StockInPage = {
 };
 
 Formatter.onAction('stockIn-select', (value) => StockInPage.addItem(value));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("stockIn-1", function(event) { return StockInPage.switchTab('form'); });
+Formatter.onEvent("stockIn-2", function(event) { return StockInPage.switchTab('history'); });
+Formatter.onEvent("stockIn-3", function(event) { return Scanner.usbScan(code => StockInPage.onBarcodeScan(code)); });
+Formatter.onEvent("stockIn-4", function(event) { return Scanner.cameraScan(code => StockInPage.onBarcodeScan(code)); });
+Formatter.onEvent("stockIn-5", function(event) { return StockInPage.showManualAdd(); });
+Formatter.onEvent("stockIn-6", function(event) { return StockInPage.submit(); });
+Formatter.onEvent("stockIn-7", function(event, arg0) { return StockInPage.updateQty(arg0, this.value); });
+Formatter.onEvent("stockIn-8", function(event, arg0) { return StockInPage.updateCost(arg0, this.value); });
+Formatter.onEvent("stockIn-9", function(event, arg0) { return StockInPage.removeItem(arg0); });
+Formatter.onEvent("stockIn-10", function(event) { return this.closest('.modal-overlay').remove(); });
+Formatter.onEvent("stockIn-11", function(event) { return StockInPage.onHistoryFilterChange(); });
+Formatter.onEvent("stockIn-12", function(event) { return StockInPage.onOperatorChange(); });
+Formatter.onEvent("stockIn-13", function(event) { return StockInPage.onDebounceSearch('supplier', this.value); });
+Formatter.onEvent("stockIn-14", function(event) { return StockInPage.onDebounceSearch('product', this.value); });
+Formatter.onEvent("stockIn-15", function(event) { return StockInPage.onDebounceSearch('brand', this.value); });
+Formatter.onEvent("stockIn-16", function(event, arg0) { return StockInPage.showDetail(arg0); });

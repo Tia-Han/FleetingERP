@@ -25,21 +25,34 @@ const App = {
           <h2>暗香·Fleeting</h2>
           <div class="form-group"><label>用户名</label><input type="text" id="login-username" placeholder="用户名"></div>
           <div class="form-group"><label>密码</label><input type="password" id="login-password" placeholder="密码"></div>
-          <button class="btn btn-primary" style="width:100%" onclick="App.login()">登录</button>
+          <button id="login-submit" class="btn btn-primary" style="width:100%" ${Formatter.event('click', 'app-1')} >登录</button>
         </div>
       </div>`;
   },
 
   async login() {
-    const username = document.getElementById('login-username').value;
+    if (this._loginPending) return;
+    const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value;
-    const res = await API.login(username, password);
-    if (res.success) {
+    if (!username || !password) { this.toast('请输入用户名和密码', 'error'); return; }
+    const button = document.getElementById('login-submit');
+    this._loginPending = true;
+    if (button) { button.disabled = true; button.textContent = '登录中…'; }
+    try {
+      const res = await API.login(username, password);
+      if (!res.success) { this.toast(res.message || '登录失败，请重试', 'error'); return; }
       API.setToken(res.data.token);
       this.currentUser = res.data.user;
-      this.renderSidebar();
+      this.currentLocation = localStorage.getItem('currentLocation') || '';
+      await this.renderSidebar();
       this.navigate('dashboard');
-    } else { this.toast(res.message, 'error'); }
+    } catch (error) {
+      this.toast('登录未完成，请重试', 'error');
+      console.error(error);
+    } finally {
+      this._loginPending = false;
+      if (button) { button.disabled = false; button.textContent = '登录'; }
+    }
   },
 
   async logout() {
@@ -70,19 +83,19 @@ const App = {
       document.getElementById('sidebar').innerHTML = `
         <div class="sidebar-header">
           <span class="logo">暗香·Fleeting</span>
-          <select class="location-select" onchange="App.changeLocation(this.value)">
+          <select class="location-select" ${Formatter.event('change', 'app-2')} >
             <option value="">全部场所</option>${locOptions}
           </select>
         </div>
         <div class="nav-items">
-          ${visibleItems.map(item => `<span class="nav-item" data-page="${item.key}" onclick="App.navigate('${item.key}')">${item.label}</span>`).join('')}
+          ${visibleItems.map(item => `<span class="nav-item" data-page="${item.key}" ${Formatter.event('click', 'app-3', item.key)} >${item.label}</span>`).join('')}
         </div>
         <div class="sidebar-footer">
-          <span class="user-info">${esc(this.currentUser.name)}<a href="#" onclick="App.logout();return false;">退出</a></span>
+          <span class="user-info">${esc(this.currentUser.name)}<a href="#" ${Formatter.event('click', 'app-4')} >退出</a></span>
         </div>`;
     }
     document.getElementById('topbar').innerHTML = `
-      <button class="mobile-menu-btn" onclick="App.toggleSidebar()">☰</button>
+      <button class="mobile-menu-btn" ${Formatter.event('click', 'app-5')} >☰</button>
       <span class="topbar-title" id="topbar-title">仪表盘</span>`;
     this.updateNavActive(this.currentPage || 'dashboard');
   },
@@ -296,7 +309,7 @@ const App = {
       overlay.innerHTML = `<div class="modal-card" style="width:520px;max-height:90vh;overflow-y:auto">
         <h2 style="margin-bottom:16px">条码查询结果</h2>
         <div style="display:flex;gap:16px;margin-bottom:16px">
-          ${image ? `<img src="${esc(image)}" style="width:100px;height:100px;object-fit:cover;border-radius:8px" onerror="this.style.display='none'">` : ''}
+          ${image ? `<img src="${esc(image)}" style="width:100px;height:100px;object-fit:cover;border-radius:8px" ${Formatter.event('error', 'app-6')} >` : ''}
           <div style="flex:1">
             <p style="font-size:18px;font-weight:bold;margin-bottom:4px">${esc(name)}</p>
             <p style="color:#666;margin-bottom:4px">品牌: ${esc(brand) || '未知'}</p>
@@ -333,7 +346,7 @@ const App = {
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
-          <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
+          <button class="btn" ${Formatter.event('click', 'app-7')} >取消</button>
           <button class="btn btn-primary" id="bp-confirm-btn">确认创建并添加</button>
         </div>
       </div>`;
@@ -412,3 +425,12 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("app-1", function(event) { return App.login(); });
+Formatter.onEvent("app-2", function(event) { return App.changeLocation(this.value); });
+Formatter.onEvent("app-3", function(event, arg0) { return App.navigate(arg0); });
+Formatter.onEvent("app-4", function(event) { App.logout();return false; });
+Formatter.onEvent("app-5", function(event) { return App.toggleSidebar(); });
+Formatter.onEvent("app-6", function(event) { return this.style.display='none'; });
+Formatter.onEvent("app-7", function(event) { return this.closest('.modal-overlay').remove(); });

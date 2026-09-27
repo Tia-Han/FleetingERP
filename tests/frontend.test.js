@@ -5,7 +5,7 @@ const vm = require('vm');
 const path = require('path');
 function browserContext() {
  const nodes = new Map();const listeners={};
- const document={addEventListener:(n,f)=>listeners[n]=f,getElementById:id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',value:''});return nodes.get(id);}};
+ const document={addEventListener:(n,f)=>{const previous=listeners[n];listeners[n]=event=>{previous?.(event);f(event);};},getElementById:id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',value:''});return nodes.get(id);}};
  const context=vm.createContext({document,window:{},console,App:{toast(){}},API:{}});
  const load=file=>vm.runInContext(fs.readFileSync(path.join(__dirname,'..','public/js',file),'utf8'),context);
  load('utils/formatter.js');vm.runInContext('const esc = Formatter.escape;',context);
@@ -17,7 +17,7 @@ test('dynamic event arguments stay data even with quotes, entities and markup',(
  const markup=vm.runInContext("Formatter.action('test', payload)",b.context);
  assert.ok(!markup.includes('<img'));assert.ok(!markup.includes('onclick='));assert.ok(markup.includes('&amp;quot;'));
  let received;vm.runInContext("Formatter.onAction('test', value => window.received(value))",b.context);b.context.window.received=value=>received=value;
- b.listeners.click({target:{closest:()=>({dataset:{action:'test',args:JSON.stringify([payload])}})},preventDefault(){}});
+ b.listeners.click({target:{closest:selector=>selector==='[data-action]'?({dataset:{action:'test',args:JSON.stringify([payload])}}):null},preventDefault(){}});
  assert.equal(received,payload);
 });
 test('location edit button has no interpolated executable handler',async()=>{

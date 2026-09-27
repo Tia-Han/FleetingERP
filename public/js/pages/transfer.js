@@ -14,12 +14,12 @@ const TransferPage = {
           <label>添加商品（扫码或搜索）</label>
           <div style="display:flex;gap:8px">
             <input type="text" id="tr-search" placeholder="扫码或搜索商品（支持单字模糊）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
-            <button class="btn btn-success" onclick="Scanner.usbScan(code => TransferPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info" onclick="Scanner.cameraScan(code => TransferPage.onBarcodeScan(code))">相机扫码</button>
+            <button class="btn btn-success" ${Formatter.event('click', 'transfer-1')} >扫码枪</button><button class="btn btn-info" ${Formatter.event('click', 'transfer-2')} >相机扫码</button>
           </div>
           <div id="tr-search-results" style="margin-top:12px"></div>
         </div>
         <div class="table-wrapper"><table><thead><tr><th>商品</th><th>规格</th><th>当前库存</th><th>数量</th><th>操作</th></tr></thead><tbody id="tr-items-body"></tbody></table></div>
-        <button class="btn btn-success" style="margin-top:12px" onclick="TransferPage.submit()">确认调拨</button>
+        <button class="btn btn-success" style="margin-top:12px" ${Formatter.event('click', 'transfer-3')} >确认调拨</button>
       </div>
       <div class="card"><h2>调拨记录</h2><div id="tr-history"></div></div>`;
     const locRes = await API.getLocations();
@@ -97,8 +97,8 @@ const TransferPage = {
     tbody.innerHTML = this.items.map((item, idx) => `<tr>
       <td>${esc(item.product_name)}</td><td>${esc(item.volume)}</td>
       <td><span style="color:${item.stock < item.quantity ? '#e74c3c' : '#999'}">${esc(item.stock)}</span></td>
-      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" onchange="TransferPage.updateQty(${idx}, this.value)"></td>
-      <td><button class="btn btn-danger btn-sm" onclick="TransferPage.removeItem(${idx})">删除</button></td></tr>`).join('');
+      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" ${Formatter.event('change', 'transfer-4', idx)} ></td>
+      <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'transfer-5', idx)} >删除</button></td></tr>`).join('');
   },
 
   updateQty(idx, val) { this.items[idx].quantity = parseInt(val) || 1; this.renderItems(); },
@@ -132,3 +132,10 @@ const TransferPage = {
 };
 
 Formatter.onAction('transfer-select', (value) => TransferPage.addItem(value));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("transfer-1", function(event) { return Scanner.usbScan(code => TransferPage.onBarcodeScan(code)); });
+Formatter.onEvent("transfer-2", function(event) { return Scanner.cameraScan(code => TransferPage.onBarcodeScan(code)); });
+Formatter.onEvent("transfer-3", function(event) { return TransferPage.submit(); });
+Formatter.onEvent("transfer-4", function(event, arg0) { return TransferPage.updateQty(arg0, this.value); });
+Formatter.onEvent("transfer-5", function(event, arg0) { return TransferPage.removeItem(arg0); });

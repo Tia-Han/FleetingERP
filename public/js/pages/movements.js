@@ -19,7 +19,7 @@ const MovementsPage = {
           <div class="form-group" style="margin:0"><label>类型</label><select id="mv-type"><option value="">全部</option><option value="in">入库</option><option value="out">出库</option><option value="sale">销售</option><option value="split">分装</option><option value="transfer_in">调入</option><option value="transfer_out">调出</option><option value="loss">损耗</option></select></div>
           <div class="form-group" style="margin:0"><label>场所</label><select id="mv-location"><option value="">全部</option>${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
         </div>
-        <button class="btn btn-primary" onclick="MovementsPage.load(1)">查询</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'movements-1')} >查询</button>
       </div>
       <div id="mv-results">加载中...</div>`;
     this.load(1);
@@ -58,9 +58,9 @@ const MovementsPage = {
       paginationHtml = `<div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
         <span style="font-size:13px;color:#7f8c8d">第 ${startIdx}-${endIdx} 条 / 共 ${this.total} 条</span>
         <div style="display:flex;gap:4px">
-          ${this.currentPage > 1 ? `<button class="btn btn-sm" onclick="MovementsPage.load(${this.currentPage - 1})">上一页</button>` : ''}
+          ${this.currentPage > 1 ? `<button class="btn btn-sm" ${Formatter.event('click', 'movements-2', this.currentPage - 1)} >上一页</button>` : ''}
           <span style="padding:4px 8px;font-size:13px">${this.currentPage} / ${totalPages}</span>
-          ${this.currentPage < totalPages ? `<button class="btn btn-sm" onclick="MovementsPage.load(${this.currentPage + 1})">下一页</button>` : ''}
+          ${this.currentPage < totalPages ? `<button class="btn btn-sm" ${Formatter.event('click', 'movements-2', this.currentPage + 1)} >下一页</button>` : ''}
         </div>
       </div>`;
     }
@@ -79,3 +79,7 @@ const MovementsPage = {
     </div>`;
   }
 };
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("movements-1", function(event) { return MovementsPage.load(1); });
+Formatter.onEvent("movements-2", function(event, arg0) { return MovementsPage.load(arg0); });

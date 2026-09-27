@@ -42,3 +42,29 @@ document.addEventListener('click', event => {
     Promise.resolve(handler(...args)).catch(error => console.error(error));
   } catch (error) { console.error(error); }
 });
+
+
+// Only registered functions may run. No eval, Function constructor or executable attributes.
+Formatter.events = Object.create(null);
+Formatter.event = (type, name, ...args) => `data-ui-${type}="${Formatter.escape(name)}" data-ui-${type}-args="${Formatter.escape(JSON.stringify(args))}"`;
+Formatter.onEvent = (name, handler) => { Formatter.events[name] = handler; };
+for (const type of ['click', 'change', 'input', 'keydown', 'error']) {
+  document.addEventListener(type, event => {
+    const attribute = `data-ui-${type}`;
+    let element = event.target.closest?.(`[${attribute}]`);
+    while (element) {
+      const handler = Formatter.events[element.getAttribute(attribute)];
+      if (handler) {
+        try {
+          const args = JSON.parse(element.getAttribute(`${attribute}-args`) || '[]');
+          if (!Array.isArray(args)) throw new Error('Invalid event arguments');
+          const result = handler.call(element, event, ...args);
+          if (result === false) event.preventDefault();
+          Promise.resolve(result).catch(error => console.error(error));
+        } catch (error) { console.error(error); }
+      }
+      if (event.cancelBubble || type === 'error') break;
+      element = element.parentElement?.closest(`[${attribute}]`);
+    }
+  }, type === 'error');
+}

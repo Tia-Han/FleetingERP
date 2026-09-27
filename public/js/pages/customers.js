@@ -5,8 +5,8 @@ const CustomersPage = {
         <h2>客户管理</h2>
         <div style="display:flex;gap:8px;margin-bottom:12px">
           <input type="text" id="cu-search" placeholder="搜索微信名/手机号" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
-          <button class="btn btn-primary" onclick="CustomersPage.search()">搜索</button>
-          <button class="btn btn-success" onclick="CustomersPage.showAdd()">+ 新增客户</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'customers-1')} >搜索</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'customers-2')} >+ 新增客户</button>
         </div>
         <div id="cu-list">加载中...</div>
       </div>`;
@@ -39,9 +39,9 @@ const CustomersPage = {
         <td>${esc(c.wechat_name) || '-'}</td><td>${esc(c.phone) || '-'}</td><td>${esc(c.points)}</td><td>${Formatter.money(c.total_spent)}</td>
         <td>${esc(c.remark) || '-'}</td><td>${Formatter.date(c.created_at)}</td>
         <td>
-          <button class="btn btn-primary btn-sm" onclick="CustomersPage.viewPurchases(${c.id})">购买记录</button>
+          <button class="btn btn-primary btn-sm" ${Formatter.event('click', 'customers-3', c.id)} >购买记录</button>
           <button class="btn btn-sm" ${Formatter.action('customers-select', c)}>编辑</button>
-          <button class="btn btn-danger btn-sm" onclick="CustomersPage.delete(${c.id})">删除</button>
+          <button class="btn btn-danger btn-sm" ${Formatter.event('click', 'customers-4', c.id)} >删除</button>
         </td>
       </tr>`).join('')}
     </tbody></table>`;
@@ -56,8 +56,8 @@ const CustomersPage = {
       <div class="form-group"><label>手机号</label><input type="text" id="cu-phone" placeholder="手机号"></div>
       <div class="form-group"><label>备注</label><input type="text" id="cu-remark" placeholder="备注"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="CustomersPage.submitAdd()">确认</button>
+        <button class="btn" ${Formatter.event('click', 'customers-5')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'customers-6')} >确认</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -82,8 +82,8 @@ const CustomersPage = {
       <div class="form-group"><label>手机号</label><input type="text" id="cu-edit-phone" value="${esc(c.phone) || ''}"></div>
       <div class="form-group"><label>备注</label><input type="text" id="cu-edit-remark" value="${esc(c.remark) || ''}"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
-        <button class="btn btn-primary" onclick="CustomersPage.submitEdit(${c.id})">保存</button>
+        <button class="btn" ${Formatter.event('click', 'customers-5')} >取消</button>
+        <button class="btn btn-primary" ${Formatter.event('click', 'customers-7', c.id)} >保存</button>
       </div></div>`;
     document.body.appendChild(overlay);
   },
@@ -110,7 +110,7 @@ const CustomersPage = {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     if (!res.success || res.data.length === 0) {
-      overlay.innerHTML = `<div class="modal-card"><h2>购买记录</h2><p>暂无购买记录</p><button class="btn" style="margin-top:12px" onclick="this.closest('.modal-overlay').remove()">关闭</button></div>`;
+      overlay.innerHTML = `<div class="modal-card"><h2>购买记录</h2><p>暂无购买记录</p><button class="btn" style="margin-top:12px" ${Formatter.event('click', 'customers-5')} >关闭</button></div>`;
     } else {
       overlay.innerHTML = `<div class="modal-card" style="width:600px">
         <h2>购买记录 (${res.data.length})</h2>
@@ -119,7 +119,7 @@ const CustomersPage = {
             <td>${s.items.map(i => `${esc(i.product_name)} ${esc(i.volume)} x${esc(i.quantity)}`).join(', ')}</td>
             <td>${Formatter.money(s.final_amount)}</td><td>+${s.points_earned}</td></tr>`).join('')}
         </tbody></table>
-        <button class="btn" style="margin-top:12px" onclick="this.closest('.modal-overlay').remove()">关闭</button>
+        <button class="btn" style="margin-top:12px" ${Formatter.event('click', 'customers-5')} >关闭</button>
       </div>`;
     }
     document.body.appendChild(overlay);
@@ -127,3 +127,12 @@ const CustomersPage = {
 };
 
 Formatter.onAction('customers-select', (value) => CustomersPage.showEdit(value));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("customers-1", function(event) { return CustomersPage.search(); });
+Formatter.onEvent("customers-2", function(event) { return CustomersPage.showAdd(); });
+Formatter.onEvent("customers-3", function(event, arg0) { return CustomersPage.viewPurchases(arg0); });
+Formatter.onEvent("customers-4", function(event, arg0) { return CustomersPage.delete(arg0); });
+Formatter.onEvent("customers-5", function(event) { return this.closest('.modal-overlay').remove(); });
+Formatter.onEvent("customers-6", function(event) { return CustomersPage.submitAdd(); });
+Formatter.onEvent("customers-7", function(event, arg0) { return CustomersPage.submitEdit(arg0); });

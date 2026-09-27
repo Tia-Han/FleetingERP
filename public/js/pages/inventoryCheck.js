@@ -13,14 +13,14 @@ const InventoryCheckPage = {
         <h2>库存盘点</h2>
         <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
           <div class="form-group" style="margin:0"><label>盘点场所</label>
-            <select id="ic-location" onchange="InventoryCheckPage.loadStock()" style="padding:8px;border:1px solid #ddd;border-radius:4px">
+            <select id="ic-location" ${Formatter.event('change', 'inventoryCheck-1')}  style="padding:8px;border:1px solid #ddd;border-radius:4px">
               <option value="">-- 选择场所 --</option>
               ${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
             </select>
           </div>
-          <button class="btn btn-primary" style="align-self:flex-end" onclick="InventoryCheckPage.loadStock()">加载库存</button>
-          <button class="btn btn-success" style="align-self:flex-end" onclick="InventoryCheckPage.submit()">提交盘点</button>
-          <button class="btn" style="align-self:flex-end" onclick="InventoryCheckPage.fillAllSystem()">全部填系统数</button>
+          <button class="btn btn-primary" style="align-self:flex-end" ${Formatter.event('click', 'inventoryCheck-2')} >加载库存</button>
+          <button class="btn btn-success" style="align-self:flex-end" ${Formatter.event('click', 'inventoryCheck-3')} >提交盘点</button>
+          <button class="btn" style="align-self:flex-end" ${Formatter.event('click', 'inventoryCheck-4')} >全部填系统数</button>
         </div>
         <div id="ic-content">
           <p style="color:#999;text-align:center;padding:20px">请选择场所后加载库存数据</p>
@@ -52,7 +52,7 @@ const InventoryCheckPage = {
     }
     container.innerHTML = `
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input type="text" id="ic-search" placeholder="搜索商品名/条码" style="flex:1;min-width:150px;padding:8px;border:1px solid #ddd;border-radius:4px" oninput="InventoryCheckPage.filterTable()">
+        <input type="text" id="ic-search" placeholder="搜索商品名/条码" style="flex:1;min-width:150px;padding:8px;border:1px solid #ddd;border-radius:4px" ${Formatter.event('input', 'inventoryCheck-5')} >
       </div>
       <div class="table-wrapper">
         <table id="ic-table">
@@ -64,7 +64,7 @@ const InventoryCheckPage = {
               <td>${esc(item.volume)}</td>
               <td>${esc(item.barcode || '-')}</td>
               <td style="text-align:center">${esc(item.quantity)}</td>
-              <td><input type="number" value="${esc(item.quantity)}" data-sku="${item.sku_id}" style="width:80px;padding:4px;text-align:center" onchange="InventoryCheckPage.updateActual(${item.sku_id}, this.value)"></td>
+              <td><input type="number" value="${esc(item.quantity)}" data-sku="${item.sku_id}" style="width:80px;padding:4px;text-align:center" ${Formatter.event('change', 'inventoryCheck-6', item.sku_id)} ></td>
               <td class="diff-cell" id="diff-${item.sku_id}" style="text-align:center;font-weight:bold"></td>
             </tr>`).join('')}
           </tbody>
@@ -147,3 +147,11 @@ const InventoryCheckPage = {
     }
   }
 };
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("inventoryCheck-1", function(event) { return InventoryCheckPage.loadStock(); });
+Formatter.onEvent("inventoryCheck-2", function(event) { return InventoryCheckPage.loadStock(); });
+Formatter.onEvent("inventoryCheck-3", function(event) { return InventoryCheckPage.submit(); });
+Formatter.onEvent("inventoryCheck-4", function(event) { return InventoryCheckPage.fillAllSystem(); });
+Formatter.onEvent("inventoryCheck-5", function(event) { return InventoryCheckPage.filterTable(); });
+Formatter.onEvent("inventoryCheck-6", function(event, arg0) { return InventoryCheckPage.updateActual(arg0, this.value); });

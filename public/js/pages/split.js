@@ -14,7 +14,7 @@ const SplitPage = {
           <h3>步骤 1：选择源商品</h3>
           <div style="display:flex;gap:8px">
             <input type="text" id="sp-search" placeholder="扫码或搜索整装产品（支持单字模糊）" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px">
-            <button class="btn btn-success" onclick="Scanner.usbScan(code => SplitPage.onBarcodeScan(code))">扫码枪</button><button class="btn btn-info" onclick="Scanner.cameraScan(code => SplitPage.onBarcodeScan(code))">相机扫码</button>
+            <button class="btn btn-success" ${Formatter.event('click', 'split-1')} >扫码枪</button><button class="btn btn-info" ${Formatter.event('click', 'split-2')} >相机扫码</button>
           </div>
           <div id="sp-source-info"></div>
         </div>
@@ -22,24 +22,24 @@ const SplitPage = {
           <div class="card" style="background:#f8f9fa">
             <h3>步骤 2：指定消耗</h3>
             <div style="display:flex;gap:16px;align-items:center">
-              <div><label>消耗瓶数: </label><input type="number" id="sp-quantity" value="1" min="1" style="width:60px" onchange="SplitPage.updateVolume()"></div>
+              <div><label>消耗瓶数: </label><input type="number" id="sp-quantity" value="1" min="1" style="width:60px" ${Formatter.event('change', 'split-3')} ></div>
               <div id="sp-available-volume" style="font-weight:bold;color:#3498db"></div>
             </div>
             <div style="margin-top:8px">
-              <label><input type="radio" name="sp-mode" value="1" checked onchange="SplitPage.updateVolume()"> 整瓶分装（清空原瓶）</label>
-              <label style="margin-left:16px"><input type="radio" name="sp-mode" value="0" onchange="SplitPage.updateVolume()"> 部分使用</label>
+              <label><input type="radio" name="sp-mode" value="1" checked ${Formatter.event('change', 'split-3')} > 整瓶分装（清空原瓶）</label>
+              <label style="margin-left:16px"><input type="radio" name="sp-mode" value="0" ${Formatter.event('change', 'split-3')} > 部分使用</label>
             </div>
           </div>
           <div class="card" style="background:#f8f9fa">
             <h3>步骤 3：分装目标</h3>
             <table><thead><tr><th>目标容量(ml)</th><th>数量</th><th>小计体积</th><th>操作</th></tr></thead><tbody id="sp-targets-body"></tbody></table>
-            <button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="SplitPage.addTarget()">+ 添加目标</button>
+            <button class="btn btn-primary btn-sm" style="margin-top:8px" ${Formatter.event('click', 'split-4')} >+ 添加目标</button>
           </div>
           <div class="card" style="background:#f8f9fa">
             <h3>步骤 4：体积校验</h3>
             <div id="sp-volume-check"></div>
-            <div class="form-group" style="margin-top:12px"><label>损耗体积(ml)（可选）</label><input type="number" id="sp-waste" step="0.1" min="0" style="width:100px" oninput="SplitPage.updateVolume()"></div>
-            <button class="btn btn-success" style="margin-top:12px" onclick="SplitPage.submit()">确认分装</button>
+            <div class="form-group" style="margin-top:12px"><label>损耗体积(ml)（可选）</label><input type="number" id="sp-waste" step="0.1" min="0" style="width:100px" ${Formatter.event('input', 'split-5')} ></div>
+            <button class="btn btn-success" style="margin-top:12px" ${Formatter.event('click', 'split-6')} >确认分装</button>
           </div>
         </div>
       </div>`;
@@ -132,10 +132,10 @@ const SplitPage = {
     const tbody = document.getElementById('sp-targets-body');
     if (!tbody) return;
     tbody.innerHTML = this.targets.map((t, idx) => `<tr>
-      <td><input type="number" value="${t.unit_volume}" min="0.5" step="0.5" style="width:80px;padding:4px;border:1px solid #ddd;border-radius:4px" onchange="SplitPage.updateTarget(${idx}, 'unit_volume', this.value)"></td>
-      <td><input type="number" value="${esc(t.quantity)}" min="1" style="width:60px;padding:4px;border:1px solid #ddd;border-radius:4px" onchange="SplitPage.updateTarget(${idx}, 'quantity', this.value)"></td>
+      <td><input type="number" value="${t.unit_volume}" min="0.5" step="0.5" style="width:80px;padding:4px;border:1px solid #ddd;border-radius:4px" ${Formatter.event('change', 'split-7', idx)} ></td>
+      <td><input type="number" value="${esc(t.quantity)}" min="1" style="width:60px;padding:4px;border:1px solid #ddd;border-radius:4px" ${Formatter.event('change', 'split-8', idx)} ></td>
       <td>${(t.unit_volume * t.quantity).toFixed(1)} ml</td>
-      <td><button class="btn btn-danger btn-sm" onclick="SplitPage.removeTarget(${idx})">删除</button></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999">点击下方添加目标规格</td></tr>';
+      <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'split-9', idx)} >删除</button></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999">点击下方添加目标规格</td></tr>';
   },
 
   updateTarget(idx, field, val) { this.targets[idx][field] = parseFloat(val) || 0; this.renderTargets(); this.updateVolume(); },
@@ -196,3 +196,14 @@ const SplitPage = {
 };
 
 Formatter.onAction('split-select', (value) => SplitPage.setSource(value));
+
+// CSP-compatible event handlers; template arguments remain JSON data.
+Formatter.onEvent("split-1", function(event) { return Scanner.usbScan(code => SplitPage.onBarcodeScan(code)); });
+Formatter.onEvent("split-2", function(event) { return Scanner.cameraScan(code => SplitPage.onBarcodeScan(code)); });
+Formatter.onEvent("split-3", function(event) { return SplitPage.updateVolume(); });
+Formatter.onEvent("split-4", function(event) { return SplitPage.addTarget(); });
+Formatter.onEvent("split-5", function(event) { return SplitPage.updateVolume(); });
+Formatter.onEvent("split-6", function(event) { return SplitPage.submit(); });
+Formatter.onEvent("split-7", function(event, arg0) { return SplitPage.updateTarget(arg0, 'unit_volume', this.value); });
+Formatter.onEvent("split-8", function(event, arg0) { return SplitPage.updateTarget(arg0, 'quantity', this.value); });
+Formatter.onEvent("split-9", function(event, arg0) { return SplitPage.removeTarget(arg0); });
