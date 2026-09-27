@@ -1,4 +1,5 @@
 // pages/mine/mine.js
+const { post } = require('../../utils/request');
 Page({
   data: {
     userInfo: null,
@@ -49,9 +50,11 @@ Page({
       wx.showModal({
         title: '退出登录',
         content: '确认退出登录？',
-        success: (res) => {
+        success: async (res) => {
           if (res.confirm) {
             const app = getApp();
+            try { await post('/auth/logout'); }
+            catch (e) { wx.showToast({title:'退出未完成，请重试', icon:'none'}); return; }
             app.clearLogin();
             wx.reLaunch({ url: '/pages/login/login' });
           }

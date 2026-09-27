@@ -15,7 +15,7 @@ const DashboardPage = {
       <div class="card">
         <h2>库存预警 (${d.alerts.length})</h2>
         ${d.alerts.length === 0 ? '<p>暂无预警</p>' : `<table><thead><tr><th>商品</th><th>规格</th><th>当前库存</th><th>阈值</th><th>场所</th></tr></thead><tbody>
-          ${d.alerts.map(a => `<tr><td>${esc(a.product_name)}</td><td>${esc(a.volume)}</td><td><span class="badge badge-warning">${a.quantity}</span></td><td>${a.low_stock_threshold}</td><td>${esc(a.location_name)}</td></tr>`).join('')}
+          ${d.alerts.map(a => `<tr><td>${esc(a.product_name)}</td><td>${esc(a.volume)}</td><td><span class="badge badge-warning">${esc(a.quantity)}</span></td><td>${esc(a.low_stock_threshold)}</td><td>${esc(a.location_name)}</td></tr>`).join('')}
         </tbody></table>`}
       </div>
       <div class="card">

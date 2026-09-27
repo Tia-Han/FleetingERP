@@ -4,7 +4,9 @@ const https = require('https');
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize } = require('../middleware/business');
+const { validateCatalog } = require('../middleware/catalog');
+router.use(authMiddleware, authorize('skus'), validateCatalog('skus'));
 
 router.get('/barcode/:code', (req, res) => {
   const db = getDb();

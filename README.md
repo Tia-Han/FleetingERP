@@ -110,7 +110,7 @@ FleetingERP/
 ├── package.json              # 依赖与脚本
 ├── ecosystem.config.js       # PM2 进程管理配置
 ├── .env.example              # 环境变量模板
-├── deploy.sh                 # 一键部署脚本
+├── deploy.sh                 # 旧部署入口（已停用）
 ├── DEPLOY.md                 # 部署指南
 │
 ├── middleware/
@@ -170,7 +170,7 @@ FleetingERP/
 
 ## 数据模型
 
-系统包含 13 张核心数据表，ER 关系如下：
+系统包含 18 张核心数据表，ER 关系如下：
 
 ```mermaid
 erDiagram
@@ -323,7 +323,7 @@ erDiagram
 
 ### 环境要求
 
-- Node.js 18+
+- Node.js 22+
 - npm 9+
 
 ### 本地开发
@@ -343,16 +343,11 @@ npm run dev
 open http://localhost:3000
 ```
 
-默认账号: `admin` / `admin123`（首次登录后请修改密码）
+仅开发环境全新数据库默认账号为 `admin` / `admin123`。生产环境首次创建数据库必须配置至少 12 位的 `ADMIN_PASSWORD`；升级已有数据库不重置密码。
 
 ### 生产部署
 
-详见 [DEPLOY.md](./DEPLOY.md)，支持 PM2 + 阿里云 ECS 一键部署。
-
-```bash
-# 服务器上一键部署
-bash deploy.sh
-```
+详见 [DEPLOY.md](./DEPLOY.md)，按版本核对、数据库备份、更新、启动迁移及验收分阶段执行。旧一键部署入口已停用。
 
 ## 扫码链路架构
 
@@ -421,3 +416,14 @@ flowchart TD
 ## License
 
 [MIT](./LICENSE)
+
+
+## 安全与数据一致性修复（2026-09）
+
+本次修复涉及后端权限、库存/金额/积分校验、会话撤销、WAL 备份恢复、前端数据转义与商品事务。详见 [修复说明](SECURITY_FIXES.md)。
+
+```bash
+npm test
+```
+
+测试使用操作系统临时目录中的独立数据库，不读取或改写业务库。启动新版时会自动迁移会话字段并使旧 token 失效；用户需要重新登录。生产环境首次初始化必须设置至少 12 位 `ADMIN_PASSWORD`，已有用户密码不会被覆盖。

@@ -71,7 +71,7 @@ const StockOutPage = {
 
     const locRes = await API.getLocations();
     if (locRes.success) {
-      document.getElementById('so-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${l.name}</option>`).join('');
+      document.getElementById('so-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
     }
   },
 
@@ -93,7 +93,7 @@ const StockOutPage = {
       if (matched.length === 0) { results.innerHTML = '<p>未找到匹配商品</p>'; return; }
       results.innerHTML = matched.flatMap(p => p.skus.map(s => {
         const skuData = {id: s.id, product_name: p.name, volume: s.volume, sku_code: s.sku_code};
-        return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" onclick='StockOutPage.addToList(${JSON.stringify(skuData).replace(/'/g,"&#39;")})'><span>${p.name} - ${s.volume}</span><span>${s.sku_code}</span></div>`;
+        return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" ${Formatter.action('stockOut-select', skuData)}><span>${esc(p.name)} - ${esc(s.volume)}</span><span>${esc(s.sku_code)}</span></div>`;
       }).join('')).join('');
     }
   },
@@ -136,8 +136,8 @@ const StockOutPage = {
       <tr${item.errorMsg ? ' style="background:#fff3cd"' : ''}>
         <td>${esc(item.product_name)}</td>
         <td>${esc(item.volume)}</td>
-        <td>${item.stock}</td>
-        <td><input type="number" value="${item.quantity}" min="1" style="width:60px;padding:4px" onchange="StockOutPage.updateItem(${idx}, 'quantity', this.value)"></td>
+        <td>${esc(item.stock)}</td>
+        <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px;padding:4px" onchange="StockOutPage.updateItem(${idx}, 'quantity', this.value)"></td>
         <td><select style="padding:4px" onchange="StockOutPage.updateItem(${idx}, 'type', this.value)"><option value="out" ${item.type === 'out' ? 'selected' : ''}>出库</option><option value="loss" ${item.type === 'loss' ? 'selected' : ''}>损耗</option></select></td>
         <td><input type="text" value="${esc(item.remark)}" style="width:100px;padding:4px" onchange="StockOutPage.updateItem(${idx}, 'remark', this.value)"></td>
         <td><button class="btn btn-danger btn-sm" onclick="StockOutPage.removeItem(${idx})">删除</button></td>
@@ -163,7 +163,7 @@ const StockOutPage = {
     if (this.batchItems.length === 0) return App.toast('请先添加商品', 'error');
     const locId = parseInt(document.getElementById('so-location').value);
     for (const item of this.batchItems) {
-      if (!item.quantity || item.quantity <= 0) return App.toast(`${item.product_name} 数量无效`, 'error');
+      if (!item.quantity || item.quantity <= 0) return App.toast(`${esc(item.product_name)} 数量无效`, 'error');
     }
     const data = {
       location_id: locId,
@@ -325,3 +325,5 @@ const StockOutPage = {
     }
   }
 };
+
+Formatter.onAction('stockOut-select', (value) => StockOutPage.addToList(value));

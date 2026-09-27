@@ -3,7 +3,9 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize, validateMovement } = require('../middleware/business');
+router.use(authMiddleware, authorize('stockOut'));
+router.use(require('../middleware/pagination').validatePagination);
 
 // GET /stock-out - 出库/损耗记录列表
 router.get('/', (req, res) => {
@@ -31,7 +33,7 @@ router.get('/', (req, res) => {
 
   // 分页支持
   const pageNum = parseInt(page) || 0;
-  const limitNum = parseInt(limit) || 0;
+  const limitNum = parseInt(limit) || 50;
 
   if (pageNum > 0 && limitNum > 0) {
     const offset = (pageNum - 1) * limitNum;
@@ -49,7 +51,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', validateMovement('stockOut'), (req, res) => {
   const { location_id, sku_id, quantity, type, remark, operator } = req.body;
   if (!location_id || !sku_id || !quantity || !type) {
     return res.json({ success: false, message: '场所、SKU、数量、类型不能为空' });
@@ -83,7 +85,7 @@ router.post('/', (req, res) => {
   }
 });
 
-router.post('/batch', (req, res) => {
+router.post('/batch', validateMovement('stockOut'), (req, res) => {
   const { location_id, items, operator } = req.body;
   if (!location_id || !items || !Array.isArray(items) || items.length === 0) {
     return res.json({ success: false, message: '场所和出库明细不能为空' });

@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
-const { generateSkuCode, generateBarcode } = require('../utils/barcode');
+const { generateSkuCode, generateAvailableBarcode } = require('../utils/barcode');
 
-router.use(authMiddleware);
+const { authorize, validateMovement } = require('../middleware/business');
+router.use(authMiddleware, authorize('split'));
 
-router.post('/', (req, res) => {
+router.post('/', validateMovement('split'), (req, res) => {
   const { location_id, source_sku_id, source_quantity, bottle_consumed, waste_volume, items, operator, remark } = req.body;
 
   if (!location_id || !source_sku_id || !source_quantity || !items || items.length === 0) {
@@ -64,7 +65,7 @@ router.post('/', (req, res) => {
         const product = db.prepare('SELECT brand_id FROM products WHERE id = ?').get(sourceSku.product_id);
         const count = db.prepare('SELECT COUNT(*) as c FROM skus WHERE product_id = ?').get(sourceSku.product_id).c;
         const skuCode = generateSkuCode(product.brand_id, sourceSku.product_id, count + 1);
-        const barcode = generateBarcode(Date.now() % 1000000000);
+        const barcode = generateAvailableBarcode(db);
         const volumeText = `${item.unit_volume}ml`;
         const sourceUnitCost = sourceSku.cost_price || 0;
         const sourceVolumeMl = sourceSku.volume_ml || 1;

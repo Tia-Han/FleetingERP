@@ -20,7 +20,7 @@ const CustomersPage = {
           SearchSuggest.fuzzyMatch(c.wechat_name, kw) || SearchSuggest.fuzzyMatch(c.phone, kw)
         );
       },
-      renderItem: (c) => `<div style="display:flex;justify-content:space-between"><span>${c.wechat_name || ''} ${c.phone || ''}</span><span style="color:#999">积分:${c.points} | 消费:${Formatter.money(c.total_spent)}</span></div>`,
+      renderItem: (c) => `<div style="display:flex;justify-content:space-between"><span>${esc(c.wechat_name || '')} ${esc(c.phone || '')}</span><span style="color:#999">积分:${esc(c.points)} | 消费:${Formatter.money(c.total_spent)}</span></div>`,
       onSelect: (c) => { document.getElementById('cu-search').value = c.wechat_name || c.phone; this.loadList(c.wechat_name || c.phone); }
     });
   },
@@ -36,11 +36,11 @@ const CustomersPage = {
     if (res.data.length === 0) { div.innerHTML = '<p>暂无客户</p>'; return; }
     div.innerHTML = `<table><thead><tr><th>微信名</th><th>手机</th><th>积分</th><th>累计消费</th><th>备注</th><th>注册时间</th><th>操作</th></tr></thead><tbody>
       ${res.data.map(c => `<tr>
-        <td>${esc(c.wechat_name) || '-'}</td><td>${esc(c.phone) || '-'}</td><td>${c.points}</td><td>${Formatter.money(c.total_spent)}</td>
+        <td>${esc(c.wechat_name) || '-'}</td><td>${esc(c.phone) || '-'}</td><td>${esc(c.points)}</td><td>${Formatter.money(c.total_spent)}</td>
         <td>${esc(c.remark) || '-'}</td><td>${Formatter.date(c.created_at)}</td>
         <td>
           <button class="btn btn-primary btn-sm" onclick="CustomersPage.viewPurchases(${c.id})">购买记录</button>
-          <button class="btn btn-sm" onclick='CustomersPage.showEdit(${JSON.stringify(c).replace(/'/g,"&#39;")})'>编辑</button>
+          <button class="btn btn-sm" ${Formatter.action('customers-select', c)}>编辑</button>
           <button class="btn btn-danger btn-sm" onclick="CustomersPage.delete(${c.id})">删除</button>
         </td>
       </tr>`).join('')}
@@ -116,7 +116,7 @@ const CustomersPage = {
         <h2>购买记录 (${res.data.length})</h2>
         <table><thead><tr><th>时间</th><th>门店</th><th>商品</th><th>金额</th><th>积分</th></tr></thead><tbody>
           ${res.data.map(s => `<tr><td>${Formatter.date(s.created_at)}</td><td>${esc(s.location_name)}</td>
-            <td>${s.items.map(i => `${esc(i.product_name)} ${esc(i.volume)} x${i.quantity}`).join(', ')}</td>
+            <td>${s.items.map(i => `${esc(i.product_name)} ${esc(i.volume)} x${esc(i.quantity)}`).join(', ')}</td>
             <td>${Formatter.money(s.final_amount)}</td><td>+${s.points_earned}</td></tr>`).join('')}
         </tbody></table>
         <button class="btn" style="margin-top:12px" onclick="this.closest('.modal-overlay').remove()">关闭</button>
@@ -125,3 +125,5 @@ const CustomersPage = {
     document.body.appendChild(overlay);
   }
 };
+
+Formatter.onAction('customers-select', (value) => CustomersPage.showEdit(value));

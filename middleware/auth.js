@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { getDb } = require('../utils/db');
 
 // OPT-5: JWT 密钥安全加固 — 移除默认值，强制从环境变量读取
 const SECRET = process.env.JWT_SECRET;
@@ -17,12 +18,17 @@ function authMiddleware(req, res, next) {
   if (!token) {
     return res.status(401).json({ success: false, message: '请先登录' });
   }
+  let claims;
+  try { claims = jwt.verify(token, SECRET, { algorithms: ['HS256'] }); }
+  catch { return res.status(401).json({ success: false, message: '登录已过期，请重新登录' }); }
   try {
-    req.user = jwt.verify(token, SECRET);
+    const user = getDb().prepare('SELECT id, username, role, name, session_version FROM users WHERE id = ?').get(claims.id);
+    if (!user || !claims.version || claims.version !== user.session_version) {
+      return res.status(401).json({ success: false, message: '登录已失效，请重新登录' });
+    }
+    req.user = { id: user.id, username: user.username, role: user.role, name: user.name };
     next();
-  } catch (e) {
-    return res.status(401).json({ success: false, message: '登录已过期，请重新登录' });
-  }
+  } catch (e) { next(e); }
 }
 
 // SEC-04: 角色权限校验中间件
@@ -32,7 +38,7 @@ function roleMiddleware(...allowedRoles) {
       return res.status(401).json({ success: false, message: '请先登录' });
     }
     if (!allowedRoles.includes(req.user.role)) {
-      return res.json({ success: false, message: '无权限执行此操作' });
+      return res.status(403).json({ success: false, message: '无权限执行此操作' });
     }
     next();
   };

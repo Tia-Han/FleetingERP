@@ -3,7 +3,8 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize, validateMovement } = require('../middleware/business');
+router.use(authMiddleware, authorize('transfer'));
 
 router.get('/', (req, res) => {
   const db = getDb();
@@ -20,7 +21,7 @@ router.get('/', (req, res) => {
   res.json({ success: true, data: transfers });
 });
 
-router.post('/', (req, res) => {
+router.post('/', validateMovement('transfer'), (req, res) => {
   const { from_location_id, to_location_id, items, operator } = req.body;
   if (!from_location_id || !to_location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '调出场所、调入场所、明细不能为空' });

@@ -21,7 +21,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const os = require('os');
-const { initDatabase } = require('./utils/db');
+const { initDatabase, isMaintenance, closeDatabase } = require('./utils/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -75,6 +75,11 @@ app.use(express.static(path.join(__dirname, 'public'), {
 }));
 
 // OPT-3: API 版本前缀 /api/v1/
+app.use('/api', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  if (isMaintenance()) return res.status(503).json({ success: false, message: '数据库恢复中，请稍后重试' });
+  next();
+});
 const API_V1 = '/api/v1';
 app.use(`${API_V1}/auth`, require('./routes/auth'));
 app.use(`${API_V1}/brands`, require('./routes/brands'));
@@ -94,18 +99,8 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// 向后兼容：保留 /api/ 前缀重定向到 /api/v1/
-app.use('/api', (req, res, next) => {
-  const isVersioned = /^\/v\d+\//.test(req.url);
-  if (!isVersioned) {
-    return res.redirect(308, `/api/v1${req.url}`);
-  }
-  next();
-});
-
 // OPT-8: API 文档（Swagger）
 let swaggerSpec = null;
-let swaggerUiAssetPath = null;
 try {
   const swaggerJsdoc = require('swagger-jsdoc');
   swaggerSpec = swaggerJsdoc({
@@ -124,7 +119,7 @@ try {
       },
       security: [{ bearerAuth: [] }],
     },
-    apis: ['./routes/*.js'],
+    apis: [path.join(__dirname, 'routes', '*.js')],
   });
 } catch (e) {
   // swagger-jsdoc 可选依赖，不影响运行
@@ -137,22 +132,41 @@ app.get('/api/docs', (req, res) => {
   res.status(503).json({ success: false, message: 'API 文档不可用，请确认 swagger-jsdoc 已安装' });
 });
 
+// 向后兼容：保留 /api/ 前缀重定向到 /api/v1/
+app.use('/api', (req, res, next) => {
+  const isVersioned = /^\/v\d+(?:\/|\?|$)/.test(req.url);
+  if (!isVersioned) {
+    return res.redirect(308, `/api/v1${req.url}`);
+  }
+  next();
+});
+
+app.use('/api', (req, res) => res.status(404).json({ success: false, message: '接口不存在' }));
+
 app.use((err, req, res, next) => {
   console.error(err);
-  if (err.code === 'SQLITE_CONSTRAINT') {
-    return res.json({ success: false, message: '数据冲突，请检查是否重复' });
+  if (err.code && err.code.startsWith('SQLITE_CONSTRAINT')) {
+    return res.status(409).json({ success: false, message: '数据约束冲突，请检查输入和库存' });
   }
   if (err.code === 'BUSINESS_ERROR') {
-    return res.json({ success: false, message: err.message });
+    return res.status(400).json({ success: false, message: err.message });
   }
-  res.json({ success: false, message: '服务器错误，请重试' });
+  res.status(err.status || 500).json({ success: false, message: err.status === 503 ? err.message : '服务器错误，请重试' });
 });
 
 initDatabase();
 const systemRouter = require('./routes/system');
-if (systemRouter._autoBackup) systemRouter._autoBackup();
+let backupTask = null;
+const runBackup = () => {
+  if (!backupTask) backupTask = systemRouter._autoBackup().catch(err => console.error('自动备份失败', err)).finally(() => { backupTask = null; });
+  return backupTask;
+};
+runBackup();
+// Check hourly so an uninterrupted process also creates daily snapshots.
+const backupTimer = setInterval(runBackup, 60 * 60 * 1000);
+backupTimer.unref();
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`\n香氛库存管理系统运行中:\n`);
   console.log(`  环境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  本机访问:   http://localhost:${PORT}`);
@@ -181,3 +195,27 @@ function getLanIPs() {
   }
   return ips;
 }
+
+// Stop accepting traffic, drain active requests/backups, then close SQLite before PM2 restarts.
+let stopping = false;
+function shutdown() {
+  if (stopping) return;
+  stopping = true;
+  clearInterval(backupTimer);
+  const deadline = setTimeout(() => process.exit(1), 10000);
+  deadline.unref();
+  server.close(async () => {
+    try {
+      if (backupTask) await backupTask;
+      closeDatabase();
+      clearTimeout(deadline);
+      process.exit(0);
+    } catch (error) {
+      console.error('关闭数据库失败', error);
+      process.exit(1);
+    }
+  });
+}
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
+module.exports = { app, server };

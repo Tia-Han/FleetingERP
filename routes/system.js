@@ -7,24 +7,9 @@ const { authMiddleware } = require('../middleware/auth');
 
 router.use(authMiddleware);
 
-function autoBackup() {
-  const dbPath = path.join(__dirname, '..', 'db', 'fragrance.db');
-  if (!fs.existsSync(dbPath)) return;
-  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-  const backupDir = path.join(__dirname, '..', 'db', 'backups');
-  if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
-  const backupPath = path.join(backupDir, `fragrance_${dateStr}.db`);
-  if (!fs.existsSync(backupPath)) {
-    fs.copyFileSync(dbPath, backupPath);
-    const files = fs.readdirSync(backupDir).filter(f => f.startsWith('fragrance_') && f.endsWith('.db'));
-    files.sort().reverse();
-    for (const file of files.slice(30)) {
-      try { fs.unlinkSync(path.join(backupDir, file)); } catch (e) {}
-    }
-    console.log(`[自动备份] 已备份到 ${backupPath}`);
-  }
-}
-
+const { createBackup, autoBackup, restoreBackup, backupDir } = require('../utils/backups');
+const crypto = require('crypto');
+const { csvCell } = require('../utils/csv');
 router._autoBackup = autoBackup;
 
 router.get('/dashboard', (req, res) => {
@@ -84,19 +69,15 @@ router.get('/operators', (req, res) => {
   res.json({ success: true, data: operators });
 });
 
-router.get('/backup', (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.json({ success: false, message: '无权限' });
-  }
-  const dbPath = path.join(__dirname, '..', 'db', 'fragrance.db');
-  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-  const backupPath = path.join(__dirname, '..', 'db', `fragrance_backup_${dateStr}.db`);
-  fs.copyFileSync(dbPath, backupPath);
-  res.download(backupPath, `fragrance_backup_${dateStr}.db`, (err) => {
-    if (!err) {
-      try { fs.unlinkSync(backupPath); } catch (e) {}
-    }
-  });
+router.get('/backup', async (req, res, next) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: '无权限' });
+  const destination = path.join(backupDir, `download_${crypto.randomUUID()}.db`);
+  try {
+    await createBackup(destination);
+    res.download(destination, 'fragrance_backup.db', () => {
+      try { fs.unlinkSync(destination); } catch (e) { console.error(e); }
+    });
+  } catch (e) { next(e); }
 });
 
 router.get('/export-excel', (req, res) => {
@@ -123,10 +104,7 @@ router.get('/export-excel', (req, res) => {
     return res.json({ success: false, message: '不支持导出类型' });
   }
 
-  const csv = [headers, ...rows].map(row => row.map(cell => {
-    const s = String(cell == null ? '' : cell);
-    return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
-  }).join(',')).join('\n');
+  const csv = [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
   const bom = '\uFEFF';
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Content-Disposition', `attachment; filename="${type}_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.csv"`);
@@ -137,10 +115,9 @@ router.get('/backups', (req, res) => {
   if (req.user.role !== 'admin') {
     return res.json({ success: false, message: '无权限' });
   }
-  const backupDir = path.join(__dirname, '..', 'db', 'backups');
   const backups = [];
   if (fs.existsSync(backupDir)) {
-    const files = fs.readdirSync(backupDir).filter(f => f.endsWith('.db'));
+    const files = fs.readdirSync(backupDir).filter(f => /^fragrance_\d{8}\.db$/.test(f));
     for (const file of files) {
       const filePath = path.join(backupDir, file);
       const stat = fs.statSync(filePath);
@@ -161,24 +138,12 @@ router.get('/backups', (req, res) => {
   res.json({ success: true, data: backups });
 });
 
-router.post('/restore', (req, res) => {
-  if (req.user.role !== 'admin') {
-    return res.json({ success: false, message: '无权限' });
-  }
-  const { filename } = req.body;
-  if (!filename || !/^fragrance_\d{8}\.db$/.test(filename)) {
-    return res.json({ success: false, message: '无效的备份文件名' });
-  }
-  const backupPath = path.join(__dirname, '..', 'db', 'backups', filename);
-  if (!fs.existsSync(backupPath)) {
-    return res.json({ success: false, message: '备份文件不存在' });
-  }
-  const dbPath = path.join(__dirname, '..', 'db', 'fragrance.db');
-  const safetyPath = path.join(__dirname, '..', 'db', 'fragrance_before_restore.db');
-  fs.copyFileSync(dbPath, safetyPath);
-  fs.copyFileSync(backupPath, dbPath);
-  console.log(`[数据恢复] 已从 ${filename} 恢复数据库，原数据备份为 fragrance_before_restore.db`);
-  res.json({ success: true, message: '数据恢复成功，请刷新页面' });
+router.post('/restore', async (req, res, next) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ success: false, message: '无权限' });
+  try {
+    const result = await restoreBackup(req.body.filename);
+    res.json({ success: true, data: result, message: '数据恢复成功，所有会话已撤销，请重新登录' });
+  } catch (e) { next(e); }
 });
 
 module.exports = router;

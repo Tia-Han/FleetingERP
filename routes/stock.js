@@ -3,7 +3,9 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize, validateMovement } = require('../middleware/business');
+router.use(authMiddleware, authorize('stock'));
+router.use(require('../middleware/pagination').validatePagination);
 
 router.get('/balances', (req, res) => {
   const db = getDb();
@@ -113,7 +115,7 @@ router.get('/summary', (req, res) => {
   res.json({ success: true, data: summary });
 });
 
-router.post('/check', (req, res) => {
+router.post('/check', validateMovement('stock'), (req, res) => {
   const { location_id, items, operator } = req.body;
   if (!location_id || !items || !Array.isArray(items) || items.length === 0) {
     return res.json({ success: false, message: '场所和盘点明细不能为空' });
@@ -134,8 +136,9 @@ router.post('/check', (req, res) => {
       const movementType = diff > 0 ? 'check_in' : 'check_out';
       db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(location_id, sku_id, movementType, diff, 'inventory_check', `盘点调整: 系统${systemQty}→实际${actual_quantity}`, operator || '', req.clientSource);
-      db.prepare('UPDATE stock_balances SET quantity = ?, updated_at = datetime(\'now\', \'localtime\') WHERE location_id = ? AND sku_id = ?')
-        .run(actual_quantity, location_id, sku_id);
+      db.prepare(`INSERT INTO stock_balances (location_id, sku_id, quantity) VALUES (?, ?, ?)
+        ON CONFLICT(location_id, sku_id) DO UPDATE SET quantity = excluded.quantity, updated_at = datetime('now', 'localtime')`)
+        .run(location_id, sku_id, actual_quantity);
       adjustments.push({ sku_id, volume: sku ? sku.volume : '', system_qty: systemQty, actual_qty: actual_quantity, diff });
       adjustedCount++;
     }

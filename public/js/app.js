@@ -42,7 +42,11 @@ const App = {
     } else { this.toast(res.message, 'error'); }
   },
 
-  logout() { API.clearToken(); this.currentUser = null; this.renderLogin(); },
+  async logout() {
+    const res = await API.request('POST', '/auth/logout');
+    if (!res.success) { this.toast('退出未完成，请重试', 'error'); return; }
+    API.clearToken(); this.currentUser = null; this.renderLogin();
+  },
 
   async renderSidebar() {
     const role = this.currentUser.role;
@@ -62,7 +66,7 @@ const App = {
     const visibleItems = navItems.filter(item => item.roles.includes(role));
     const locRes = await API.getLocations();
     if (locRes.success) {
-      const locOptions = locRes.data.map(l => `<option value="${l.id}" ${l.id == this.currentLocation ? 'selected' : ''}>${l.name}</option>`).join('');
+      const locOptions = locRes.data.map(l => `<option value="${l.id}" ${l.id == this.currentLocation ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
       document.getElementById('sidebar').innerHTML = `
         <div class="sidebar-header">
           <span class="logo">暗香·Fleeting</span>
@@ -74,7 +78,7 @@ const App = {
           ${visibleItems.map(item => `<span class="nav-item" data-page="${item.key}" onclick="App.navigate('${item.key}')">${item.label}</span>`).join('')}
         </div>
         <div class="sidebar-footer">
-          <span class="user-info">${this.currentUser.name}<a href="#" onclick="App.logout();return false;">退出</a></span>
+          <span class="user-info">${esc(this.currentUser.name)}<a href="#" onclick="App.logout();return false;">退出</a></span>
         </div>`;
     }
     document.getElementById('topbar').innerHTML = `
@@ -286,7 +290,7 @@ const App = {
     const brandsRes = API.getBrands();
     brandsRes.then(brandsData => {
       const brands = brandsData.success ? brandsData.data : [];
-      const brandOptions = brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+      const brandOptions = brands.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
       const brandMatch = brands.find(b => b.name.toLowerCase() === brand.toLowerCase());
 
       overlay.innerHTML = `<div class="modal-card" style="width:520px;max-height:90vh;overflow-y:auto">

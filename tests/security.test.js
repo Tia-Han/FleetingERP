@@ -1,0 +1,231 @@
+const { test, beforeEach, after } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const Database = require('better-sqlite3');
+const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'fleeting-regression-'));
+process.env.NODE_ENV = 'test';
+process.env.JWT_SECRET = 'test-only-do-not-use-in-production-20260924';
+process.env.DB_PATH = path.join(temp, 'fragrance.db');
+const dbModule = require('../utils/db');
+dbModule.initDatabase();
+const backups = require('../utils/backups');
+let db;
+const hash = bcrypt.hashSync('test-password', 4);
+function token(role = 'admin') {
+  const u = db.prepare('SELECT * FROM users WHERE role = ?').get(role);
+  return jwt.sign({ id:u.id, role:u.role, version:u.session_version }, process.env.JWT_SECRET, {expiresIn:'2h'});
+}
+function call(module, method, url, body = {}, credential = token()) {
+  return new Promise(resolve => {
+    const req = { method, url, body, headers: { authorization: credential ? 'Bearer '+credential : '' }, query:{}, clientSource:'web', ip:'127.0.0.1' };
+    const res = { statusCode:200, status(n){this.statusCode=n;return this;}, json(data){resolve({status:this.statusCode,...data});} };
+    require('../routes/'+module).handle(req,res,error=>resolve({success:false,status:error?.status || (error?.code === 'BUSINESS_ERROR' ? 400 : 500),error:error?.message}));
+  });
+}
+function quantity(sku=1) { return db.prepare('SELECT quantity FROM stock_balances WHERE location_id=1 AND sku_id=?').get(sku)?.quantity; }
+function sale(overrides={}) { return { location_id:1, items:[{sku_id:1,quantity:1,unit_price:10}], payments:[{method:'cash',amount:10}], ...overrides }; }
+beforeEach(()=>{
+  db = dbModule.getDb();
+  db.pragma('foreign_keys=OFF');
+  for(const {name} of db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) db.exec(`DELETE FROM "${name}"`);
+  db.pragma('foreign_keys=ON');
+  db.exec(`INSERT INTO brands(id,name) VALUES(1,'Test');
+    INSERT INTO products(id,brand_id,name,category,is_splittable) VALUES(1,1,'Test','香水',1);
+    INSERT INTO skus(id,product_id,sku_code,spec_type,volume,volume_ml,unit) VALUES(1,1,'A','整装','100ml',100,'瓶'),(2,1,'B','分装','5ml',5,'瓶');
+    INSERT INTO locations(id,name,type) VALUES(1,'Warehouse','warehouse'),(2,'Store','store');
+    INSERT INTO stock_balances(location_id,sku_id,quantity) VALUES(1,1,10);
+    INSERT INTO customers(id,wechat_name,points) VALUES(1,'Customer',100);`);
+  for (const [i,role] of ['admin','warehouse_manager','store_clerk'].entries()) db.prepare('INSERT INTO users(id,username,password_hash,role,name) VALUES(?,?,?,?,?)').run(i+1,role,hash,role,role);
+});
+after(()=>{ dbModule.closeDatabase(); });
+test('store clerk denied warehouse writes; warehouse manager denied sales',async()=>{
+ for (const [route,url] of [['stockIn','/'],['stock','/check'],['split','/'],['products','/'],['skus','/1'],['locations','/']]) {
+  const r=await call(route,route==='skus'?'PUT':'POST',url,{},token('store_clerk')); assert.equal(r.status,403,route);
+ }
+ assert.equal((await call('sales','POST','/',sale(),token('warehouse_manager'))).status,403);
+ assert.equal((await call('customers','GET','/',{},token('warehouse_manager'))).status,403);
+});
+test('authorized inbound records authenticated operator',async()=>{
+ const r=await call('stockIn','POST','/',{location_id:1,operator:'forged',items:[{sku_id:1,quantity:2,unit_cost:3}]},token('warehouse_manager'));
+ assert.equal(r.success,true);assert.equal(quantity(),12);assert.equal(db.prepare('SELECT operator FROM stock_movements').get().operator,'warehouse_manager');
+});
+test('duplicate SKU oversell rolls back all balances and documents',async()=>{
+ const r=await call('sales','POST','/',sale({items:[{sku_id:1,quantity:6,unit_price:1},{sku_id:1,quantity:6,unit_price:1}],payments:[{method:'cash',amount:12}]}));
+ assert.equal(r.success,false);assert.equal(quantity(),10);assert.equal(db.prepare('SELECT COUNT(*) n FROM sales').get().n,0);
+});
+test('duplicate SKU within stock succeeds with matching movements',async()=>{
+ const r=await call('sales','POST','/',sale({items:[{sku_id:1,quantity:2,unit_price:1},{sku_id:1,quantity:3,unit_price:1}],payments:[{method:'cash',amount:5}]}));
+ assert.equal(r.success,true);assert.equal(quantity(),5);assert.equal(db.prepare('SELECT SUM(quantity) n FROM stock_movements').get().n,-5);
+});
+test('negative, fractional, non-numeric and missing sale quantities rejected',async()=>{
+ for(const q of [-2,0,0.5,'2',null,NaN,Infinity]) {
+  const r=await call('sales','POST','/',sale({items:[{sku_id:1,quantity:q,unit_price:0}],payments:[{method:'cash',amount:0}]}));assert.equal(r.success,false,String(q));assert.equal(quantity(),10);
+ }
+});
+test('negative points/discount/price, absent customer and missing payments rejected',async()=>{
+ for(const b of [{points_used:-100,customer_id:1},{discount:-1},{points_used:1},{payments:[]},{payments:null},{items:[{sku_id:1,quantity:1,unit_price:-1}]}]) {
+  assert.equal((await call('sales','POST','/',sale(b))).success,false);assert.equal(quantity(),10);
+ }
+ assert.equal(db.prepare('SELECT points FROM customers').get().points,100);
+});
+test('cents and 100 points per yuan are consistent',async()=>{
+ const r=await call('sales','POST','/',sale({customer_id:1,points_used:100,payments:[{method:'cash',amount:9}]}));
+ assert.equal(r.success,true);assert.equal(db.prepare('SELECT final_amount FROM sales').get().final_amount,9);assert.equal(db.prepare('SELECT points FROM customers').get().points,0);
+ assert.equal((await call('sales','GET','/config')).data.points_exchange_rate,100);
+});
+test('payment mismatch rolls back early stock deduction',async()=>{
+ assert.equal((await call('sales','POST','/',sale({payments:[{method:'cash',amount:9.99}]}))).success,false);assert.equal(quantity(),10);
+});
+test('inventory count creates missing balance, rejects negative and duplicates',async()=>{
+ assert.equal((await call('stock','POST','/check',{location_id:1,items:[{sku_id:2,actual_quantity:5}]})).success,true);assert.equal(quantity(2),5);
+ for (const items of [[{sku_id:2,actual_quantity:-1}],[{sku_id:2,actual_quantity:1},{sku_id:2,actual_quantity:2}]]) assert.equal((await call('stock','POST','/check',{location_id:1,items})).success,false);
+ assert.equal(quantity(2),5);
+});
+test('database constraints reject negative and fractional stock independently',()=>{
+ for(const q of [-1,0.5,'bad']) assert.throws(()=>db.prepare('UPDATE stock_balances SET quantity=?').run(q));
+ assert.equal(quantity(),10);
+});
+test('invalid inbound/outbound/transfer/split requests leave stock unchanged',async()=>{
+ const cases=[['stockIn',{location_id:1,items:[{sku_id:1,quantity:0.1,unit_cost:2}]}],['stockOut',{location_id:1,sku_id:1,quantity:'oops',type:'out'}],['transfer',{from_location_id:1,to_location_id:'1',items:[{sku_id:1,quantity:1}]}],['split',{location_id:1,source_sku_id:1,source_quantity:1,items:[{target_sku_id:2,quantity:100,unit_volume:0.1}]}]];
+ for(const [route,body] of cases) assert.equal((await call(route,'POST','/',body)).success,false,route);
+ assert.equal(quantity(),10);
+});
+test('valid transfer and split maintain stock',async()=>{
+ assert.equal((await call('transfer','POST','/',{from_location_id:1,to_location_id:2,items:[{sku_id:1,quantity:2}]})).success,true);assert.equal(quantity(),8);
+ assert.equal((await call('split','POST','/',{location_id:1,source_sku_id:1,source_quantity:1,bottle_consumed:true,items:[{target_sku_id:2,quantity:2,unit_volume:5}]})).success,true);assert.equal(quantity(),7);assert.equal(quantity(2),2);
+});
+test('failed product create and edit roll back main row and SKUs',async()=>{
+ db.exec(`CREATE TEMP TRIGGER test_reject_sku_insert BEFORE INSERT ON skus WHEN NEW.volume='reject'
+   BEGIN SELECT RAISE(ABORT, 'simulated SKU write failure'); END;
+   CREATE TEMP TRIGGER test_reject_sku_update BEFORE UPDATE ON skus WHEN NEW.volume='reject'
+   BEGIN SELECT RAISE(ABORT, 'simulated SKU write failure'); END;`);
+ try {
+  const r=await call('products','POST','/',{brand_id:1,name:'partial',category:'香水',skus:[{spec_type:'整装',volume:'reject'}]});assert.equal(r.success,false);assert.match(r.error,/simulated/);assert.equal(db.prepare('SELECT COUNT(*) n FROM products').get().n,1);
+  const edit=await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',skus:[{id:1,spec_type:'整装',volume:'reject'}]});assert.equal(edit.success,false);assert.match(edit.error,/simulated/);assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'Test');assert.equal(db.prepare('SELECT is_deleted FROM skus WHERE id=1').get().is_deleted,0);
+ } finally { db.exec('DROP TRIGGER test_reject_sku_insert; DROP TRIGGER test_reject_sku_update'); }
+});
+test('deleted users and legacy JWTs are rejected',async()=>{
+ const old=token('store_clerk');db.prepare('DELETE FROM users WHERE role=?').run('store_clerk');assert.equal((await call('auth','GET','/me',{},old)).status,401);
+ const legacy=jwt.sign({id:1,role:'admin'},process.env.JWT_SECRET);assert.equal((await call('auth','GET','/me',{},legacy)).status,401);
+});
+test('logout revokes the old session generation',async()=>{
+ const old=token();assert.equal((await call('auth','POST','/logout',{},old)).success,true);assert.equal((await call('auth','GET','/me',{},old)).status,401);
+});
+test('password change revokes old token and new login works',async()=>{
+ const old=token();assert.equal((await call('auth','PUT','/change-password',{old_password:'test-password',new_password:'updated-password'},old)).success,true);assert.equal((await call('auth','GET','/me',{},old)).status,401);
+ const login=await call('auth','POST','/login',{username:'admin',password:'updated-password'},'');assert.equal(login.success,true);assert.equal((await call('auth','GET','/me',{},login.data.token)).success,true);
+});
+test('prototype-key login returns normal credential error',async()=>{
+ const r=await call('auth','POST','/login',{username:'__proto__',password:'anything'},'');assert.equal(r.success,false);assert.equal(r.error,undefined);
+});
+test('WAL backup contains committed data and restore revokes sessions',async()=>{
+ db.pragma('wal_autocheckpoint=0');const before=token();
+ const destination=path.join(backups.backupDir,'fragrance_20260924.db');await backups.createBackup(destination);
+ const copy=new Database(destination,{readonly:true});assert.equal(copy.prepare('SELECT quantity FROM stock_balances').get().quantity,10);copy.close();
+ db.prepare('UPDATE stock_balances SET quantity=20').run();
+ const promise=backups.restoreBackup('fragrance_20260924.db');assert.equal(dbModule.isMaintenance(),true);assert.throws(()=>dbModule.getDb());await promise;
+ db=dbModule.getDb();assert.equal(quantity(),10);assert.equal((await call('auth','GET','/me',{},before)).status,401);
+ assert.ok(fs.readdirSync(backups.backupDir).some(f=>f.startsWith('before_restore_')));
+});
+test('invalid backups and path traversal cannot replace live database',async()=>{
+ fs.writeFileSync(path.join(backups.backupDir,'fragrance_20000101.db'),'not sqlite');
+ await assert.rejects(()=>backups.restoreBackup('fragrance_20000101.db'));await assert.rejects(()=>backups.restoreBackup('../fragrance.db'));
+ assert.equal(quantity(),10);assert.equal(dbModule.isMaintenance(),false);
+});
+test('catalog rejects invalid prices and SKU ownership',async()=>{
+ const negative=await call('skus','PUT','/1',{barcode:'test',cost_price:-1,retail_price:10,low_stock_threshold:0});assert.equal(negative.success,false);
+ const invalid=await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',skus:[{id:999,volume:'1ml'}]});assert.equal(invalid.success,false);assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'Test');
+});
+test('restore rolls back to the live snapshot if reinitialization fails',async()=>{
+ const file=path.join(backups.backupDir,'fragrance_20260925.db');await backups.createBackup(file);
+ db.prepare('UPDATE stock_balances SET quantity=20').run();
+ const init=dbModule.initDatabase;let calls=0;
+ dbModule.initDatabase=(options)=>{if(++calls===1)throw new Error('simulated migration failure');return init(options);};
+ const modulePath=require.resolve('../utils/backups');delete require.cache[modulePath];const failureBackup=require('../utils/backups');dbModule.initDatabase=init;
+ await assert.rejects(()=>failureBackup.restoreBackup('fragrance_20260925.db'),/simulated/);
+ db=dbModule.getDb();assert.equal(quantity(),20);assert.equal(dbModule.isMaintenance(),false);
+});
+test('legacy schema migration preserves records and gives users session generations',()=>{
+ const {spawnSync}=require('child_process');
+ const oldPath=path.join(temp,'legacy.db');const old=new Database(oldPath);
+ old.exec(fs.readFileSync(path.join(__dirname,'../db/schema.sql'),'utf8').replace("  session_version TEXT NOT NULL DEFAULT '',\n",''));
+ old.prepare('INSERT INTO users(username,password_hash,role,name) VALUES(?,?,?,?)').run('admin',hash,'admin','Legacy');
+ old.exec("INSERT INTO brands(id,name) VALUES(1,'Legacy brand')");old.close();
+ const result=spawnSync(process.execPath,['-e',`const d=require('./utils/db');const db=d.initDatabase();if(d.initDatabase()!==db)throw Error('second connection');d.closeDatabase();`],{cwd:path.join(__dirname,'..'),env:{...process.env,DB_PATH:oldPath},encoding:'utf8'});
+ assert.equal(result.status,0,result.stderr);const migrated=new Database(oldPath,{readonly:true});const user=migrated.prepare('SELECT * FROM users').get();assert.equal(user.password_hash,hash);assert.equal(user.name,'Legacy');assert.match(user.session_version,/^[a-f0-9]{32}$/);assert.equal(migrated.prepare('SELECT name FROM brands').get().name,'Legacy brand');migrated.close();
+});
+test('new production databases require an explicit password and omit sample stock',()=>{
+ const {spawnSync}=require('child_process');const prodPath=path.join(temp,'production.db');
+ const script="const d=require('./utils/db');try{d.initDatabase();}catch(e){console.error(e.message);process.exitCode=1;}finally{d.closeDatabase();}";
+ const options={cwd:path.join(__dirname,'..'),env:{...process.env,NODE_ENV:'production',ADMIN_PASSWORD:'',DB_PATH:prodPath},encoding:'utf8'};
+ const rejected=spawnSync(process.execPath,['-e',script],options);assert.equal(rejected.status,1);assert.match(rejected.stderr,/ADMIN_PASSWORD/);
+ const created=spawnSync(process.execPath,['-e',script],{...options,env:{...options.env,ADMIN_PASSWORD:'test-bootstrap-password'}});assert.equal(created.status,0,created.stderr);
+ const prod=new Database(prodPath,{readonly:true});assert.equal(prod.prepare('SELECT COUNT(*) n FROM brands').get().n,0);assert.equal(prod.prepare('SELECT COUNT(*) n FROM sales').get().n,0);assert.equal(prod.prepare('SELECT COUNT(*) n FROM users').get().n,1);prod.close();
+});
+
+test('customer lifetime spend uses paid amount after discounts and points', async () => {
+  const result = await call('sales','POST','/',sale({customer_id:1,discount:2,points_used:100,payments:[{method:'cash',amount:7}]}));
+  assert.equal(result.success,true);
+  const customer = await call('customers','GET','/1');
+  assert.equal(customer.data.total_spent,7);
+  assert.equal(db.prepare('SELECT total_spent FROM customers WHERE id=1').get().total_spent,7);
+});
+test('inbound amounts accumulate in cents and reject overflow atomically', async () => {
+  const valid = await call('stockIn','POST','/',{location_id:1,items:[{sku_id:1,quantity:3,unit_cost:0.1}]});
+  assert.equal(valid.success,true);
+  assert.equal(db.prepare('SELECT total_cost FROM stock_in_orders').get().total_cost,0.3);
+  const overflow = await call('stockIn','POST','/',{location_id:1,items:[{sku_id:1,quantity:1000000000,unit_cost:1000000000}]});
+  assert.equal(overflow.success,false); assert.equal(quantity(),13);
+  assert.equal(db.prepare('SELECT COUNT(*) n FROM stock_in_orders').get().n,1);
+});
+test('generated barcodes are unique in a same-millisecond batch; duplicate imports roll back', async () => {
+  const now=Date.now; Date.now=()=>1720000000000;
+  try {
+    const result=await call('products','POST','/',{brand_id:1,name:'Batch',category:'香水',skus:[{volume:'1ml'},{volume:'2ml'},{volume:'3ml'}]});
+    assert.equal(result.success,true); assert.equal(new Set(result.data.skus.map(s=>s.barcode)).size,3);
+    const duplicate=await call('products','POST','/',{brand_id:1,name:'Duplicate',category:'香水',skus:[{volume:'1ml',barcode:'same'},{volume:'2ml',barcode:'same'}]});
+    assert.equal(duplicate.success,false);
+    assert.equal(db.prepare("SELECT COUNT(*) n FROM products WHERE name='Duplicate'").get().n,0);
+  } finally { Date.now=now; }
+});
+test('stocked products and removed stocked SKUs cannot disappear', async () => {
+  assert.equal((await call('products','DELETE','/1')).success,false);
+  assert.equal(db.prepare('SELECT is_deleted FROM products WHERE id=1').get().is_deleted,0);
+  assert.equal((await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',skus:[]})).success,false);
+  assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'Test');
+  db.prepare('UPDATE stock_balances SET quantity=0').run();
+  assert.equal((await call('products','DELETE','/1')).success,true);
+  assert.equal(db.prepare('SELECT is_deleted FROM skus WHERE id=1').get().is_deleted,1);
+});
+test('restart never recreates deliberately removed bootstrap records', () => {
+  const {spawnSync}=require('child_process');const freshPath=path.join(temp,'restart.db');
+  const code=`const d=require('./utils/db');let db=d.initDatabase();db.exec('DELETE FROM users; DELETE FROM locations; DELETE FROM categories;');d.closeDatabase();db=d.initDatabase();for(const t of ['users','locations','categories','brands'])if(db.prepare('SELECT COUNT(*) n FROM '+t).get().n!==0)throw Error('recreated '+t);d.closeDatabase();`;
+  const r=spawnSync(process.execPath,['-e',code],{cwd:path.join(__dirname,'..'),env:{...process.env,NODE_ENV:'production',ADMIN_PASSWORD:'test-bootstrap-password',DB_PATH:freshPath},encoding:'utf8'});
+  assert.equal(r.status,0,r.stderr);
+});
+test('legacy table rebuild preserves source and indexes; failed migration rolls back', () => {
+  const {spawnSync}=require('child_process');
+  for (const shouldFail of [false,true]) {
+    const oldPath=path.join(temp,'legacy-movement-'+shouldFail+'.db');const old=new Database(oldPath);
+    old.exec(fs.readFileSync(path.join(__dirname,'../db/schema.sql'),'utf8').replace(", 'check_in', 'check_out'",''));
+    old.exec(`ALTER TABLE users ADD COLUMN openid TEXT;
+      INSERT INTO users(username,password_hash,role,name,openid) VALUES('admin','hash','admin','Admin','same');
+      INSERT INTO locations(id,name,type) VALUES(1,'Warehouse','warehouse');
+      INSERT INTO brands(id,name) VALUES(1,'Brand');
+      INSERT INTO products(id,brand_id,name,category) VALUES(1,1,'Product','Perfume');
+      INSERT INTO skus(id,product_id,sku_code,spec_type,volume,unit) VALUES(1,1,'A','整装','1ml','瓶');
+      INSERT INTO stock_movements(location_id,sku_id,movement_type,quantity,source) VALUES(1,1,'in',2,'miniprogram');`);
+    if(shouldFail)old.exec("INSERT INTO users(username,password_hash,role,name,openid) VALUES('other','hash','admin','Other','same')");
+    const before=old.prepare("SELECT sql FROM sqlite_master WHERE name='stock_movements'").get().sql;old.close();
+    const r=spawnSync(process.execPath,['-e',"const d=require('./utils/db');try{d.initDatabase()}catch(e){process.exitCode=1}finally{d.closeDatabase()}"],{cwd:path.join(__dirname,'..'),env:{...process.env,DB_PATH:oldPath},encoding:'utf8'});
+    assert.equal(r.status,shouldFail?1:0,r.stderr);
+    const check=new Database(oldPath);assert.equal(check.prepare('SELECT source FROM stock_movements').get().source,'miniprogram');
+    if(shouldFail)assert.equal(check.prepare("SELECT sql FROM sqlite_master WHERE name='stock_movements'").get().sql,before);
+    else assert.ok(check.prepare("SELECT 1 FROM sqlite_master WHERE name='idx_stock_movements_ref'").get());
+    check.close();
+  }
+});

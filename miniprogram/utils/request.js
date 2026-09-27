@@ -30,8 +30,9 @@ function request(url, method = 'GET', data = {}) {
         }
         if (res.statusCode >= 400) {
           logError('http_error', { url, status: res.statusCode });
-          wx.showToast({ title: '服务异常，请稍后重试', icon: 'none' });
-          reject(new Error('HTTP ' + res.statusCode));
+          const message = res.data && res.data.message || '服务异常，请稍后重试';
+          wx.showToast({ title: message, icon: 'none' });
+          reject(new Error(message));
           return;
         }
         if (res.data && res.data.success === false) {

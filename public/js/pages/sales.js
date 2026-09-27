@@ -119,7 +119,7 @@ const SalesPage = {
       },
       renderItem: (c) => c.is_new
         ? `<div style="color:#3498db">+ 新建客户「${esc(c.keyword)}」</div>`
-        : `<div style="display:flex;justify-content:space-between"><span>${esc(c.wechat_name || '')} ${esc(c.phone || '')}</span><span style="color:#999">积分:${c.points}</span></div>`,
+        : `<div style="display:flex;justify-content:space-between"><span>${esc(c.wechat_name || '')} ${esc(c.phone || '')}</span><span style="color:#999">积分:${esc(c.points)}</span></div>`,
       onSelect: (c) => {
         if (c.is_new) { this.showQuickAddCustomer(c.keyword); }
         else { this.setCustomer(c); }
@@ -169,7 +169,7 @@ const SalesPage = {
       const s = res.data;
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
-      const itemsHtml = s.items.map(i => `<tr><td>${esc(i.product_name)}</td><td>${esc(i.volume)}</td><td>${i.quantity}</td><td>${Formatter.money(i.unit_price)}</td><td>${Formatter.money(i.quantity * i.unit_price)}</td></tr>`).join('');
+      const itemsHtml = s.items.map(i => `<tr><td>${esc(i.product_name)}</td><td>${esc(i.volume)}</td><td>${esc(i.quantity)}</td><td>${Formatter.money(i.unit_price)}</td><td>${Formatter.money(i.quantity * i.unit_price)}</td></tr>`).join('');
       const payLabels = { wechat: '微信', alipay: '支付宝', cash: '现金', card: '银行卡' };
       const paymentsStr = s.payments.map(p => payLabels[p.method] || p.method).join(', ');
       overlay.innerHTML = `<div class="modal-card" style="width:500px;max-height:90vh;overflow-y:auto">
@@ -201,7 +201,7 @@ const SalesPage = {
     API.getSale(id).then(res => {
       if (!res.success) return App.toast('获取销售信息失败', 'error');
       const s = res.data;
-      const itemsHtml = s.items.map(i => `<tr><td>${esc(i.product_name)} ${esc(i.volume)}</td><td style="text-align:center">${i.quantity}</td><td style="text-align:right">${Formatter.money(i.unit_price)}</td><td style="text-align:right">${Formatter.money(i.quantity * i.unit_price)}</td></tr>`).join('');
+      const itemsHtml = s.items.map(i => `<tr><td>${esc(i.product_name)} ${esc(i.volume)}</td><td style="text-align:center">${esc(i.quantity)}</td><td style="text-align:right">${Formatter.money(i.unit_price)}</td><td style="text-align:right">${Formatter.money(i.quantity * i.unit_price)}</td></tr>`).join('');
       const payLabels = { wechat: '微信', alipay: '支付宝', cash: '现金', card: '银行卡' };
       const paymentsStr = s.payments.map(p => payLabels[p.method] || p.method).join(', ');
       const win = window.open('', '', 'width=400,height=600');
@@ -319,7 +319,7 @@ const SalesPage = {
     const info = document.getElementById('sl-customer-info');
     if (!info) return;
     if (c) {
-      info.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(c.wechat_name || '')} ${esc(c.phone || '')} | 积分余额: ${c.points}</div>`;
+      info.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(c.wechat_name || '')} ${esc(c.phone || '')} | 积分余额: ${esc(c.points)}</div>`;
     } else {
       info.innerHTML = '<div style="padding:8px;background:#d4edda;border-radius:4px">散客（不计积分）</div>';
     }
@@ -347,7 +347,7 @@ const SalesPage = {
     if (this.items.length === 0) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999">暂无商品</td></tr>'; return; }
     tbody.innerHTML = this.items.map((item, idx) => `<tr>
       <td>${esc(item.product_name)}</td><td>${esc(item.volume)}</td>
-      <td><input type="number" value="${item.quantity}" min="1" style="width:60px" onchange="SalesPage.updateQty(${idx}, this.value)"></td>
+      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" onchange="SalesPage.updateQty(${idx}, this.value)"></td>
       <td><input type="number" value="${item.unit_price}" min="0" step="0.01" style="width:80px" onchange="SalesPage.updatePrice(${idx}, this.value)"></td>
       <td>${Formatter.money(item.quantity * item.unit_price)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="SalesPage.removeItem(${idx})">删除</button></td></tr>`).join('');
@@ -397,7 +397,8 @@ const SalesPage = {
     } else {
       discount = Math.min(discountInput, subtotal);
     }
-    const final = Math.max(0, subtotal - discount);
+    discount = Math.round(discount * 100) / 100;
+    const final = Math.max(0, Math.round(subtotal * 100) - Math.round(discount * 100)) / 100;
     const subEl = document.getElementById('sl-subtotal');
     const finalEl = document.getElementById('sl-final');
     if (subEl) subEl.value = Formatter.money(subtotal);
@@ -420,7 +421,8 @@ const SalesPage = {
     } else {
       discount = Math.min(discountInput, subtotal);
     }
-    const final = Math.max(0, subtotal - discount);
+    discount = Math.round(discount * 100) / 100;
+    const final = Math.max(0, Math.round(subtotal * 100) - Math.round(discount * 100)) / 100;
     const payMethod = document.getElementById('sl-pay-method').value;
     const data = {
       location_id: parseInt(document.getElementById('sl-location').value),

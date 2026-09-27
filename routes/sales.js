@@ -3,7 +3,11 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize, validateMovement } = require('../middleware/business');
+router.use(authMiddleware, authorize('sales'));
+router.use(require('../middleware/pagination').validatePagination);
+
+const { money, fail } = require('../middleware/business');
 
 const POINTS_PER_YUAN = 0.1;
 const POINTS_TO_YUAN = 0.01;
@@ -15,12 +19,12 @@ router.get('/config', (req, res) => {
     data: {
       points_per_yuan: POINTS_PER_YUAN,
       points_to_yuan: POINTS_TO_YUAN,
-      points_exchange_rate: 10 // 10积分=1元，前端展示用
+      points_exchange_rate: 100 // 100积分=1元，与服务端一致
     }
   });
 });
 
-router.post('/', (req, res) => {
+router.post('/', validateMovement('sales'), (req, res) => {
   const { location_id, customer_id, items, discount, points_used, payments, operator, remark } = req.body;
   if (!location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '场所和销售明细不能为空' });
@@ -28,28 +32,25 @@ router.post('/', (req, res) => {
 
   const db = getDb();
   const transaction = db.transaction(() => {
+    const quantities = new Map();
+    let subtotalCents = 0;
     for (const item of items) {
-      const balance = db.prepare('SELECT quantity FROM stock_balances WHERE location_id = ? AND sku_id = ?').get(location_id, item.sku_id);
-      const currentQty = balance ? balance.quantity : 0;
-      if (currentQty < item.quantity) {
-        const sku = db.prepare('SELECT volume FROM skus WHERE id = ?').get(item.sku_id);
-        throw Object.assign(new Error(`库存不足：${sku ? sku.volume : ''} 当前剩余 ${currentQty}，需要 ${item.quantity}`), { code: 'BUSINESS_ERROR' });
-      }
+      quantities.set(item.sku_id, (quantities.get(item.sku_id) || 0) + item.quantity);
+      subtotalCents += item.quantity * money(item.unit_price, '销售单价');
     }
-
-    let subtotal = 0;
-    for (const item of items) {
-      subtotal += item.quantity * item.unit_price;
+    if (!Number.isSafeInteger(subtotalCents)) fail('销售金额超出范围');
+    for (const [skuId, quantity] of quantities) {
+      const changed = db.prepare(`UPDATE stock_balances SET quantity = quantity - ?, updated_at = datetime('now', 'localtime')
+        WHERE location_id = ? AND sku_id = ? AND quantity >= ?`).run(quantity, location_id, skuId, quantity);
+      if (changed.changes !== 1) fail('库存不足');
     }
+    const subtotal = subtotalCents / 100;
     const discountAmount = discount || 0;
-    const pointsUsedValue = (points_used || 0) * POINTS_TO_YUAN;
-    const finalAmount = subtotal - discountAmount - pointsUsedValue;
+    const finalCents = subtotalCents - money(discountAmount, '折扣') - (points_used || 0);
+    if (finalCents < 0) fail('实付金额不能小于0');
+    const finalAmount = finalCents / 100;
 
-    if (finalAmount < 0) {
-      throw Object.assign(new Error('实付金额不能小于0'), { code: 'BUSINESS_ERROR' });
-    }
-
-    let pointsEarned = Math.floor(finalAmount * POINTS_PER_YUAN);
+    let pointsEarned = Math.floor(finalCents / 1000);
     if (customer_id && points_used > 0) {
       const customer = db.prepare('SELECT points FROM customers WHERE id = ?').get(customer_id);
       if (!customer || customer.points < points_used) {
@@ -58,8 +59,9 @@ router.post('/', (req, res) => {
     }
 
     if (payments && payments.length > 0) {
-      const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
-      if (Math.abs(totalPaid - finalAmount) > 0.01) {
+      const totalPaidCents = payments.reduce((sum, p) => sum + money(p.amount, '支付金额'), 0);
+      const totalPaid = totalPaidCents / 100;
+      if (!Number.isSafeInteger(totalPaidCents) || totalPaidCents !== finalCents) {
         throw Object.assign(new Error(`支付金额不符：应付 ${finalAmount}，实付 ${totalPaid}`), { code: 'BUSINESS_ERROR' });
       }
     }
@@ -72,8 +74,6 @@ router.post('/', (req, res) => {
       db.prepare('INSERT INTO sale_items (sale_id, sku_id, quantity, unit_price) VALUES (?, ?, ?, ?)').run(saleId, item.sku_id, item.quantity, item.unit_price);
       db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, ref_id, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
         .run(location_id, item.sku_id, 'sale', -item.quantity, 'sale', saleId, operator || '', req.clientSource);
-      db.prepare('UPDATE stock_balances SET quantity = quantity - ?, updated_at = CURRENT_TIMESTAMP WHERE location_id = ? AND sku_id = ?')
-        .run(item.quantity, location_id, item.sku_id);
     }
 
     if (payments && payments.length > 0) {
@@ -130,7 +130,7 @@ router.get('/', (req, res) => {
 router.get('/summary', (req, res) => {
   const db = getDb();
   const { date, location_id } = req.query;
-  const targetDate = date || new Date().toISOString().substring(0, 10);
+  const targetDate = date || db.prepare("SELECT date('now', 'localtime') AS today").get().today;
   let sql = `SELECT COUNT(*) as order_count, COALESCE(SUM(final_amount), 0) as total_amount FROM sales WHERE DATE(created_at) = ?`;
   const params = [targetDate];
   if (location_id) { sql += ' AND location_id = ?'; params.push(location_id); }

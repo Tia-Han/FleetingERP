@@ -22,7 +22,7 @@ Page({
     pointsEarned: 0,
     payMethod: 'wechat',
     submitting: false,
-    pointsExchangeRate: 10, // 积分抵扣汇率：多少积分=1元
+    pointsExchangeRate: 100, // 积分抵扣汇率：多少积分=1元
     pointsPerYuan: 0.1 // 每消费1元获得多少积分（从配置获取）
   },
 
@@ -257,7 +257,7 @@ Page({
       amount = num;
       if (amount > this.data.subtotal) amount = this.data.subtotal;
     }
-    this.setData({ discountAmount: amount });
+    this.setData({ discountAmount: Math.round(amount * 100) / 100 });
     this.calcSummary();
   },
 
@@ -270,7 +270,7 @@ Page({
       val = customer.points;
       wx.showToast({ title: `积分不足，最多${customer.points}分`, icon: 'none' });
     }
-    const pointsValue = Math.floor(val / this.data.pointsExchangeRate);
+    const pointsValue = Math.round(val / this.data.pointsExchangeRate * 100) / 100;
     this.setData({ pointsUsed: val, pointsValue });
     this.calcSummary();
   },
@@ -290,13 +290,15 @@ Page({
     let discountAmount = this.data.discountAmount;
     if (discountAmount > subtotal) discountAmount = subtotal;
 
+    subtotal = Math.round(subtotal * 100) / 100;
+    discountAmount = Math.round(discountAmount * 100) / 100;
     let pointsValue = this.data.pointsValue;
-    let finalAmount = subtotal - discountAmount - pointsValue;
+    let finalAmount = (Math.round(subtotal * 100) - Math.round(discountAmount * 100) - Math.round(pointsValue * 100)) / 100;
     if (finalAmount < 0) finalAmount = 0;
 
     const pointsEarned = Math.floor(finalAmount * this.data.pointsPerYuan);
 
-    this.setData({ subtotal, finalAmount: finalAmount.toFixed(2), pointsEarned });
+    this.setData({ subtotal, discountAmount, finalAmount: finalAmount.toFixed(2), pointsEarned });
   },
 
   // 提交订单

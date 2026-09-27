@@ -3,7 +3,9 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize } = require('../middleware/business');
+router.use(authMiddleware, authorize('customers'));
+router.use(require('../middleware/pagination').validatePagination);
 
 // API-02: 客户列表加分页支持
 // 向后兼容：不传 page 参数时返回全部数据
@@ -43,7 +45,7 @@ router.get('/:id', (req, res) => {
   // 统计累计消费和累计积分
   const stats = db.prepare(`
     SELECT 
-      COALESCE(SUM(total_amount), 0) as total_spent,
+      COALESCE(ROUND(SUM(final_amount), 2), 0) as total_spent,
       COALESCE(SUM(points_earned), 0) as total_points_earned,
       COUNT(*) as order_count
     FROM sales WHERE customer_id = ?

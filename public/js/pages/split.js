@@ -66,7 +66,7 @@ const SplitPage = {
         }
         return items;
       },
-      renderItem: (s) => `<div style="display:flex;justify-content:space-between"><span>${esc(s.product_name)} - ${esc(s.volume)} (${s.sku_code})</span><span style="color:#999">${s.volume_ml}ml</span></div>`,
+      renderItem: (s) => `<div style="display:flex;justify-content:space-between"><span>${esc(s.product_name)} - ${esc(s.volume)} (${esc(s.sku_code)})</span><span style="color:#999">${esc(s.volume_ml)}ml</span></div>`,
       onSelect: (s) => this.setSource(s)
     });
   },
@@ -88,8 +88,8 @@ const SplitPage = {
       results.innerHTML = matched.flatMap(p =>
         p.skus.filter(s => s.spec_type === '整装' && s.volume_ml > 0).map(s => {
           const skuData = {id: s.id, product_name: p.name, volume: s.volume, volume_ml: s.volume_ml, sku_code: s.sku_code};
-          return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" onclick='SplitPage.setSource(${JSON.stringify(skuData).replace(/'/g,"&#39;")})'>
-            <span>${esc(p.name)} - ${esc(s.volume)} (${s.sku_code})</span><span>${s.volume_ml}ml</span></div>`;
+          return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" ${Formatter.action('split-select', skuData)}>
+            <span>${esc(p.name)} - ${esc(s.volume)} (${esc(s.sku_code)})</span><span>${esc(s.volume_ml)}ml</span></div>`;
         }).join('')
       ).join('');
     }
@@ -118,7 +118,7 @@ const SplitPage = {
     this.targets = [];
     document.getElementById('sp-source-info').innerHTML = `
       <div style="margin-top:12px;padding:12px;background:#d4edda;border-radius:4px">
-        已选: <strong>${esc(sku.product_name)} - ${esc(sku.volume)}</strong> | 容量: <strong>${sku.volume_ml}ml</strong> | 当前库存: <strong>${stock} 瓶</strong>
+        已选: <strong>${esc(sku.product_name)} - ${esc(sku.volume)}</strong> | 容量: <strong>${esc(sku.volume_ml)}ml</strong> | 当前库存: <strong>${stock} 瓶</strong>
       </div>`;
     document.getElementById('sp-step2').style.display = 'block';
     document.getElementById('sp-search').value = '';
@@ -133,7 +133,7 @@ const SplitPage = {
     if (!tbody) return;
     tbody.innerHTML = this.targets.map((t, idx) => `<tr>
       <td><input type="number" value="${t.unit_volume}" min="0.5" step="0.5" style="width:80px;padding:4px;border:1px solid #ddd;border-radius:4px" onchange="SplitPage.updateTarget(${idx}, 'unit_volume', this.value)"></td>
-      <td><input type="number" value="${t.quantity}" min="1" style="width:60px;padding:4px;border:1px solid #ddd;border-radius:4px" onchange="SplitPage.updateTarget(${idx}, 'quantity', this.value)"></td>
+      <td><input type="number" value="${esc(t.quantity)}" min="1" style="width:60px;padding:4px;border:1px solid #ddd;border-radius:4px" onchange="SplitPage.updateTarget(${idx}, 'quantity', this.value)"></td>
       <td>${(t.unit_volume * t.quantity).toFixed(1)} ml</td>
       <td><button class="btn btn-danger btn-sm" onclick="SplitPage.removeTarget(${idx})">删除</button></td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:#999">点击下方添加目标规格</td></tr>';
   },
@@ -194,3 +194,5 @@ const SplitPage = {
     if (res.success) { App.toast('分装成功'); this.render(); } else App.toast(res.message, 'error');
   }
 };
+
+Formatter.onAction('split-select', (value) => SplitPage.setSource(value));

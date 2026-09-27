@@ -47,7 +47,7 @@ const SettingsPage = {
         <td>${l.type === 'warehouse' ? '仓库' : '门店'}</td>
         <td>${esc(l.address) || '-'}</td>
         <td>
-          <button class="btn btn-primary btn-sm" onclick="SettingsPage.showEditLocation(${l.id}, '${esc(l.name)}', '${l.type}', '${esc(l.address) || ''}')">修改</button>
+          <button class="btn btn-primary btn-sm" ${Formatter.action('location-edit', l.id, l.name, l.type, l.address || '')}>修改</button>
           <button class="btn btn-danger btn-sm" onclick="SettingsPage.deleteLocation(${l.id})">删除</button>
         </td>
       </tr>`).join('')}
@@ -119,7 +119,7 @@ const SettingsPage = {
     overlay.innerHTML = `<div class="modal-card" style="width:400px">
       <h2>修改密码</h2>
       <div class="form-group"><label>旧密码</label><input type="password" id="cp-old" placeholder="当前密码"></div>
-      <div class="form-group"><label>新密码</label><input type="password" id="cp-new" placeholder="至少6位"></div>
+      <div class="form-group"><label>新密码</label><input type="password" id="cp-new" placeholder="至少8位"></div>
       <div class="form-group"><label>确认新密码</label><input type="password" id="cp-confirm" placeholder="再次输入新密码"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
@@ -134,10 +134,11 @@ const SettingsPage = {
     const confirmPw = document.getElementById('cp-confirm').value;
     if (!oldPw || !newPw) return App.toast('请填写完整', 'error');
     if (newPw !== confirmPw) return App.toast('两次输入的新密码不一致', 'error');
-    if (newPw.length < 6) return App.toast('新密码至少6位', 'error');
+    if (newPw.length < 8) return App.toast('新密码至少8位', 'error');
     const res = await API.changePassword(oldPw, newPw);
     if (res.success) {
-      App.toast('密码修改成功');
+      API.clearToken(); App.currentUser = null; App.renderLogin();
+      App.toast('密码修改成功，请重新登录');
       document.querySelector('.modal-overlay').remove();
     } else App.toast(res.message, 'error');
   },
@@ -231,8 +232,11 @@ const SettingsPage = {
     if (!confirm(`确认从备份 ${filename} 恢复数据？\n\n当前数据将自动保存为安全备份。\n恢复后需要刷新页面。`)) return;
     const res = await API.restoreBackup(filename);
     if (res.success) {
+      API.clearToken(); App.currentUser = null;
       App.toast(res.message);
       setTimeout(() => location.reload(), 2000);
     } else App.toast(res.message, 'error');
   }
 };
+
+Formatter.onAction('location-edit', (...args) => SettingsPage.showEditLocation(...args));

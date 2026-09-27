@@ -3,7 +3,9 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { authorize } = require('../middleware/business');
+const { validateCatalog } = require('../middleware/catalog');
+router.use(authMiddleware, authorize('locations'), validateCatalog('locations'));
 
 router.get('/', (req, res) => {
   const db = getDb();

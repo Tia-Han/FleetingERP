@@ -70,7 +70,7 @@ const MovementsPage = {
         ${mvRes.data.map(m => `<tr>
           <td>${Formatter.date(m.created_at)}</td><td>${esc(m.location_name)}</td><td>${esc(m.product_name)}</td><td>${esc(m.volume)}</td>
           <td><span class="badge ${m.quantity > 0 ? 'badge-success' : 'badge-warning'}">${Formatter.movementTypeLabel(m.movement_type)}</span></td>
-          <td style="color:${m.quantity > 0 ? '#27ae60' : '#e74c3c'}">${m.quantity > 0 ? '+' : ''}${m.quantity}</td>
+          <td style="color:${m.quantity > 0 ? '#27ae60' : '#e74c3c'}">${m.quantity > 0 ? '+' : ''}${esc(m.quantity)}</td>
           <td>${m.unit_cost ? Formatter.money(m.unit_cost) : '-'}</td><td>${esc(m.operator || '-')}</td>
           <td>${m.movement_type === 'in' ? [m.supplier, m.order_remark].filter(Boolean).join(' / ') || '-' : '-'}</td>
         </tr>`).join('')}

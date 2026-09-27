@@ -3,12 +3,16 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fs = require('fs');
 
-const DB_PATH = path.join(__dirname, '..', 'db', 'fragrance.db');
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '..', 'db', 'fragrance.db');
 const SCHEMA_PATH = path.join(__dirname, '..', 'db', 'schema.sql');
 
 let db = null;
+let maintenance = false;
+function isMaintenance() { return maintenance; }
+function setMaintenance(value) { maintenance = value; }
 
-function initDatabase() {
+function initDatabase({ restoring = false } = {}) {
+  if (db && db.open) return db;
   const dbDir = path.dirname(DB_PATH);
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
@@ -22,99 +26,141 @@ function initDatabase() {
   db.pragma('busy_timeout = 5000');
   db.pragma('cache_size = -64000');
 
-  const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
-  db.exec(schema);
+  try {
+    return db.transaction(() => {
+      const isNewDatabase = !db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' LIMIT 1").get();
+      const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
+      db.exec(schema);
 
-  // PERF-03: 补充关键索引
-  db.exec(`
-    CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id);
-    CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-    CREATE INDEX IF NOT EXISTS idx_products_deleted ON products(is_deleted);
-    CREATE INDEX IF NOT EXISTS idx_skus_product ON skus(product_id);
-    CREATE INDEX IF NOT EXISTS idx_skus_deleted ON skus(is_deleted);
-    CREATE INDEX IF NOT EXISTS idx_stock_balances_loc_sku ON stock_balances(location_id, sku_id);
-    CREATE INDEX IF NOT EXISTS idx_sales_location ON sales(location_id);
-    CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
-    CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
-    CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
-    CREATE INDEX IF NOT EXISTS idx_stock_movements_ref ON stock_movements(ref_type, ref_id);
-    CREATE INDEX IF NOT EXISTS idx_stock_movements_created_type ON stock_movements(created_at, movement_type);
-  `);
+      // 迁移1：更新 stock_movements 表的 CHECK 约束，添加 check_in/check_out 类型
+      const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='stock_movements'").get();
+      if (tableInfo && !tableInfo.sql.includes('check_in')) {
+        const sourceColumn = db.pragma('table_info(stock_movements)').some(c => c.name === 'source') ? 'source' : "'web'";
+        db.exec(`
+          CREATE TABLE stock_movements_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            location_id INTEGER NOT NULL REFERENCES locations(id),
+            sku_id INTEGER NOT NULL REFERENCES skus(id),
+            movement_type TEXT NOT NULL CHECK(movement_type IN ('in', 'out', 'sale', 'split', 'transfer_in', 'transfer_out', 'loss', 'check_in', 'check_out')),
+            quantity INTEGER NOT NULL,
+            ref_type TEXT,
+            ref_id INTEGER,
+            unit_cost REAL,
+            remark TEXT,
+            operator TEXT,
+            source TEXT DEFAULT 'web',
+            created_at TEXT DEFAULT (datetime('now', 'localtime'))
+          );
+          INSERT INTO stock_movements_new (id, location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, remark, operator, source, created_at)
+          SELECT id, location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, remark, operator, ${sourceColumn}, created_at FROM stock_movements;
+          DROP TABLE stock_movements;
+          ALTER TABLE stock_movements_new RENAME TO stock_movements;
+          CREATE INDEX IF NOT EXISTS idx_stock_movements_location ON stock_movements(location_id);
+          CREATE INDEX IF NOT EXISTS idx_stock_movements_sku ON stock_movements(sku_id);
+          CREATE INDEX IF NOT EXISTS idx_stock_movements_type ON stock_movements(movement_type);
+          CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at);
+        `);
+        console.log('[迁移] stock_movements 表已更新，新增 check_in/check_out 类型 + source 字段');
+      }
 
-  // 迁移1：更新 stock_movements 表的 CHECK 约束，添加 check_in/check_out 类型
-  const tableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='stock_movements'").get();
-  if (tableInfo && !tableInfo.sql.includes('check_in')) {
-    db.exec(`
-      CREATE TABLE stock_movements_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        location_id INTEGER NOT NULL REFERENCES locations(id),
-        sku_id INTEGER NOT NULL REFERENCES skus(id),
-        movement_type TEXT NOT NULL CHECK(movement_type IN ('in', 'out', 'sale', 'split', 'transfer_in', 'transfer_out', 'loss', 'check_in', 'check_out')),
-        quantity INTEGER NOT NULL,
-        ref_type TEXT,
-        ref_id INTEGER,
-        unit_cost REAL,
-        remark TEXT,
-        operator TEXT,
-        source TEXT DEFAULT 'web',
-        created_at TEXT DEFAULT (datetime('now', 'localtime'))
-      );
-      INSERT INTO stock_movements_new (id, location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, remark, operator, created_at)
-      SELECT id, location_id, sku_id, movement_type, quantity, ref_type, ref_id, unit_cost, remark, operator, created_at FROM stock_movements;
-      DROP TABLE stock_movements;
-      ALTER TABLE stock_movements_new RENAME TO stock_movements;
-      CREATE INDEX IF NOT EXISTS idx_stock_movements_location ON stock_movements(location_id);
-      CREATE INDEX IF NOT EXISTS idx_stock_movements_sku ON stock_movements(sku_id);
-      CREATE INDEX IF NOT EXISTS idx_stock_movements_type ON stock_movements(movement_type);
-      CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(created_at);
-    `);
-    console.log('[迁移] stock_movements 表已更新，新增 check_in/check_out 类型 + source 字段');
+      // 迁移2：为已有 source 字段缺失的旧表添加 source 列
+      if (tableInfo && tableInfo.sql.includes('check_in') && !tableInfo.sql.includes('source')) {
+        db.exec(`ALTER TABLE stock_movements ADD COLUMN source TEXT DEFAULT 'web'`);
+        console.log('[迁移] stock_movements 表已新增 source 字段');
+      }
+
+      // 迁移3：users 表新增 openid 字段（微信小程序登录）
+      const userTableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
+      if (userTableInfo && !userTableInfo.sql.includes('openid')) {
+        db.exec(`ALTER TABLE users ADD COLUMN openid TEXT`);
+        db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL`);
+        console.log('[迁移] users 表已新增 openid 字段');
+      }
+
+      // PERF-03: 补充关键索引
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_products_brand ON products(brand_id);
+        CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
+        CREATE INDEX IF NOT EXISTS idx_products_deleted ON products(is_deleted);
+        CREATE INDEX IF NOT EXISTS idx_skus_product ON skus(product_id);
+        CREATE INDEX IF NOT EXISTS idx_skus_deleted ON skus(is_deleted);
+        CREATE INDEX IF NOT EXISTS idx_stock_balances_loc_sku ON stock_balances(location_id, sku_id);
+        CREATE INDEX IF NOT EXISTS idx_sales_location ON sales(location_id);
+        CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_sales_created ON sales(created_at);
+        CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_ref ON stock_movements(ref_type, ref_id);
+        CREATE INDEX IF NOT EXISTS idx_stock_movements_created_type ON stock_movements(created_at, movement_type);
+      `);
+
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL');
+
+      // Existing users are assigned a fresh session generation on migration.
+      if (!db.pragma('table_info(users)').some(c => c.name === 'session_version')) {
+        db.exec("ALTER TABLE users ADD COLUMN session_version TEXT NOT NULL DEFAULT ''");
+      }
+      db.exec(`
+        CREATE TRIGGER IF NOT EXISTS active_barcode_insert BEFORE INSERT ON skus
+        WHEN NEW.is_deleted=0 AND NEW.barcode IS NOT NULL AND NEW.barcode<>''
+          AND EXISTS(SELECT 1 FROM skus WHERE barcode=NEW.barcode AND is_deleted=0)
+        BEGIN SELECT RAISE(ABORT, 'duplicate active barcode'); END;
+        CREATE TRIGGER IF NOT EXISTS active_barcode_update BEFORE UPDATE OF barcode, is_deleted ON skus
+        WHEN NEW.is_deleted=0 AND NEW.barcode IS NOT NULL AND NEW.barcode<>''
+          AND EXISTS(SELECT 1 FROM skus WHERE barcode=NEW.barcode AND is_deleted=0 AND id<>NEW.id)
+        BEGIN SELECT RAISE(ABORT, 'duplicate active barcode'); END;
+        UPDATE users SET session_version = lower(hex(randomblob(16))) WHERE session_version = '';
+        CREATE TRIGGER IF NOT EXISTS users_session_generation AFTER INSERT ON users
+        WHEN NEW.session_version = '' BEGIN
+          UPDATE users SET session_version = lower(hex(randomblob(16))) WHERE id = NEW.id;
+        END;
+        CREATE TRIGGER IF NOT EXISTS stock_quantity_insert BEFORE INSERT ON stock_balances
+        WHEN typeof(NEW.quantity) != 'integer' OR NEW.quantity < 0 OR NEW.quantity > 9007199254740991
+        BEGIN SELECT RAISE(ABORT, 'invalid stock quantity'); END;
+        CREATE TRIGGER IF NOT EXISTS stock_quantity_update BEFORE UPDATE OF quantity ON stock_balances
+        WHEN typeof(NEW.quantity) != 'integer' OR NEW.quantity < 0 OR NEW.quantity > 9007199254740991
+        BEGIN SELECT RAISE(ABORT, 'invalid stock quantity'); END;
+      `);
+      // Bootstrap only a completely new database. Restart must never recreate deleted data.
+      if (restoring || !isNewDatabase) return db;
+
+      // 初始化管理员
+      const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
+      if (!adminExists) {
+        if (process.env.NODE_ENV === 'production' && (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 12)) {
+          throw new Error('首次生产启动必须设置至少12位 ADMIN_PASSWORD');
+        }
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        const hash = bcrypt.hashSync(adminPassword, 10);
+        db.prepare('INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)')
+          .run('admin', hash, 'admin', '管理员');
+      }
+
+      // 初始化默认场所
+      const locExists = db.prepare('SELECT id FROM locations WHERE id = 1').get();
+      if (!locExists) {
+        db.prepare('INSERT INTO locations (id, name, type) VALUES (1, ?, ?), (2, ?, ?)')
+          .run('总仓库', 'warehouse', '门店A', 'store');
+      }
+
+      // 初始化默认品类
+      const catExists = db.prepare('SELECT id FROM categories WHERE id = 1').get();
+      if (!catExists) {
+        db.prepare('INSERT INTO categories (id, name, sort_order) VALUES (1, ?, 1), (2, ?, 2), (3, ?, 3), (4, ?, 4)')
+          .run('香水', '散香', '蜡烛', '护理');
+      }
+
+      // 初始化示例数据（仅在空库时插入）
+      const brandExists = db.prepare('SELECT id FROM brands WHERE id = 1').get();
+      if (!brandExists && process.env.NODE_ENV !== 'production') {
+        seedSampleData(db);
+      }
+
+      return db;
+    }).immediate();
+  } catch (error) {
+    closeDatabase();
+    throw error;
   }
-
-  // 迁移2：为已有 source 字段缺失的旧表添加 source 列
-  if (tableInfo && tableInfo.sql.includes('check_in') && !tableInfo.sql.includes('source')) {
-    db.exec(`ALTER TABLE stock_movements ADD COLUMN source TEXT DEFAULT 'web'`);
-    console.log('[迁移] stock_movements 表已新增 source 字段');
-  }
-
-  // 迁移3：users 表新增 openid 字段（微信小程序登录）
-  const userTableInfo = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'").get();
-  if (userTableInfo && !userTableInfo.sql.includes('openid')) {
-    db.exec(`ALTER TABLE users ADD COLUMN openid TEXT`);
-    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL`);
-    console.log('[迁移] users 表已新增 openid 字段');
-  }
-
-  // 初始化管理员
-  const adminExists = db.prepare('SELECT id FROM users WHERE username = ?').get('admin');
-  if (!adminExists) {
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-    const hash = bcrypt.hashSync(adminPassword, 10);
-    db.prepare('INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)')
-      .run('admin', hash, 'admin', '管理员');
-  }
-
-  // 初始化默认场所
-  const locExists = db.prepare('SELECT id FROM locations WHERE id = 1').get();
-  if (!locExists) {
-    db.prepare('INSERT INTO locations (id, name, type) VALUES (1, ?, ?), (2, ?, ?)')
-      .run('总仓库', 'warehouse', '门店A', 'store');
-  }
-
-  // 初始化默认品类
-  const catExists = db.prepare('SELECT id FROM categories WHERE id = 1').get();
-  if (!catExists) {
-    db.prepare('INSERT INTO categories (id, name, sort_order) VALUES (1, ?, 1), (2, ?, 2), (3, ?, 3), (4, ?, 4)')
-      .run('香水', '散香', '蜡烛', '护理');
-  }
-
-  // 初始化示例数据（仅在空库时插入）
-  const brandExists = db.prepare('SELECT id FROM brands WHERE id = 1').get();
-  if (!brandExists) {
-    seedSampleData(db);
-  }
-
-  return db;
 }
 
 function seedSampleData(db) {
@@ -189,10 +235,12 @@ function seedSampleData(db) {
 }
 
 function getDb() {
+  if (maintenance) throw Object.assign(new Error('数据库恢复中，请稍后重试'), { status: 503 });
   if (!db) {
     initDatabase();
   }
   return db;
 }
 
-module.exports = { getDb, initDatabase };
+function closeDatabase() { if (db) { db.close(); db = null; } }
+module.exports = { getDb, initDatabase, closeDatabase, DB_PATH, isMaintenance, setMaintenance };

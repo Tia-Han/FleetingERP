@@ -26,3 +26,19 @@ const Formatter = {
 };
 
 window.esc = Formatter.escape;
+
+// Dynamic arguments are serialized as data, never executable event-handler text.
+Formatter.actions = Object.create(null);
+Formatter.action = (name, ...args) => `data-action="${Formatter.escape(name)}" data-args="${Formatter.escape(JSON.stringify(args))}"`;
+Formatter.onAction = (name, handler) => { Formatter.actions[name] = handler; };
+document.addEventListener('click', event => {
+  const element = event.target.closest('[data-action]');
+  if (!element) return;
+  const handler = Formatter.actions[element.dataset.action];
+  if (!handler) return;
+  event.preventDefault();
+  try {
+    const args = JSON.parse(element.dataset.args);
+    Promise.resolve(handler(...args)).catch(error => console.error(error));
+  } catch (error) { console.error(error); }
+});

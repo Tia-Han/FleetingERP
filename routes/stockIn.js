@@ -3,7 +3,9 @@ const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+const { money, fail, authorize, validateMovement } = require('../middleware/business');
+router.use(authMiddleware, authorize('stockIn'));
+router.use(require('../middleware/pagination').validatePagination);
 
 // GET /stock-in - 入库单列表
 router.get('/', (req, res) => {
@@ -46,7 +48,7 @@ router.get('/', (req, res) => {
 
   // 分页支持
   const pageNum = parseInt(page) || 0;
-  const limitNum = parseInt(limit) || 0;
+  const limitNum = parseInt(limit) || 50;
 
   if (pageNum > 0 && limitNum > 0) {
     const offset = (pageNum - 1) * limitNum;
@@ -64,19 +66,18 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', (req, res) => {
+router.post('/', validateMovement('stockIn'), (req, res) => {
   const { location_id, supplier, remark, items, operator, stock_in_date } = req.body;
   if (!location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '场所和入库明细不能为空' });
   }
-  const createdAt = stock_in_date || new Date().toISOString().replace('T', ' ').substring(0, 19);
-
   const db = getDb();
+  const createdAt = stock_in_date || db.prepare("SELECT datetime('now', 'localtime') AS now").get().now;
   const transaction = db.transaction(() => {
     const orderResult = db.prepare('INSERT INTO stock_in_orders (location_id, supplier, remark, operator, created_at) VALUES (?, ?, ?, ?, ?)')
       .run(location_id, supplier || '', remark || '', operator || '', createdAt);
     const orderId = orderResult.lastInsertRowid;
-    let totalCost = 0;
+    let totalCostCents = 0;
 
     for (const item of items) {
       const { sku_id, quantity, unit_cost } = item;
@@ -94,9 +95,10 @@ router.post('/', (req, res) => {
       } else {
         db.prepare('INSERT INTO stock_balances (location_id, sku_id, quantity) VALUES (?, ?, ?)').run(location_id, sku_id, quantity);
       }
-      totalCost += quantity * unit_cost;
+      totalCostCents += quantity * money(unit_cost, '入库成本');
+      if (!Number.isSafeInteger(totalCostCents)) fail('入库总金额超出范围');
     }
-    db.prepare('UPDATE stock_in_orders SET total_cost = ? WHERE id = ?').run(totalCost, orderId);
+    db.prepare('UPDATE stock_in_orders SET total_cost = ? WHERE id = ?').run(totalCostCents / 100, orderId);
     return orderId;
   });
 

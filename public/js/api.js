@@ -5,10 +5,7 @@ const API_BASE = window.location.origin + '/api/v1';
 const API = {
   token: localStorage.getItem('token'),
   _tokenExpiry: parseInt(localStorage.getItem('tokenExpiry')) || 0,
-  _cache: {},
-  _pending: {},
-
-  _noCacheUrls: ['/stock/balances', '/stock/movements', '/stock/alerts', '/stock/summary', '/system/dashboard', '/sales', '/system/backups'],
+  _sessionGeneration: 0,
 
   // OPT-7: 检查 Token 是否已过期或即将过期
   isTokenValid() {
@@ -20,6 +17,7 @@ const API = {
 
   // OPT-7: 登录时保存 Token 过期时间（JWT 有效期 2 小时）
   setToken(token) {
+    this._sessionGeneration++;
     this.token = token;
     localStorage.setItem('token', token);
     const expiry = Date.now() + 2 * 60 * 60 * 1000;
@@ -28,11 +26,11 @@ const API = {
   },
 
   clearToken() {
+    this._sessionGeneration++;
     this.token = null;
     this._tokenExpiry = 0;
     localStorage.removeItem('token');
     localStorage.removeItem('tokenExpiry');
-    this._cache = {};
   },
 
   async request(method, url, body) {
@@ -45,49 +43,37 @@ const API = {
       }
     }
 
-    const cacheKey = method + url;
-    const shouldCache = method === 'GET' && !this._noCacheUrls.some(u => url.startsWith(u));
-    if (shouldCache) {
-      if (this._cache[cacheKey] && Date.now() - this._cache[cacheKey].ts < 5000) {
-        return this._cache[cacheKey].data;
-      }
-      if (this._pending[cacheKey]) {
-        return this._pending[cacheKey];
-      }
-    }
-
-    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    const generation = this._sessionGeneration;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    const options = { method, signal: controller.signal, headers: { 'Content-Type': 'application/json' } };
     if (this.token) options.headers['Authorization'] = `Bearer ${this.token}`;
     // OPT-11: 标记请求来源为网页端
     options.headers['X-Client-Source'] = 'web';
     if (body) options.body = JSON.stringify(body);
 
-    const promise = fetch(`${API_BASE}${url}`, options).then(async res => {
+    return fetch(`${API_BASE}${url}`, options).then(async res => {
+      if (generation !== this._sessionGeneration) return { success: false, message: '登录状态已变更，请重新操作' };
       if (res.status === 401) {
         API.clearToken();
         if (typeof App !== 'undefined' && App.renderLogin) App.renderLogin();
         return { success: false, message: '登录已过期，请重新登录' };
       }
       if (!res.ok) {
-        return { success: false, message: `服务器错误 (${res.status})` };
+        try { const error = await res.json(); return { success: false, message: error.message || `请求失败 (${res.status})` }; }
+        catch { return { success: false, message: `服务器错误 (${res.status})` }; }
       }
       try {
-        return await res.json();
+        const result = await res.json();
+        if (generation !== this._sessionGeneration) return { success: false, message: '登录状态已变更，请重新操作' };
+        return result;
       } catch (e) {
         return { success: false, message: '服务器响应解析失败' };
       }
     }).catch(err => {
-      return { success: false, message: '网络请求失败: ' + err.message };
-    });
-    if (method === 'GET' && shouldCache) {
-      this._pending[cacheKey] = promise;
-      const result = await promise;
-      delete this._pending[cacheKey];
-      this._cache[cacheKey] = { ts: Date.now(), data: result };
-      return result;
-    }
-    this._cache = {};
-    return promise;
+      return { success: false, message: err.name === 'AbortError' ? '请求超时，请先核实单据是否已保存' : '网络请求失败: ' + err.message };
+    }).finally(() => clearTimeout(timer));
+
   },
 
   login: (username, password) => API.request('POST', '/auth/login', { username, password }),
@@ -161,6 +147,12 @@ const API = {
         'X-Client-Source': 'web'
       }
     });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      if (res.status === 401) API.clearToken();
+      if (typeof App !== 'undefined') App.toast(error.message || '备份下载失败', 'error');
+      return;
+    }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');

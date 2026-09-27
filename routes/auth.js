@@ -60,12 +60,17 @@ const { authMiddleware, SECRET } = require('../middleware/auth');
  */
 
 // OPT-6: 登录限流 — IP 维度 + 用户名维度双限制
-const loginAttemptsByIP = {};
-const loginAttemptsByUser = {};
-const wxApiAttemptsByIP = {};
+const loginAttemptsByIP = Object.create(null);
+const loginAttemptsByUser = Object.create(null);
+const wxApiAttemptsByIP = Object.create(null);
 
 function checkRateLimit(key, store, max, windowMs) {
   const now = Date.now();
+  for (const k of Object.keys(store)) {
+    store[k] = store[k].filter(t => now - t < windowMs);
+    if (!store[k].length) delete store[k];
+  }
+  if (!store[key] && Object.keys(store).length >= 10000) return false;
   if (store[key]) {
     store[key] = store[key].filter(t => now - t < windowMs);
     if (store[key].length >= max) return false;
@@ -94,7 +99,7 @@ function checkWxRateLimit(req) {
 
 router.post('/login', (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
+  if (typeof username !== 'string' || typeof password !== 'string' || !username || !password || username.length > 100 || password.length > 200) {
     return res.json({ success: false, message: '请输入用户名和密码' });
   }
 
@@ -127,7 +132,7 @@ router.post('/login', (req, res) => {
   clearAttempts(username, loginAttemptsByUser);
 
   const token = jwt.sign(
-    { id: user.id, username: user.username, role: user.role, name: user.name },
+    { id: user.id, username: user.username, role: user.role, name: user.name, version: user.session_version },
     SECRET,
     { expiresIn: '2h' }
   );
@@ -139,11 +144,11 @@ router.post('/login', (req, res) => {
 
 router.put('/change-password', authMiddleware, (req, res) => {
   const { old_password, new_password } = req.body;
-  if (!old_password || !new_password) {
+  if (typeof old_password !== 'string' || typeof new_password !== 'string' || !old_password || !new_password) {
     return res.json({ success: false, message: '请输入旧密码和新密码' });
   }
-  if (new_password.length < 6) {
-    return res.json({ success: false, message: '新密码至少6位' });
+  if (typeof new_password !== 'string' || new_password.length < 8 || new_password.length > 200) {
+    return res.json({ success: false, message: '新密码须为8至200位' });
   }
   const db = getDb();
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
@@ -151,11 +156,12 @@ router.put('/change-password', authMiddleware, (req, res) => {
     return res.json({ success: false, message: '旧密码错误' });
   }
   const hash = bcrypt.hashSync(new_password, 10);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.user.id);
+  db.prepare('UPDATE users SET password_hash = ?, session_version = lower(hex(randomblob(16))) WHERE id = ?').run(hash, req.user.id);
   res.json({ success: true, message: '密码修改成功' });
 });
 
 router.post('/logout', authMiddleware, (req, res) => {
+  getDb().prepare('UPDATE users SET session_version = lower(hex(randomblob(16))) WHERE id = ?').run(req.user.id);
   res.json({ success: true, message: '已退出登录' });
 });
 
@@ -171,7 +177,7 @@ router.post('/wx-login', async (req, res) => {
   }
 
   const { code } = req.body;
-  if (!code) {
+  if (typeof code !== 'string' || !code || code.length > 500) {
     return res.json({ success: false, message: '缺少微信 code' });
   }
 
@@ -184,14 +190,17 @@ router.post('/wx-login', async (req, res) => {
 
   try {
     const https = require('https');
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+    const url = 'https://api.weixin.qq.com/sns/jscode2session?' + new URLSearchParams({ appid, secret, js_code: code, grant_type: 'authorization_code' });
 
     const wxData = await new Promise((resolve, reject) => {
-      https.get(url, (resp) => {
+      const request = https.get(url, { timeout: 10000 }, (resp) => {
         let data = '';
-        resp.on('data', (chunk) => { data += chunk; });
-        resp.on('end', () => { resolve(JSON.parse(data)); });
-      }).on('error', reject);
+        resp.on('data', (chunk) => { data += chunk; if (data.length > 65536) request.destroy(new Error('微信响应过大')); });
+        resp.on('error', reject);
+        resp.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(new Error('微信响应格式错误')); } });
+      });
+      request.on('timeout', () => request.destroy(new Error('微信请求超时')));
+      request.on('error', reject);
     });
 
     if (wxData.errcode) {
@@ -204,15 +213,15 @@ router.post('/wx-login', async (req, res) => {
     }
 
     const db = getDb();
-    const user = db.prepare('SELECT id, username, role, name FROM users WHERE openid = ?').get(openid);
+    const user = db.prepare('SELECT id, username, role, name, session_version FROM users WHERE openid = ?').get(openid);
 
     if (user) {
       const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role, name: user.name },
+        { id: user.id, username: user.username, role: user.role, name: user.name, version: user.session_version },
         SECRET,
         { expiresIn: '2h' }
       );
-      return res.json({ success: true, data: { status: 'bound', token, user } });
+      return res.json({ success: true, data: { status: 'bound', token, user: { id: user.id, username: user.username, role: user.role, name: user.name } } });
     }
 
     return res.json({ success: true, data: { status: 'unbound', openid } });
@@ -229,7 +238,7 @@ router.post('/wx-bind', async (req, res) => {
   }
 
   const { code, username, password } = req.body;
-  if (!code || !username || !password) {
+  if (typeof code !== 'string' || typeof username !== 'string' || typeof password !== 'string' || !code || !username || !password || password.length > 200) {
     return res.json({ success: false, message: '缺少 code、用户名或密码' });
   }
 
@@ -242,14 +251,17 @@ router.post('/wx-bind', async (req, res) => {
 
   try {
     const https = require('https');
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appid}&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
+    const url = 'https://api.weixin.qq.com/sns/jscode2session?' + new URLSearchParams({ appid, secret, js_code: code, grant_type: 'authorization_code' });
 
     const wxData = await new Promise((resolve, reject) => {
-      https.get(url, (resp) => {
+      const request = https.get(url, { timeout: 10000 }, (resp) => {
         let data = '';
-        resp.on('data', (chunk) => { data += chunk; });
-        resp.on('end', () => { resolve(JSON.parse(data)); });
-      }).on('error', reject);
+        resp.on('data', (chunk) => { data += chunk; if (data.length > 65536) request.destroy(new Error('微信响应过大')); });
+        resp.on('error', reject);
+        resp.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(new Error('微信响应格式错误')); } });
+      });
+      request.on('timeout', () => request.destroy(new Error('微信请求超时')));
+      request.on('error', reject);
     });
 
     if (wxData.errcode) {
@@ -276,7 +288,7 @@ router.post('/wx-bind', async (req, res) => {
     db.prepare('UPDATE users SET openid = ? WHERE id = ?').run(openid, user.id);
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, name: user.name },
+      { id: user.id, username: user.username, role: user.role, name: user.name, version: user.session_version },
       SECRET,
       { expiresIn: '2h' }
     );
@@ -300,7 +312,7 @@ router.post('/users', authMiddleware, (req, res) => {
     return res.json({ success: false, message: '无权限' });
   }
   const { username, password, role, name } = req.body;
-  if (!username || !password || !role || !name) {
+  if (typeof username !== 'string' || typeof password !== 'string' || typeof name !== 'string' || !username || !name || !role || password.length < 8 || password.length > 200) {
     return res.json({ success: false, message: '用户名、密码、角色、姓名不能为空' });
   }
   if (!['admin', 'warehouse_manager', 'store_clerk'].includes(role)) {

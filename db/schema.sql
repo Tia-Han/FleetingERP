@@ -174,6 +174,7 @@ CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  session_version TEXT NOT NULL DEFAULT '',
   role TEXT NOT NULL CHECK(role IN ('admin', 'warehouse_manager', 'store_clerk')),
   name TEXT NOT NULL,
   created_at TEXT DEFAULT (datetime('now', 'localtime'))

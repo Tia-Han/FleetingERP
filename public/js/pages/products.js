@@ -76,7 +76,7 @@ const ProductsPage = {
         </div>
         <div class="table-wrapper"><table><thead><tr><th>品牌</th><th>商品数</th><th>操作</th></tr></thead><tbody>
           ${brands.map(b => `<tr><td>${esc(b.name)}</td><td>${b.product_count}</td><td>
-            <button class="btn btn-primary btn-sm" onclick="ProductsPage.showEditBrand(${b.id}, '${b.name.replace(/'/g,"\\'")}')">修改</button>
+            <button class="btn btn-primary btn-sm" ${Formatter.action('brand-edit', b.id, b.name)}>修改</button>
             <button class="btn btn-danger btn-sm" onclick="ProductsPage.deleteBrand(${b.id})">删除</button>
           </td></tr>`).join('')}
         </tbody></table></div>
@@ -123,7 +123,7 @@ const ProductsPage = {
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card" style="width:400px">
       <h2>修改品牌</h2>
-      <div class="form-group"><label>品牌名称</label><input type="text" id="edit-brand-name" value="${name.replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
+      <div class="form-group"><label>品牌名称</label><input type="text" id="edit-brand-name" value="${esc(name)}" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
         <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
         <button class="btn btn-primary" onclick="ProductsPage.submitEditBrand(${id})">保存</button>
@@ -206,13 +206,13 @@ const ProductsPage = {
       <h2>修改商品</h2>
       <div class="form-group"><label>品牌</label><select id="edit-p-brand">${brands.map(b => `<option value="${b.id}" ${b.id === p.brand_id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></div>
       <div class="form-group"><label>商品名</label><input type="text" id="edit-p-name" value="${esc(p.name)}"></div>
-      <div class="form-group"><label>品类</label><select id="edit-p-category">${categories.map(c => `<option value="${c.name}" ${c.name===p.category?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+      <div class="form-group"><label>品类</label><select id="edit-p-category">${categories.map(c => `<option value="${esc(c.name)}" ${c.name===p.category?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="edit-p-splittable" style="width:18px;height:18px" ${p.is_splittable ? 'checked' : ''}>可分装（整装香水可分装为小规格）</label></div>
       <div style="border-top:1px solid #eee;padding-top:12px;margin-top:8px">
         <h3 style="margin-bottom:8px;color:#34495e">SKU 变体</h3>
         <table style="font-size:13px"><thead><tr><th>规格</th><th>容量(ml)</th><th>成本价</th><th>零售价</th><th>库存预警</th><th>操作</th></tr></thead><tbody>
           ${p.skus.map(s => `<tr>
-            <td>${esc(s.volume)}</td><td>${s.volume_ml}</td><td>${Formatter.money(s.cost_price)}</td><td>${Formatter.money(s.retail_price)}</td><td>${s.low_stock_threshold}</td>
+            <td>${esc(s.volume)}</td><td>${esc(s.volume_ml)}</td><td>${Formatter.money(s.cost_price)}</td><td>${Formatter.money(s.retail_price)}</td><td>${esc(s.low_stock_threshold)}</td>
             <td><button class="btn btn-primary btn-sm" onclick="ProductsPage.showEditSku(${s.id})">改</button></td>
           </tr>`).join('') || '<tr><td colspan="6" style="color:#999;text-align:center">无SKU</td></tr>'}
         </tbody></table>
@@ -238,10 +238,10 @@ const ProductsPage = {
       <h2>修改 SKU</h2>
       <div class="form-group"><label>规格类型</label><select id="es-type"><option value="整装" ${sku.spec_type==='整装'?'selected':''}>整装</option><option value="分装" ${sku.spec_type==='分装'?'selected':''}>分装</option></select></div>
       <div class="form-group"><label>容量描述</label><input type="text" id="es-volume" value="${esc(sku.volume)}"></div>
-      <div class="form-group"><label>容量数值(ml)</label><input type="number" id="es-volumeml" value="${sku.volume_ml}" step="0.5"></div>
-      <div class="form-group"><label>成本价</label><input type="number" id="es-cost" value="${sku.cost_price}" step="0.01"></div>
-      <div class="form-group"><label>零售价</label><input type="number" id="es-retail" value="${sku.retail_price}" step="0.01"></div>
-      <div class="form-group"><label>库存预警</label><input type="number" id="es-threshold" value="${sku.low_stock_threshold}"></div>
+      <div class="form-group"><label>容量数值(ml)</label><input type="number" id="es-volumeml" value="${esc(sku.volume_ml)}" step="0.5"></div>
+      <div class="form-group"><label>成本价</label><input type="number" id="es-cost" value="${esc(sku.cost_price)}" step="0.01"></div>
+      <div class="form-group"><label>零售价</label><input type="number" id="es-retail" value="${esc(sku.retail_price)}" step="0.01"></div>
+      <div class="form-group"><label>库存预警</label><input type="number" id="es-threshold" value="${esc(sku.low_stock_threshold)}"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" onclick="this.closest('.modal-overlay').remove()">取消</button>
         <button class="btn btn-primary" onclick="ProductsPage.submitEditSku(${skuId})">保存</button>
@@ -399,3 +399,5 @@ const ProductsPage = {
     if (res.success) { App.toast('SKU 添加成功'); document.querySelector('.modal-overlay').remove(); await this._refreshProducts(); this._renderProductsSheet(); } else App.toast(res.message, 'error');
   }
 };
+
+Formatter.onAction('brand-edit', (...args) => ProductsPage.showEditBrand(...args));

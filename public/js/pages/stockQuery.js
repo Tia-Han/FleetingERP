@@ -39,7 +39,7 @@ const StockQueryPage = {
           (b.barcode && SearchSuggest.fuzzyMatch(b.barcode, kw))
         );
       },
-      renderItem: (b) => `<div style="display:flex;justify-content:space-between"><span>${esc(b.brand_name)} - ${esc(b.product_name)} ${esc(b.volume)}</span><span style="color:#999">库存:${b.quantity}</span></div>`,
+      renderItem: (b) => `<div style="display:flex;justify-content:space-between"><span>${esc(b.brand_name)} - ${esc(b.product_name)} ${esc(b.volume)}</span><span style="color:#999">库存:${esc(b.quantity)}</span></div>`,
       onSelect: (b) => { document.getElementById('sq-search').value = b.product_name; this.load(); }
     });
   },
@@ -57,8 +57,8 @@ const StockQueryPage = {
       </div>
       <table><thead><tr><th>品类</th><th>操作</th></tr></thead><tbody id="cat-list">
         ${categories.map(c => `<tr id="cat-row-${c.id}"><td id="cat-cell-${c.id}">${esc(c.name)}</td><td>
-          <button class="btn btn-sm" onclick="StockQueryPage.editCategory(${c.id}, '${c.name.replace(/'/g,"\\'")}')">重命名</button>
-          <button class="btn btn-danger btn-sm" onclick="StockQueryPage.deleteCategory('${c.name.replace(/'/g,"\\'")}')">删除</button>
+          <button class="btn btn-sm" ${Formatter.action('category-edit', c.id, c.name)}>重命名</button>
+          <button class="btn btn-danger btn-sm" ${Formatter.action('category-delete', c.name)}>删除</button>
         </td></tr>`).join('')}
       </tbody></table>
       <div style="margin-top:12px;text-align:right">
@@ -78,8 +78,8 @@ const StockQueryPage = {
 
   editCategory(id, oldName) {
     const cell = document.getElementById('cat-cell-' + id);
-    cell.innerHTML = `<input type="text" id="cat-edit-input" value="${oldName.replace(/"/g,'&quot;')}" style="width:100%;padding:4px;border:1px solid #ddd;border-radius:4px">
-      <button class="btn btn-primary btn-sm" style="margin-top:4px" onclick="StockQueryPage.saveCategoryRename('${oldName.replace(/'/g,"\\'")}')">保存</button>`;
+    cell.innerHTML = `<input type="text" id="cat-edit-input" value="${esc(oldName)}" style="width:100%;padding:4px;border:1px solid #ddd;border-radius:4px">
+      <button class="btn btn-primary btn-sm" style="margin-top:4px" ${Formatter.action('category-save', oldName)}>保存</button>`;
   },
 
   async saveCategoryRename(oldName) {
@@ -128,9 +128,13 @@ const StockQueryPage = {
       <table><thead><tr><th>场所</th><th>品牌</th><th>商品</th><th>规格</th><th>类型</th><th>库存</th><th>单位成本</th><th>库存价值</th><th>预警</th></tr></thead><tbody>
         ${data.map(b => `<tr>
           <td>${esc(b.location_name)}</td><td>${esc(b.brand_name)}</td><td>${esc(b.product_name)}</td><td>${esc(b.volume)}</td><td>${esc(b.spec_type)}</td>
-          <td>${b.quantity}</td><td>${Formatter.money(b.cost_price)}</td><td>${Formatter.money(b.stock_value)}</td>
+          <td>${esc(b.quantity)}</td><td>${Formatter.money(b.cost_price)}</td><td>${Formatter.money(b.stock_value)}</td>
           <td>${b.quantity <= 0 ? '<span class="badge badge-danger">无库存</span>' : (b.is_low_stock ? '<span class="badge badge-warning">低库存</span>' : '')}</td>
         </tr>`).join('')}
       </tbody></table></div>`;
   }
 };
+
+Formatter.onAction('category-edit', (...args) => StockQueryPage.editCategory(...args));
+Formatter.onAction('category-delete', (name) => StockQueryPage.deleteCategory(name));
+Formatter.onAction('category-save', (name) => StockQueryPage.saveCategoryRename(name));

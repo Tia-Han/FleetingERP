@@ -24,7 +24,7 @@ const TransferPage = {
       <div class="card"><h2>调拨记录</h2><div id="tr-history"></div></div>`;
     const locRes = await API.getLocations();
     if (locRes.success) {
-      const opts = locRes.data.map(l => `<option value="${l.id}">${l.name}</option>`).join('');
+      const opts = locRes.data.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
       document.getElementById('tr-from').innerHTML = opts;
       document.getElementById('tr-to').innerHTML = opts;
     }
@@ -47,7 +47,7 @@ const TransferPage = {
         }
         return items;
       },
-      renderItem: (s) => `<div style="display:flex;justify-content:space-between"><span>${s.product_name} - ${s.volume}</span><span style="color:#999">${s.sku_code}</span></div>`,
+      renderItem: (s) => `<div style="display:flex;justify-content:space-between"><span>${esc(s.product_name)} - ${esc(s.volume)}</span><span style="color:#999">${esc(s.sku_code)}</span></div>`,
       onSelect: (s) => this.addItem(s)
     });
   },
@@ -68,7 +68,7 @@ const TransferPage = {
       if (matched.length === 0) { results.innerHTML = '<p>未找到匹配商品</p>'; return; }
       results.innerHTML = matched.flatMap(p => p.skus.map(s => {
         const skuData = {id: s.id, product_name: p.name, volume: s.volume, sku_code: s.sku_code};
-        return `<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer" onclick='TransferPage.addItem(${JSON.stringify(skuData).replace(/'/g,"&#39;")})'>${p.name} - ${s.volume}</div>`;
+        return `<div style="padding:8px;border-bottom:1px solid #eee;cursor:pointer" ${Formatter.action('transfer-select', skuData)}>${esc(p.name)} - ${esc(s.volume)}</div>`;
       }).join('')).join('');
     }
   },
@@ -96,8 +96,8 @@ const TransferPage = {
     if (this.items.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999">暂无调拨商品</td></tr>'; return; }
     tbody.innerHTML = this.items.map((item, idx) => `<tr>
       <td>${esc(item.product_name)}</td><td>${esc(item.volume)}</td>
-      <td><span style="color:${item.stock < item.quantity ? '#e74c3c' : '#999'}">${item.stock}</span></td>
-      <td><input type="number" value="${item.quantity}" min="1" style="width:60px" onchange="TransferPage.updateQty(${idx}, this.value)"></td>
+      <td><span style="color:${item.stock < item.quantity ? '#e74c3c' : '#999'}">${esc(item.stock)}</span></td>
+      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" onchange="TransferPage.updateQty(${idx}, this.value)"></td>
       <td><button class="btn btn-danger btn-sm" onclick="TransferPage.removeItem(${idx})">删除</button></td></tr>`).join('');
   },
 
@@ -126,7 +126,9 @@ const TransferPage = {
     const recent = res.data.slice(0, 50);
     div.innerHTML = `<div class="table-wrapper"><table><thead><tr><th>时间</th><th>从</th><th>到</th><th>商品</th></tr></thead><tbody>
       ${recent.map(t => `<tr><td>${Formatter.date(t.created_at)}</td><td>${esc(t.from_name)}</td><td>${esc(t.to_name)}</td>
-        <td>${t.items.map(i => `${esc(i.product_name)} ${esc(i.volume)} x${i.quantity}`).join(', ')}</td></tr>`).join('')}
+        <td>${t.items.map(i => `${esc(i.product_name)} ${esc(i.volume)} x${esc(i.quantity)}`).join(', ')}</td></tr>`).join('')}
     </tbody></table></div>${res.data.length > 50 ? '<p style="color:#999;text-align:center">仅显示最近50条记录</p>' : ''}`;
   }
 };
+
+Formatter.onAction('transfer-select', (value) => TransferPage.addItem(value));

@@ -63,8 +63,8 @@ const InventoryCheckPage = {
               <td>${esc(item.brand_name)}</td>
               <td>${esc(item.volume)}</td>
               <td>${esc(item.barcode || '-')}</td>
-              <td style="text-align:center">${item.quantity}</td>
-              <td><input type="number" value="${item.quantity}" data-sku="${item.sku_id}" style="width:80px;padding:4px;text-align:center" onchange="InventoryCheckPage.updateActual(${item.sku_id}, this.value)"></td>
+              <td style="text-align:center">${esc(item.quantity)}</td>
+              <td><input type="number" value="${esc(item.quantity)}" data-sku="${item.sku_id}" style="width:80px;padding:4px;text-align:center" onchange="InventoryCheckPage.updateActual(${item.sku_id}, this.value)"></td>
               <td class="diff-cell" id="diff-${item.sku_id}" style="text-align:center;font-weight:bold"></td>
             </tr>`).join('')}
           </tbody>
@@ -136,7 +136,7 @@ const InventoryCheckPage = {
     });
     if (res.success) {
       const adjustments = res.data.adjustments;
-      const summary = adjustments.map(a => `${a.volume}: ${a.system_qty}→${a.actual_qty} (${a.diff > 0 ? '+' : ''}${a.diff})`).join('\n');
+      const summary = adjustments.map(a => `${esc(a.volume)}: ${a.system_qty}→${a.actual_qty} (${a.diff > 0 ? '+' : ''}${a.diff})`).join('\n');
       App.toast(`盘点完成，调整 ${res.data.adjustedCount} 项`);
       if (adjustments.length > 0) {
         alert(`盘点调整明细：\n\n${summary}`);

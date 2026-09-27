@@ -17,4 +17,13 @@ function generateSkuCode(brandId, productId, seq) {
   return `SKU${b}${p}${s}`;
 }
 
-module.exports = { generateBarcode, generateSkuCode };
+function generateAvailableBarcode(db) {
+  // Allocate from the next persistent SKU sequence, then skip any imported barcode.
+  let candidate = Number(db.prepare("SELECT seq FROM sqlite_sequence WHERE name='skus'").get()?.seq || 0) + 1;
+  while (candidate <= 999999999) {
+    const barcode = generateBarcode(candidate++);
+    if (!db.prepare('SELECT 1 FROM skus WHERE barcode = ?').get(barcode)) return barcode;
+  }
+  throw new Error('内部条码编号已用尽');
+}
+module.exports = { generateBarcode, generateSkuCode, generateAvailableBarcode };

@@ -93,7 +93,7 @@ const StockInPage = {
         }
         return items;
       },
-      renderItem: (s) => `<div style="display:flex;justify-content:space-between"><span>${esc(s.product_name)} - ${esc(s.volume)} (${s.sku_code})</span><span style="color:#999">成本 ${Formatter.money(s.cost_price)}</span></div>`,
+      renderItem: (s) => `<div style="display:flex;justify-content:space-between"><span>${esc(s.product_name)} - ${esc(s.volume)} (${esc(s.sku_code)})</span><span style="color:#999">成本 ${Formatter.money(s.cost_price)}</span></div>`,
       onSelect: (s) => this.addItem(s)
     });
   },
@@ -122,8 +122,8 @@ const StockInPage = {
       if (matched.length === 0) { results.innerHTML = '<p>未找到匹配商品</p>'; return; }
       results.innerHTML = matched.map(p => p.skus.map(s => {
         const skuData = {id: s.id, product_name: p.name, volume: s.volume, sku_code: s.sku_code, cost_price: s.cost_price, retail_price: s.retail_price};
-        return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" onclick='StockInPage.addItem(${JSON.stringify(skuData).replace(/'/g,"&#39;")})'>
-          <span>${esc(p.name)} - ${esc(s.volume)} (${s.sku_code})</span><span>成本 ${Formatter.money(s.cost_price)} / 零售 ${Formatter.money(s.retail_price)}</span></div>`;
+        return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" ${Formatter.action('stockIn-select', skuData)}>
+          <span>${esc(p.name)} - ${esc(s.volume)} (${esc(s.sku_code)})</span><span>成本 ${Formatter.money(s.cost_price)} / 零售 ${Formatter.money(s.retail_price)}</span></div>`;
       }).join('')).join('');
     }
   },
@@ -152,7 +152,7 @@ const StockInPage = {
     }
     tbody.innerHTML = this.items.map((item, idx) => `<tr>
       <td>${esc(item.product_name)}</td><td>${esc(item.volume)}</td>
-      <td><input type="number" value="${item.quantity}" min="1" style="width:60px" onchange="StockInPage.updateQty(${idx}, this.value)"></td>
+      <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px" onchange="StockInPage.updateQty(${idx}, this.value)"></td>
       <td><input type="number" value="${item.unit_cost}" min="0" step="0.01" style="width:80px" onchange="StockInPage.updateCost(${idx}, this.value)"></td>
       <td>${Formatter.money(item.quantity * item.unit_cost)}</td>
       <td><button class="btn btn-danger btn-sm" onclick="StockInPage.removeItem(${idx})">删除</button></td></tr>`).join('');
@@ -360,7 +360,7 @@ const StockInPage = {
                   <td>${esc(item.product_name)}</td>
                   <td>${esc(item.volume || '-')}</td>
                   <td><code>${esc(item.sku_code)}</code></td>
-                  <td>${item.quantity} ${esc(item.unit || '')}</td>
+                  <td>${esc(item.quantity)} ${esc(item.unit || '')}</td>
                   <td>${Formatter.money(item.unit_cost)}</td>
                   <td style="font-weight:500">${Formatter.money(item.quantity * item.unit_cost)}</td>
                 </tr>
@@ -381,3 +381,5 @@ const StockInPage = {
     }
   }
 };
+
+Formatter.onAction('stockIn-select', (value) => StockInPage.addItem(value));
