@@ -1,4 +1,13 @@
 const StockQueryPage = {
+  _rows: [],
+  canEdit() { return ['admin', 'warehouse_manager'].includes(App.currentUser?.role); },
+  openAction(action, skuId, locationId) {
+    const row = this._rows.find(r => r.sku_id === skuId && r.location_id === locationId);
+    if (!row) return;
+    if (action === 'edit') return ProductsPage.openEditor(row.product_id);
+    if (action === 'check' && this.canEdit()) return App.navigate('inventoryCheck', {location_id: locationId, sku_id: skuId});
+    if (action === 'transfer' && ['admin','warehouse_manager','store_clerk'].includes(App.currentUser?.role)) return App.navigate('transfer', {location_id: locationId, sku: {id:skuId,sku_code:row.sku_code,product_name:row.product_name,volume:row.volume}});
+  },
   async render() {
     const locId = App.currentLocation || '';
     const locRes = await API.getLocations();
@@ -112,10 +121,13 @@ const StockQueryPage = {
     if (cat) params.category = cat;
     if (spec) params.spec_type = spec;
     if (search) params.search = search;
+    const request = this._loadRequest = (this._loadRequest || 0) + 1;
     const res = await API.getBalances(params);
+    if (request !== this._loadRequest || !document.getElementById('sq-results')) return;
     const div = document.getElementById('sq-results');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }
     let data = res.data;
+    this._rows = data;
     if (alert === 'low') {
       data = data.filter(b => b.is_low_stock);
     } else if (alert === 'zero') {
@@ -125,11 +137,13 @@ const StockQueryPage = {
     const totalValue = data.reduce((sum, b) => sum + b.stock_value, 0);
     div.innerHTML = `<div class="card">
       <p style="margin-bottom:12px">共 ${data.length} 条记录 | 总价值: <strong>${Formatter.money(totalValue)}</strong></p>
-      <table><thead><tr><th>场所</th><th>品牌</th><th>商品</th><th>规格</th><th>类型</th><th>库存</th><th>单位成本</th><th>库存价值</th><th>预警</th></tr></thead><tbody>
+      <table><thead><tr><th>场所</th><th>品牌</th><th>商品</th><th>规格</th><th>类型</th><th>库存</th><th>单位成本</th><th>库存价值</th><th>预警</th><th>操作</th></tr></thead><tbody>
         ${data.map(b => `<tr>
           <td>${esc(b.location_name)}</td><td>${esc(b.brand_name)}</td><td>${esc(b.product_name)}</td><td>${esc(b.volume)}</td><td>${esc(b.spec_type)}</td>
           <td>${esc(b.quantity)}</td><td>${Formatter.money(b.cost_price)}</td><td>${Formatter.money(b.stock_value)}</td>
           <td>${b.quantity <= 0 ? '<span class="badge badge-danger">无库存</span>' : (b.is_low_stock ? '<span class="badge badge-warning">低库存</span>' : '')}</td>
+          <td>${this.canEdit() ? `<button class="btn btn-sm" ${Formatter.event('click','stock-query-action','edit',b.sku_id,b.location_id)}>编辑商品</button> <button class="btn btn-sm" ${Formatter.event('click','stock-query-action','check',b.sku_id,b.location_id)}>发起盘点</button>` : ''}
+          ${['admin','warehouse_manager','store_clerk'].includes(App.currentUser?.role) ? `<button class="btn btn-sm" ${Formatter.event('click','stock-query-action','transfer',b.sku_id,b.location_id)}>发起调拨</button>` : ''}</td>
         </tr>`).join('')}
       </tbody></table></div>`;
   }
@@ -144,3 +158,5 @@ Formatter.onEvent("stockQuery-1", function(event) { return StockQueryPage.showCa
 Formatter.onEvent("stockQuery-2", function(event) { return StockQueryPage.load(); });
 Formatter.onEvent("stockQuery-3", function(event) { return StockQueryPage.addCategory(); });
 Formatter.onEvent("stockQuery-4", function(event) { this.closest('.modal-overlay').remove(); StockQueryPage.render() });
+
+Formatter.onEvent('stock-query-action', function(event, action, skuId, locationId) { return StockQueryPage.openAction(action, skuId, locationId); });

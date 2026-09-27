@@ -11,7 +11,7 @@ router.get('/balances', (req, res) => {
   const db = getDb();
   const { location_id, category, brand_id, spec_type, search, sku_id, page, limit, alert_type } = req.query;
   const hasPagination = page !== undefined;
-  let sql = `SELECT sb.*, s.sku_code, s.barcode, s.spec_type, s.volume, s.unit, s.cost_price, s.retail_price, s.low_stock_threshold, p.name as product_name, p.category, b.name as brand_name, l.name as location_name FROM stock_balances sb JOIN skus s ON sb.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN brands b ON p.brand_id = b.id JOIN locations l ON sb.location_id = l.id WHERE s.is_deleted = 0 AND p.is_deleted = 0`;
+  let sql = `SELECT sb.*, s.product_id, s.sku_code, s.barcode, s.spec_type, s.volume, s.unit, s.cost_price, s.retail_price, s.low_stock_threshold, p.name as product_name, p.category, b.name as brand_name, l.name as location_name FROM stock_balances sb JOIN skus s ON sb.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN brands b ON p.brand_id = b.id JOIN locations l ON sb.location_id = l.id WHERE s.is_deleted = 0 AND p.is_deleted = 0`;
   const params = [];
   if (location_id) { sql += ' AND sb.location_id = ?'; params.push(location_id); }
   if (sku_id) { sql += ' AND sb.sku_id = ?'; params.push(sku_id); }
@@ -135,7 +135,7 @@ router.post('/check', validateMovement('stock'), (req, res) => {
       const sku = db.prepare('SELECT volume FROM skus WHERE id = ?').get(sku_id);
       const movementType = diff > 0 ? 'check_in' : 'check_out';
       db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-        .run(location_id, sku_id, movementType, diff, 'inventory_check', `盘点调整: 系统${systemQty}→实际${actual_quantity}`, operator || '', req.clientSource);
+        .run(location_id, sku_id, movementType, diff, 'inventory_check', `盘点调整: 系统${systemQty}→实际${actual_quantity}${req.body.remark ? '；原因：' + String(req.body.remark).slice(0, 500) : ''}`, operator || '', req.clientSource);
       db.prepare(`INSERT INTO stock_balances (location_id, sku_id, quantity) VALUES (?, ?, ?)
         ON CONFLICT(location_id, sku_id) DO UPDATE SET quantity = excluded.quantity, updated_at = datetime('now', 'localtime')`)
         .run(location_id, sku_id, actual_quantity);

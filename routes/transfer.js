@@ -21,7 +21,15 @@ router.get('/', (req, res) => {
   res.json({ success: true, data: transfers });
 });
 
-router.post('/', validateMovement('transfer'), (req, res) => {
+router.get('/:id', (req, res) => {
+  const db = getDb();
+  const data = db.prepare('SELECT t.*, fl.name AS from_name, tl.name AS to_name FROM transfers t JOIN locations fl ON fl.id=t.from_location_id JOIN locations tl ON tl.id=t.to_location_id WHERE t.id=?').get(req.params.id);
+  if (!data) return res.status(404).json({success:false,message:'调拨单不存在'});
+  data.items = db.prepare('SELECT i.*, s.volume, s.sku_code, p.name AS product_name FROM transfer_items i JOIN skus s ON s.id=i.sku_id JOIN products p ON p.id=s.product_id WHERE i.transfer_id=?').all(data.id);
+  res.json({success:true,data});
+});
+
+router.post('/',  validateMovement('transfer'), (req, res) => {
   const { from_location_id, to_location_id, items, operator } = req.body;
   if (!from_location_id || !to_location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '调出场所、调入场所、明细不能为空' });

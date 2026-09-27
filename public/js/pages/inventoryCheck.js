@@ -5,12 +5,15 @@ const InventoryCheckPage = {
   async render() {
     this.stockData = [];
     this.checkData = {};
-    const locId = App.currentLocation || '';
+    const params = App._navParams || {};
+    App._navParams = null;
+    this.targetSku = params.sku_id || null;
+    const locId = params.location_id || App.currentLocation || '';
     const locRes = await API.getLocations();
     const locations = locRes.success ? locRes.data : [];
     document.getElementById('content').innerHTML = `
       <div class="card">
-        <h2>库存盘点</h2>
+        <h2>库存盘点${this.targetSku ? '（指定 SKU）' : ''}</h2><div class="form-group"><label>差异原因</label><input id="ic-reason" placeholder="例如：实盘数量差异、破损漏登记" maxlength="500"></div>
         <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
           <div class="form-group" style="margin:0"><label>盘点场所</label>
             <select id="ic-location" ${Formatter.event('change', 'inventoryCheck-1')}  style="padding:8px;border:1px solid #ddd;border-radius:4px">
@@ -34,7 +37,7 @@ const InventoryCheckPage = {
     if (!locId) return;
     const container = document.getElementById('ic-content');
     container.innerHTML = '<p>加载中...</p>';
-    const res = await API.getBalances({ location_id: locId });
+    const res = await API.getBalances({ location_id: locId, ...(this.targetSku ? {sku_id:this.targetSku} : {}) });
     if (!res.success) { container.innerHTML = '<p>加载失败</p>'; return; }
     this.stockData = res.data;
     this.checkData = {};
@@ -128,10 +131,13 @@ const InventoryCheckPage = {
       App.toast('盘点数据与系统一致，无需调整');
       return;
     }
+    const reason = document.getElementById('ic-reason').value.trim();
+    if (!reason) return App.toast('请填写盘点差异原因', 'error');
     if (!confirm(`共有 ${diffs.length} 项差异，确认提交盘点？系统将自动调整库存。`)) return;
     const res = await API.inventoryCheck({
       location_id: locId,
-      items: items,
+      items: diffs,
+      remark: reason,
       operator: App.currentUser.name
     });
     if (res.success) {

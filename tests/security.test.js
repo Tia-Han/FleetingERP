@@ -21,7 +21,7 @@ function token(role = 'admin') {
 }
 function call(module, method, url, body = {}, credential = token()) {
   return new Promise(resolve => {
-    const req = { method, url, body, headers: { authorization: credential ? 'Bearer '+credential : '' }, query:{}, clientSource:'web', ip:'127.0.0.1' };
+    const req = { method, url, body, headers: { authorization: credential ? 'Bearer '+credential : '' }, query:Object.fromEntries(new URL(url, 'http://test').searchParams), clientSource:'web', ip:'127.0.0.1' };
     const res = { statusCode:200, status(n){this.statusCode=n;return this;}, json(data){resolve({status:this.statusCode,...data});} };
     require('../routes/'+module).handle(req,res,error=>resolve({success:false,status:error?.status || (error?.code === 'BUSINESS_ERROR' ? 400 : 500),error:error?.message}));
   });
@@ -228,4 +228,36 @@ test('legacy table rebuild preserves source and indexes; failed migration rolls 
     else assert.ok(check.prepare("SELECT 1 FROM sqlite_master WHERE name='idx_stock_movements_ref'").get());
     check.close();
   }
+});
+
+test('transfer appears in both history views without duplicating inventory or inbound orders', async()=>{
+ const moved=await call('transfer','POST','/',{from_location_id:1,to_location_id:2,items:[{sku_id:1,quantity:2}]});
+ assert.equal(moved.success,true);
+ const inbound=await call('stockIn','GET','/history?location_id=2&type=transfer_in');
+ assert.equal(inbound.total,1);assert.equal(inbound.data[0].id,moved.data.id);assert.equal(inbound.data[0].from_name,'Warehouse');
+ const outbound=await call('stockOut','GET','/?location_id=1&type=transfer_out&page=1');
+ assert.equal(outbound.total,1);assert.equal(outbound.data[0].transfer_id,moved.data.id);assert.equal(outbound.data[0].quantity,-2);
+ assert.equal((await call('stockIn','GET','/history?location_id=1&type=transfer_in')).total,0);
+ const detail=await call('transfer','GET','/'+moved.data.id);assert.equal(detail.data.to_name,'Store');assert.equal(detail.data.items[0].quantity,2);
+ assert.equal(quantity(),8);assert.equal(db.prepare('SELECT quantity FROM stock_balances WHERE location_id=2 AND sku_id=1').get().quantity,2);
+ assert.equal(db.prepare('SELECT count(*) AS n FROM stock_in_orders').get().n,0);
+ assert.equal(db.prepare('SELECT count(*) AS n FROM stock_movements').get().n,2);
+});
+test('inbound history filters and paginates ordinary receipts and completed transfers together',async()=>{
+ await call('stockIn','POST','/',{location_id:2,supplier:'Vendor',items:[{sku_id:1,quantity:1,unit_cost:3}]});
+ await call('transfer','POST','/',{from_location_id:1,to_location_id:2,items:[{sku_id:1,quantity:1}]});
+ const first=await call('stockIn','GET','/history?location_id=2&product=Test&brand=Test&operator=admin&page=1&limit=1');
+ const second=await call('stockIn','GET','/history?location_id=2&page=2&limit=1');
+ assert.equal(first.total,2);assert.equal(first.data.length,1);assert.notEqual(first.data[0].record_type,second.data[0].record_type);
+ assert.equal((await call('stockIn','GET','/history?supplier=Vendor')).total,1);
+ assert.equal((await call('stockIn','GET','/history?type=in')).total,1);
+ assert.equal((await call('stockIn','GET','/history?product=missing')).total,0);
+ assert.equal((await call('stockIn','GET','/history?start_date=2099-01-01')).total,0);
+ assert.equal((await call('stockIn','GET','/history?limit=-1')).status,400);
+});
+test('inventory query carries product identity and check records the adjustment reason',async()=>{
+ const balances=await call('stock','GET','/balances?location_id=1&sku_id=1');assert.equal(balances.data[0].product_id,1);
+ const res=await call('stock','POST','/check',{location_id:1,items:[{sku_id:1,actual_quantity:9}],remark:'破损漏登记'});
+ assert.equal(res.success,true);assert.equal(quantity(),9);
+ assert.match(db.prepare("SELECT remark FROM stock_movements WHERE movement_type='check_out'").get().remark,/破损漏登记/);
 });

@@ -2,6 +2,8 @@ const TransferPage = {
   items: [],
 
   async render() {
+    const params = App._navParams || {};
+    App._navParams = null;
     this.items = [];
     document.getElementById('content').innerHTML = `
       <div class="card">
@@ -28,6 +30,13 @@ const TransferPage = {
       document.getElementById('tr-from').innerHTML = opts;
       document.getElementById('tr-to').innerHTML = opts;
     }
+    if (params.location_id) document.getElementById('tr-from').value = String(params.location_id);
+    const from = document.getElementById('tr-from');
+    const to = document.getElementById('tr-to');
+    const other = Array.from(to.options).find(o => o.value !== from.value);
+    to.value = other ? other.value : '';
+    from.addEventListener('change', () => { this.items = []; this.renderItems(); document.getElementById('tr-search-results').innerHTML=''; });
+    if (params.sku) await this.addItem(params.sku);
     this.renderItems();
     this.loadHistory();
     SearchSuggest.attach({
@@ -119,6 +128,19 @@ const TransferPage = {
     if (res.success) { App.toast('调拨成功'); this.render(); } else App.toast(res.message, 'error');
   },
 
+  async showDetail(id) {
+    const res = await API.getTransferDetail(id);
+    if (!res.success) return App.toast(res.message || '调拨详情加载失败', 'error');
+    const t = res.data;
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `<div class="modal-card"><h2>调拨单 #${t.id}</h2>
+      <p>调出：${esc(t.from_name)} → 调入：${esc(t.to_name)}</p>
+      <p>时间：${Formatter.dateTime(t.created_at)} · 操作人：${esc(t.operator)}</p>
+      <table><thead><tr><th>商品</th><th>规格</th><th>数量</th></tr></thead><tbody>${t.items.map(i=>`<tr><td>${esc(i.product_name)}</td><td>${esc(i.volume)}</td><td>${i.quantity}</td></tr>`).join('')}</tbody></table>
+      <button class="btn" ${Formatter.event('click','transfer-detail-close')}>关闭</button></div>`;
+    document.body.appendChild(overlay);
+  },
   async loadHistory() {
     const res = await API.getTransfers();
     const div = document.getElementById('tr-history');
@@ -139,3 +161,6 @@ Formatter.onEvent("transfer-2", function(event) { return Scanner.cameraScan(code
 Formatter.onEvent("transfer-3", function(event) { return TransferPage.submit(); });
 Formatter.onEvent("transfer-4", function(event, arg0) { return TransferPage.updateQty(arg0, this.value); });
 Formatter.onEvent("transfer-5", function(event, arg0) { return TransferPage.removeItem(arg0); });
+
+Formatter.onEvent('transfer-detail', function(event, id) { return TransferPage.showDetail(id); });
+Formatter.onEvent('transfer-detail-close', function() { this.closest('.modal-overlay').remove(); });

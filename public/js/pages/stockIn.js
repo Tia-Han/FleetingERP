@@ -5,6 +5,8 @@ const StockInPage = {
   async render() {
     // 支持导航参数：tab, filters
     const navParams = App._navParams || {};
+    const location = String(App.currentLocation || '');
+    if (this._historyContext !== location) { this.historyFilters.location_id = location; this._historyContext = location; }
     if (navParams.tab === 'history') {
       this.currentTab = 'history';
     }
@@ -43,6 +45,7 @@ const StockInPage = {
     document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+
           <div class="form-group" style="flex:0 0 200px;margin-bottom:0"><label>入库到场所</label><select id="si-location"></select></div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>入库时间</label><input type="date" id="si-date" value="${nowLocal}" style="width:100%"></div>
           <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>供应商</label><input type="text" id="si-supplier" placeholder="供应商" style="width:100%"></div>
@@ -206,7 +209,10 @@ const StockInPage = {
   },
 
   // ===== 历史记录 =====
+  historyPage: 1,
   historyFilters: {
+    location_id: '',
+    type: '',
     start_date: '',
     end_date: '',
     supplier: '',
@@ -234,6 +240,8 @@ const StockInPage = {
       } catch (e) { console.warn('加载操作人列表失败', e); }
     }
 
+    const locRes = await API.getLocations();
+    const locations = locRes.success ? locRes.data : [];
     const operatorOptions = ['<option value="">全部操作人</option>']
       .concat(this.historyOperators.map(op => 
         `<option value="${esc(op)}" ${this.historyFilters.operator === op ? 'selected' : ''}>${esc(op)}</option>`
@@ -242,6 +250,8 @@ const StockInPage = {
     document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin-bottom:0"><label>场所</label><select id="sih-location" ${Formatter.event('change', 'stockIn-history-location')}><option value="">全部场所</option>${locations.map(l => `<option value="${l.id}" ${String(l.id) === String(this.historyFilters.location_id) ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="margin-bottom:0"><label>业务类型</label><select id="sih-type" ${Formatter.event('change', 'stockIn-history-location')}><option value="">全部</option><option value="in" ${this.historyFilters.type==='in'?'selected':''}>普通入库</option><option value="transfer_in" ${this.historyFilters.type==='transfer_in'?'selected':''}>调拨入库</option></select></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>开始日期</label><input type="date" id="sih-start" value="${this.historyFilters.start_date}" style="width:100%" ${Formatter.event('change', 'stockIn-11')} ></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>结束日期</label><input type="date" id="sih-end" value="${this.historyFilters.end_date}" style="width:100%" ${Formatter.event('change', 'stockIn-11')} ></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>操作人</label>
@@ -278,16 +288,19 @@ const StockInPage = {
     this._searchTimer = setTimeout(() => this.loadHistory(), 400);
   },
 
-  async loadHistory() {
+  async loadHistory(page = 1) {
+    this.historyPage = page;
+    const request = this._historyRequest = (this._historyRequest || 0) + 1;
     const listEl = document.getElementById('sih-list');
     if (!listEl) return;
     listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">加载中...</div>';
 
     try {
-      const params = { ...this.historyFilters };
-      if (App.currentLocation) params.location_id = App.currentLocation;
-      const res = await API.getStockInList(params);
-      
+      const params = { ...this.historyFilters, page, limit: 50 };
+      const res = await API.getStockInHistory(params);
+
+      if (request !== this._historyRequest || !listEl.isConnected) return;
+      if (!res.success) throw new Error(res.message || '查询失败');
       if (!res.success || !res.data || res.data.length === 0) {
         listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无入库记录</div>';
         return;
@@ -298,7 +311,7 @@ const StockInPage = {
           <table>
             <thead>
               <tr>
-                <th>入库单号</th>
+                <th>单号</th><th>业务类型</th>
                 <th>日期</th>
                 <th>场所</th>
                 <th>供应商</th>
@@ -312,20 +325,21 @@ const StockInPage = {
             <tbody>
               ${res.data.map(order => `
                 <tr>
-                  <td>#${order.id}</td>
+                  <td>${order.record_type === 'transfer_in' ? '调拨' : '入库'} #${order.id}</td><td><span class="badge badge-info">${order.record_type === 'transfer_in' ? '调拨入库' : '普通入库'}</span></td>
                   <td>${Formatter.dateTime(order.created_at)}</td>
                   <td>${esc(order.location_name)}</td>
-                  <td>${esc(order.supplier || '-')}</td>
+                  <td>${order.record_type === 'transfer_in' ? '来自 ' + esc(order.from_name) : esc(order.supplier || '-')}</td>
                   <td>${order.item_count} 种</td>
-                  <td style="color:#0d9488;font-weight:500">${Formatter.money(order.total_cost)}</td>
+                  <td style="color:#0d9488;font-weight:500">${order.total_cost == null ? '—' : Formatter.money(order.total_cost)}</td>
                   <td>${esc(order.operator || '-')}</td>
                   <td>${esc(order.remark || '-')}</td>
-                  <td><button class="btn btn-sm btn-info" ${Formatter.event('click', 'stockIn-16', order.id)} >查看详情</button></td>
+                  <td><button class="btn btn-sm btn-info" ${Formatter.event('click', 'stockIn-history-detail', order.record_type, order.id)} >查看详情</button></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        </div>`;
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px"><button class="btn" ${page<=1?'disabled':''} ${Formatter.event('click','stockIn-history-page',page-1)}>上一页</button><span>第 ${page} 页 · 共 ${res.total} 条</span><button class="btn" ${page*50>=res.total?'disabled':''} ${Formatter.event('click','stockIn-history-page',page+1)}>下一页</button></div>`;
     } catch (e) {
       listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#e74c3c">加载失败：${esc(e.message || '未知错误')}</div>`;
     }
@@ -401,3 +415,12 @@ Formatter.onEvent("stockIn-13", function(event) { return StockInPage.onDebounceS
 Formatter.onEvent("stockIn-14", function(event) { return StockInPage.onDebounceSearch('product', this.value); });
 Formatter.onEvent("stockIn-15", function(event) { return StockInPage.onDebounceSearch('brand', this.value); });
 Formatter.onEvent("stockIn-16", function(event, arg0) { return StockInPage.showDetail(arg0); });
+
+Formatter.onEvent('stockIn-history-location', function() {
+  StockInPage.historyFilters.location_id = document.getElementById('sih-location').value;
+  StockInPage.historyFilters.type = document.getElementById('sih-type').value;
+  return StockInPage.loadHistory();
+});
+Formatter.onEvent('stockIn-history-page', function(event, page) { return StockInPage.loadHistory(page); });
+
+Formatter.onEvent('stockIn-history-detail', function(event, type, id) { return type === 'transfer_in' ? TransferPage.showDetail(id) : StockInPage.showDetail(id); });

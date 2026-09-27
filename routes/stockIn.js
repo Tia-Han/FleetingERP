@@ -7,6 +7,8 @@ const { money, fail, authorize, validateMovement } = require('../middleware/busi
 router.use(authMiddleware, authorize('stockIn'));
 router.use(require('../middleware/pagination').validatePagination);
 
+router.get('/history', (req, res) => res.json(require('../utils/stockHistory').inboundHistory(getDb(), req.query)));
+
 // GET /stock-in - 入库单列表
 router.get('/', (req, res) => {
   const { location_id, start_date, end_date, supplier, operator, product, brand, page, limit } = req.query;

@@ -113,6 +113,8 @@ const API = {
   getSummary: (params) => API.request('GET', '/stock/summary' + (params ? '?' + new URLSearchParams(params) : '')),
 
   stockIn: (data) => API.request('POST', '/stock-in', data),
+  getStockInHistory: params => API.request('GET', '/stock-in/history?' + new URLSearchParams(params)),
+  getTransferDetail: id => API.request('GET', '/transfer/' + id),
   getStockInList: (params) => API.request('GET', '/stock-in' + (params ? '?' + new URLSearchParams(params) : '')),
   getStockInDetail: (id) => API.request('GET', `/stock-in/${id}`),
   stockOut: (data) => API.request('POST', '/stock-out', data),

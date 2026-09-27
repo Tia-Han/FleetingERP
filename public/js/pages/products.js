@@ -1,4 +1,12 @@
 const ProductsPage = {
+  async openEditor(id) {
+    if (!['admin', 'warehouse_manager'].includes(App.currentUser?.role)) return App.toast('无权限编辑商品', 'error');
+    const [products, brands, categories] = await Promise.all([API.getProducts(), API.getBrands(), API.getCategories()]);
+    if (![products, brands, categories].every(r => r.success)) return App.toast('商品资料加载失败', 'error');
+    this._allProducts = products.data; this._allBrands = brands.data; this._allCategories = categories.data;
+    if (!this._allProducts.some(p => p.id === id)) return App.toast('商品不存在或已删除', 'error');
+    this.showEditProduct(id);
+  },
   _currentSheet: 'products',
 
   async render() {
@@ -36,6 +44,7 @@ const ProductsPage = {
   },
 
   _renderProductsSheet() {
+    if (App.currentPage === 'stockQuery') { StockQueryPage.load(); return; }
     document.getElementById('pp-sheet-content').innerHTML = `
       <div class="card">
         <div style="display:flex;gap:8px;margin-bottom:12px">

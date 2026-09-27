@@ -5,6 +5,8 @@ const StockOutPage = {
   async render() {
     // 支持导航参数：tab, filters
     const navParams = App._navParams || {};
+    const location = String(App.currentLocation || '');
+    if (this._historyContext !== location) { this.historyFilters.location_id = location; this._historyContext = location; }
     if (navParams.tab === 'history') {
       this.currentTab = 'history';
     }
@@ -192,7 +194,9 @@ const StockOutPage = {
   },
 
   // ===== 历史记录 =====
+  historyPage: 1,
   historyFilters: {
+    location_id: '',
     start_date: '',
     end_date: '',
     type: '',
@@ -220,6 +224,8 @@ const StockOutPage = {
       } catch (e) { console.warn('加载操作人列表失败', e); }
     }
 
+    const locRes = await API.getLocations();
+    const locations = locRes.success ? locRes.data : [];
     const operatorOptions = ['<option value="">全部操作人</option>']
       .concat(this.historyOperators.map(op =>
         `<option value="${esc(op)}" ${this.historyFilters.operator === op ? 'selected' : ''}>${esc(op)}</option>`
@@ -228,12 +234,15 @@ const StockOutPage = {
     document.getElementById('so-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+          <div class="form-group" style="margin-bottom:0"><label>场所</label><select id="soh-location" ${Formatter.event('change', 'stockOut-history-location')}><option value="">全部场所</option>${locations.map(l => `<option value="${l.id}" ${String(l.id) === String(this.historyFilters.location_id) ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>开始日期</label><input type="date" id="soh-start" value="${this.historyFilters.start_date}" style="width:100%" ${Formatter.event('change', 'stockOut-13')} ></div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>结束日期</label><input type="date" id="soh-end" value="${this.historyFilters.end_date}" style="width:100%" ${Formatter.event('change', 'stockOut-13')} ></div>
           <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>类型</label>
             <select id="soh-type" style="width:100%" ${Formatter.event('change', 'stockOut-13')} >
               <option value="">全部</option>
               <option value="out" ${this.historyFilters.type === 'out' ? 'selected' : ''}>出库</option>
+              <option value="transfer_out" ${this.historyFilters.type === 'transfer_out' ? 'selected' : ''}>调拨出库</option>
               <option value="loss" ${this.historyFilters.type === 'loss' ? 'selected' : ''}>损耗</option>
             </select>
           </div>
@@ -271,23 +280,26 @@ const StockOutPage = {
     this._searchTimer = setTimeout(() => this.loadHistory(), 400);
   },
 
-  async loadHistory() {
+  async loadHistory(page = 1) {
+    this.historyPage = page;
+    const request = this._historyRequest = (this._historyRequest || 0) + 1;
     const listEl = document.getElementById('soh-list');
     if (!listEl) return;
     listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">加载中...</div>';
 
     try {
-      const params = { ...this.historyFilters };
-      if (App.currentLocation) params.location_id = App.currentLocation;
+      const params = { ...this.historyFilters, page, limit: 50 };
       const res = await API.getStockOutList(params);
-      
+
+      if (request !== this._historyRequest || !listEl.isConnected) return;
+      if (!res.success) throw new Error(res.message || '查询失败');
       if (!res.success || !res.data || res.data.length === 0) {
         listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无出库/损耗记录</div>';
         return;
       }
 
-      const typeMap = { out: '出库', loss: '损耗' };
-      const typeClassMap = { out: 'badge-warning', loss: 'badge-danger' };
+      const typeMap = { out: '出库', loss: '损耗', transfer_out: '调拨出库' };
+      const typeClassMap = { out: 'badge-warning', loss: 'badge-danger', transfer_out: 'badge-info' };
 
       listEl.innerHTML = `
         <div class="table-wrapper">
@@ -314,12 +326,13 @@ const StockOutPage = {
                   <td><span class="badge ${typeClassMap[item.movement_type] || ''}">${typeMap[item.movement_type] || item.movement_type}</span></td>
                   <td style="color:#e74c3c;font-weight:500">${Math.abs(item.quantity)}</td>
                   <td>${esc(item.operator || '-')}</td>
-                  <td>${esc(item.remark || '-')}</td>
+                  <td>${esc(item.remark || '-')}${item.transfer_id ? `<div>至 ${esc(item.to_name)} <button class="btn btn-sm" ${Formatter.event('click','transfer-detail',item.transfer_id)}>调拨 #${item.transfer_id}</button></div>` : ''}</td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        </div>`;
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px"><button class="btn" ${page<=1?'disabled':''} ${Formatter.event('click','stockOut-history-page',page-1)}>上一页</button><span>第 ${page} 页 · 共 ${res.total} 条</span><button class="btn" ${page*50>=res.total?'disabled':''} ${Formatter.event('click','stockOut-history-page',page+1)}>下一页</button></div>`;
     } catch (e) {
       listEl.innerHTML = `<div style="text-align:center;padding:40px;color:#e74c3c">加载失败：${esc(e.message || '未知错误')}</div>`;
     }
@@ -345,3 +358,10 @@ Formatter.onEvent("stockOut-13", function(event) { return StockOutPage.onHistory
 Formatter.onEvent("stockOut-14", function(event) { return StockOutPage.onOperatorChange(); });
 Formatter.onEvent("stockOut-15", function(event) { return StockOutPage.onDebounceSearch('product', this.value); });
 Formatter.onEvent("stockOut-16", function(event) { return StockOutPage.onDebounceSearch('brand', this.value); });
+
+Formatter.onEvent('stockOut-history-location', function() {
+  StockOutPage.historyFilters.location_id = document.getElementById('soh-location').value;
+
+  return StockOutPage.loadHistory();
+});
+Formatter.onEvent('stockOut-history-page', function(event, page) { return StockOutPage.loadHistory(page); });
