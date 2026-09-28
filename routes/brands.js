@@ -1,3 +1,4 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
@@ -5,7 +6,7 @@ const { authMiddleware } = require('../middleware/auth');
 
 const { authorize } = require('../middleware/business');
 const { validateCatalog } = require('../middleware/catalog');
-router.use(authMiddleware, authorize('brands'), validateCatalog('brands'));
+router.use(authMiddleware, require('../middleware/scope').scope('brands'), authorize('brands'), validateCatalog('brands'));
 
 router.get('/', (req, res) => {
   const db = getDb();
@@ -17,13 +18,14 @@ router.get('/', (req, res) => {
   res.json({ success: true, data: brands });
 });
 
-router.post('/', (req, res) => {
+router.post('/', idempotent((req, res) => {
   const { name } = req.body;
   if (!name) return res.json({ success: false, message: '品牌名称不能为空' });
   const db = getDb();
+  if(db.prepare("SELECT id FROM brands WHERE lower(trim(name))=lower(?) AND is_deleted=0").get(name)) return res.status(409).json({success:false,message:'同名品牌已存在，请使用已有记录'});
   const result = db.prepare('INSERT INTO brands (name) VALUES (?)').run(name);
   res.json({ success: true, data: { id: result.lastInsertRowid, name } });
-});
+}));
 
 router.put('/:id', (req, res) => {
   const { name } = req.body;

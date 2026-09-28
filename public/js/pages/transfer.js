@@ -24,10 +24,10 @@ const TransferPage = {
         <button class="btn btn-success" style="margin-top:12px" ${Formatter.event('click', 'transfer-3')} >确认调拨</button>
       </div>
       <div class="card"><h2>调拨记录</h2><div id="tr-history"></div></div>`;
-    const locRes = await API.getLocations();
+    const locRes = await API.request('GET','/locations?destinations=1');
     if (locRes.success) {
       const opts = locRes.data.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
-      document.getElementById('tr-from').innerHTML = opts;
+      document.getElementById('tr-from').innerHTML = locRes.data.filter(l=>App.currentUser.role==='admin'||l.id===App.currentUser.location_id).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
       document.getElementById('tr-to').innerHTML = opts;
     }
     if (params.location_id) document.getElementById('tr-from').value = String(params.location_id);

@@ -31,7 +31,7 @@ function bufferToString(buf) {
 // MNT-04: 环境配置统一管理
 const ENV_CONFIG = {
   development: { apiBase: 'http://localhost:3000/api/v1' },
-  production: { apiBase: 'http://39.96.218.204:3000/api/v1' }
+  production: { apiBase: 'https://api.fleetingerp.cn/api/v1' }
 };
 const currentEnv = 'production';
 

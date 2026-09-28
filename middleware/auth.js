@@ -22,11 +22,12 @@ function authMiddleware(req, res, next) {
   try { claims = jwt.verify(token, SECRET, { algorithms: ['HS256'] }); }
   catch { return res.status(401).json({ success: false, message: '登录已过期，请重新登录' }); }
   try {
-    const user = getDb().prepare('SELECT id, username, role, name, session_version FROM users WHERE id = ?').get(claims.id);
-    if (!user || !claims.version || claims.version !== user.session_version) {
+    const user = getDb().prepare('SELECT u.id,u.username,u.role,u.name,u.session_version,u.enabled,u.location_id,l.type location_type FROM users u LEFT JOIN locations l ON l.id=u.location_id WHERE u.id = ?').get(claims.id);
+    if (!user || !user.enabled || !claims.version || claims.version !== user.session_version) {
       return res.status(401).json({ success: false, message: '登录已失效，请重新登录' });
     }
-    req.user = { id: user.id, username: user.username, role: user.role, name: user.name };
+    if(user.role!=='admin' && (!user.location_id || user.location_type !== (user.role==='store_clerk'?'store':'warehouse'))) return res.status(403).json({success:false,message:'请管理员先绑定正确的场所'});
+    req.user = { id: user.id, username: user.username, role: user.role, name: user.name, location_id:user.location_id };
     next();
   } catch (e) { next(e); }
 }

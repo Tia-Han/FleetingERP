@@ -5,7 +5,7 @@ const path = require('path');
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
-router.use(authMiddleware);
+router.use(authMiddleware, require('../middleware/scope').scope('system'));
 
 const { createBackup, autoBackup, restoreBackup, backupDir } = require('../utils/backups');
 const crypto = require('crypto');
@@ -59,13 +59,13 @@ router.get('/operators', (req, res) => {
   const db = getDb();
   const operators = db.prepare(`
     SELECT DISTINCT operator FROM (
-      SELECT operator FROM stock_in_orders WHERE operator IS NOT NULL AND operator != ''
+      SELECT operator FROM stock_in_orders WHERE operator IS NOT NULL AND operator != '' AND (? IS NULL OR location_id=?)
       UNION
-      SELECT operator FROM stock_movements WHERE operator IS NOT NULL AND operator != ''
+      SELECT operator FROM stock_movements WHERE operator IS NOT NULL AND operator != '' AND (? IS NULL OR location_id=?)
       UNION
-      SELECT operator FROM sales WHERE operator IS NOT NULL AND operator != ''
+      SELECT operator FROM sales WHERE operator IS NOT NULL AND operator != '' AND (? IS NULL OR location_id=?)
     ) ORDER BY operator
-  `).all().map(row => row.operator);
+  `).all(...Array(3).fill([req.user.role==='admin'?null:req.user.location_id,req.user.location_id]).flat()).map(row => row.operator);
   res.json({ success: true, data: operators });
 });
 

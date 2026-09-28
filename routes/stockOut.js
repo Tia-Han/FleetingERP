@@ -1,10 +1,11 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
 const { authorize, validateMovement } = require('../middleware/business');
-router.use(authMiddleware, authorize('stockOut'));
+router.use(authMiddleware, require('../middleware/scope').scope('stockOut'), authorize('stockOut'));
 router.use(require('../middleware/pagination').validatePagination);
 
 // GET /stock-out - 出库/损耗记录列表
@@ -54,7 +55,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', validateMovement('stockOut'), (req, res) => {
+router.post('/', validateMovement('stockOut'), idempotent((req, res) => {
   const { location_id, sku_id, quantity, type, remark, operator } = req.body;
   if (!location_id || !sku_id || !quantity || !type) {
     return res.json({ success: false, message: '场所、SKU、数量、类型不能为空' });
@@ -86,9 +87,9 @@ router.post('/', validateMovement('stockOut'), (req, res) => {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
     throw err;
   }
-});
+}));
 
-router.post('/batch', validateMovement('stockOut'), (req, res) => {
+router.post('/batch', validateMovement('stockOut'), idempotent((req, res) => {
   const { location_id, items, operator } = req.body;
   if (!location_id || !items || !Array.isArray(items) || items.length === 0) {
     return res.json({ success: false, message: '场所和出库明细不能为空' });
@@ -135,6 +136,6 @@ router.post('/batch', validateMovement('stockOut'), (req, res) => {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
     throw err;
   }
-});
+}));
 
 module.exports = router;

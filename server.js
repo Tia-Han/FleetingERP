@@ -43,7 +43,7 @@ app.use(cors({
   origin: corsOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Source'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Client-Source', 'Idempotency-Key'],
 }));
 
 // OPT-10: 请求日志中间件

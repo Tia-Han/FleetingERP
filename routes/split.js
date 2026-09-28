@@ -1,3 +1,4 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
@@ -5,9 +6,9 @@ const { authMiddleware } = require('../middleware/auth');
 const { generateSkuCode, generateAvailableBarcode } = require('../utils/barcode');
 
 const { authorize, validateMovement } = require('../middleware/business');
-router.use(authMiddleware, authorize('split'));
+router.use(authMiddleware, require('../middleware/scope').scope('split'), authorize('split'));
 
-router.post('/', validateMovement('split'), (req, res) => {
+router.post('/', validateMovement('split'), idempotent((req, res) => {
   const { location_id, source_sku_id, source_quantity, bottle_consumed, waste_volume, items, operator, remark } = req.body;
 
   if (!location_id || !source_sku_id || !source_quantity || !items || items.length === 0) {
@@ -105,7 +106,7 @@ router.post('/', validateMovement('split'), (req, res) => {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
     throw err;
   }
-});
+}));
 
 router.get('/:id', (req, res) => {
   const db = getDb();

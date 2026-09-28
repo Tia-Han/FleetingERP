@@ -39,7 +39,9 @@ document.addEventListener('click', event => {
   event.preventDefault();
   try {
     const args = JSON.parse(element.dataset.args);
-    Promise.resolve(handler(...args)).catch(error => console.error(error));
+    if(element._pendingAction) return;
+    const result=handler(...args);
+    Formatter.trackPending(element,result);
   } catch (error) { console.error(error); }
 });
 
@@ -58,9 +60,11 @@ for (const type of ['click', 'change', 'input', 'keydown', 'error']) {
         try {
           const args = JSON.parse(element.getAttribute(`${attribute}-args`) || '[]');
           if (!Array.isArray(args)) throw new Error('Invalid event arguments');
+          if(type==='click' && element._pendingAction) return;
           const result = handler.call(element, event, ...args);
           if (result === false) event.preventDefault();
-          Promise.resolve(result).catch(error => console.error(error));
+          if(type==='click') Formatter.trackPending(element,result);
+          else Promise.resolve(result).catch(error => console.error(error));
         } catch (error) { console.error(error); }
       }
       if (event.cancelBubble || type === 'error') break;
@@ -68,3 +72,14 @@ for (const type of ['click', 'change', 'input', 'keydown', 'error']) {
     }
   }, type === 'error');
 }
+
+Formatter.trackPending=(element,result)=>{
+  if(!result || typeof result.then!=='function') return;
+  element._pendingAction=true;
+  const disabled=element.disabled;
+  if(element.tagName==='BUTTON') element.disabled=true;
+  Promise.resolve(result).catch(error=>console.error(error)).finally(()=>{
+    element._pendingAction=false;
+    if(element.tagName==='BUTTON') element.disabled=disabled;
+  });
+};

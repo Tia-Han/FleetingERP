@@ -1,3 +1,4 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
@@ -6,7 +7,7 @@ const { generateSkuCode, generateAvailableBarcode } = require('../utils/barcode'
 
 const { fail, authorize } = require('../middleware/business');
 const { validateCatalog } = require('../middleware/catalog');
-router.use(authMiddleware, authorize('products'), validateCatalog('products'));
+router.use(authMiddleware, require('../middleware/scope').scope('products'), authorize('products'), validateCatalog('products'));
 router.use(require('../middleware/pagination').validatePagination);
 
 // API-01/PERF-02: 商品列表加分页 + 优化 N+1 查询
@@ -67,7 +68,7 @@ router.get('/categories', (req, res) => {
   res.json({ success: true, data: cats });
 });
 
-router.post('/categories', roleMiddleware('admin'), (req, res) => {
+router.post('/categories', roleMiddleware('admin'), idempotent((req, res) => {
   const { old_name, new_name } = req.body;
   if (!new_name) return res.json({ success: false, message: '品类名不能为空' });
   const db = getDb();
@@ -86,7 +87,7 @@ router.post('/categories', roleMiddleware('admin'), (req, res) => {
     db.prepare('INSERT INTO categories (name, sort_order) VALUES (?, ?)').run(new_name, (maxOrder.m || 0) + 1);
     res.json({ success: true, message: '品类添加成功' });
   }
-});
+}));
 
 router.delete('/categories/:name', roleMiddleware('admin'), (req, res) => {
   const db = getDb();
@@ -110,7 +111,7 @@ router.get('/:id', (req, res) => {
   res.json({ success: true, data: product });
 });
 
-router.post('/', (req, res) => {
+router.post('/', idempotent((req, res) => {
   const { brand_id, name, category, skus } = req.body;
   // 兼容 is_split 和 is_splittable 两种字段名
   const isSplittable = req.body.is_split !== undefined ? req.body.is_split : req.body.is_splittable;
@@ -137,7 +138,7 @@ router.post('/', (req, res) => {
     return createdProduct;
   }).immediate();
   res.json({ success: true, data: resultData });
-});
+}));
 
 router.put('/:id', (req, res) => {
   const { brand_id, name, category, skus } = req.body;
@@ -195,7 +196,7 @@ router.delete('/:id', roleMiddleware('admin'), (req, res) => {
   res.json({ success: true, message: '删除成功' });
 });
 
-router.post('/:id/skus', (req, res) => {
+router.post('/:id/skus', idempotent((req, res) => {
   const productId = req.params.id;
   const { barcode, spec_type, volume, volume_ml, unit, cost_price, retail_price, low_stock_threshold } = req.body;
   if (!spec_type || !volume || !unit) return res.json({ success: false, message: '规格类型、容量、单位不能为空' });
@@ -207,6 +208,6 @@ router.post('/:id/skus', (req, res) => {
   const finalBarcode = barcode || generateAvailableBarcode(db);
   const result = db.prepare(`INSERT INTO skus (product_id, sku_code, barcode, spec_type, volume, volume_ml, unit, cost_price, retail_price, low_stock_threshold) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(productId, skuCode, finalBarcode, spec_type, volume, volume_ml || 0, unit, cost_price || 0, retail_price || 0, low_stock_threshold || 0);
   res.json({ success: true, data: { id: result.lastInsertRowid, sku_code: skuCode, barcode: finalBarcode } });
-});
+}));
 
 module.exports = router;

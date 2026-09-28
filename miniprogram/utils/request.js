@@ -5,10 +5,10 @@ function logError(type, detail) {
   if (log) log.error(type, detail);
 }
 
-function request(url, method = 'GET', data = {}) {
+function send(url, method = 'GET', data = {}, requestKey) {
   const app = getApp();
   const token = app ? app.globalData.token : '';
-  const apiBase = app ? app.globalData.apiBase : 'http://39.96.218.204:3000/api/v1';
+  const apiBase = app ? app.globalData.apiBase : 'https://api.fleetingerp.cn/api/v1';
 
   return new Promise((resolve, reject) => {
     wx.request({
@@ -18,7 +18,8 @@ function request(url, method = 'GET', data = {}) {
       header: {
         'Content-Type': 'application/json',
         'Authorization': token ? 'Bearer ' + token : '',
-        'X-Client-Source': 'miniprogram'
+        'X-Client-Source': 'miniprogram',
+        ...(requestKey ? {'Idempotency-Key':requestKey} : {})
       },
       timeout: 10000,
       success(res) {
@@ -32,7 +33,7 @@ function request(url, method = 'GET', data = {}) {
           logError('http_error', { url, status: res.statusCode });
           const message = res.data && res.data.message || '服务异常，请稍后重试';
           wx.showToast({ title: message, icon: 'none' });
-          reject(new Error(message));
+          reject(Object.assign(new Error(message),{uncertain:res.statusCode>=500}));
           return;
         }
         if (res.data && res.data.success === false) {
@@ -49,10 +50,27 @@ function request(url, method = 'GET', data = {}) {
         } else {
           wx.showToast({ title: '网络不可用', icon: 'none' });
         }
+        err.uncertain=true;
         reject(err);
       }
     });
   });
+}
+
+const pending=new Map();
+function request(url,method='GET',data={}) {
+  if(method!=='POST'||url.startsWith('/auth/')) return send(url,method,data);
+  const app=getApp();
+  const fingerprint=JSON.stringify([app.globalData.userInfo?.id,url,data]);
+  if(pending.has(fingerprint)) return pending.get(fingerprint);
+  let a=2166136261,b=5381;
+  for(const c of fingerprint){a=Math.imul(a^c.charCodeAt(0),16777619);b=Math.imul(b,33)^c.charCodeAt(0);}
+  const storageKey='pending-write-'+(a>>>0).toString(16)+'-'+(b>>>0).toString(16);
+  let key=wx.getStorageSync(storageKey);
+  if(!key) {key=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);wx.setStorageSync(storageKey,key);}
+  const promise=send(url,method,data,key).then(result=>{wx.removeStorageSync(storageKey);return result;},error=>{if(!error.uncertain) wx.removeStorageSync(storageKey);throw error;}).finally(()=>pending.delete(fingerprint));
+  pending.set(fingerprint,promise);
+  return promise;
 }
 
 function get(url, data) {

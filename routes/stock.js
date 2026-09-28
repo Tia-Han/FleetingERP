@@ -1,10 +1,11 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
 const { authorize, validateMovement } = require('../middleware/business');
-router.use(authMiddleware, authorize('stock'));
+router.use(authMiddleware, require('../middleware/scope').scope('stock'), authorize('stock'));
 router.use(require('../middleware/pagination').validatePagination);
 
 router.get('/balances', (req, res) => {
@@ -115,7 +116,7 @@ router.get('/summary', (req, res) => {
   res.json({ success: true, data: summary });
 });
 
-router.post('/check', validateMovement('stock'), (req, res) => {
+router.post('/check', validateMovement('stock'), idempotent((req, res) => {
   const { location_id, items, operator } = req.body;
   if (!location_id || !items || !Array.isArray(items) || items.length === 0) {
     return res.json({ success: false, message: '场所和盘点明细不能为空' });
@@ -151,6 +152,6 @@ router.post('/check', validateMovement('stock'), (req, res) => {
   } catch (err) {
     res.json({ success: false, message: '盘点失败: ' + err.message });
   }
-});
+}));
 
 module.exports = router;

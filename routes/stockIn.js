@@ -1,10 +1,11 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
 const { money, fail, authorize, validateMovement } = require('../middleware/business');
-router.use(authMiddleware, authorize('stockIn'));
+router.use(authMiddleware, require('../middleware/scope').scope('stockIn'), authorize('stockIn'));
 router.use(require('../middleware/pagination').validatePagination);
 
 router.get('/history', (req, res) => res.json(require('../utils/stockHistory').inboundHistory(getDb(), req.query)));
@@ -68,7 +69,7 @@ router.get('/', (req, res) => {
   }
 });
 
-router.post('/', validateMovement('stockIn'), (req, res) => {
+router.post('/', validateMovement('stockIn'), idempotent((req, res) => {
   const { location_id, supplier, remark, items, operator, stock_in_date } = req.body;
   if (!location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '场所和入库明细不能为空' });
@@ -111,7 +112,7 @@ router.post('/', validateMovement('stockIn'), (req, res) => {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
     throw err;
   }
-});
+}));
 
 router.get('/:id', (req, res) => {
   const db = getDb();

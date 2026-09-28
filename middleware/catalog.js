@@ -42,7 +42,16 @@ function validateCatalog(kind) {
           }
         }
       } else if (kind === 'skus') validateSku(b);
-      else if (kind === 'brands' || kind === 'locations') text(b.name,'名称');
+      else if (kind === 'brands' || kind === 'locations') {
+        text(b.name,'名称'); b.name=b.name.trim();
+        const db=getDb();
+        const existing=db.prepare(`SELECT id FROM ${kind} WHERE lower(trim(name))=lower(?) ${kind==='brands'?'AND is_deleted=0':''} AND id<>?`).get(b.name, Number(req.params.id || req.url.split('/')[1]) || 0);
+        if(existing && req.method==='PUT') fail('同名'+(kind==='locations'?'场所':'品牌')+'已存在，请使用已有记录');
+        if(kind==='locations' && req.method==='PUT') {
+          const linked=db.prepare('SELECT role FROM users WHERE location_id=?').all(Number(req.params.id || req.url.split('/')[1]));
+          if(linked.some(u=>(u.role==='store_clerk'?'store':'warehouse')!==b.type)) fail('该场所有绑定用户，不能修改为不匹配的类型');
+        }
+      }
       next();
     } catch(e) { next(e); }
   };

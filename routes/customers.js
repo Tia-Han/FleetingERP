@@ -1,10 +1,11 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware, roleMiddleware } = require('../middleware/auth');
 
 const { authorize } = require('../middleware/business');
-router.use(authMiddleware, authorize('customers'));
+router.use(authMiddleware, require('../middleware/scope').scope('customers'), authorize('customers'));
 router.use(require('../middleware/pagination').validatePagination);
 
 // API-02: 客户列表加分页支持
@@ -48,25 +49,29 @@ router.get('/:id', (req, res) => {
       COALESCE(ROUND(SUM(final_amount), 2), 0) as total_spent,
       COALESCE(SUM(points_earned), 0) as total_points_earned,
       COUNT(*) as order_count
-    FROM sales WHERE customer_id = ?
-  `).get(req.params.id);
+    FROM sales WHERE customer_id = ? AND (? IS NULL OR location_id=?)
+  `).get(req.params.id,req.user.role==='admin'?null:req.user.location_id,req.user.location_id);
   customer.total_spent = stats.total_spent;
   customer.total_points = stats.total_points_earned;
   customer.order_count = stats.order_count;
   res.json({ success: true, data: customer });
 });
 
-router.post('/', (req, res) => {
-  const { wechat_name, phone, remark } = req.body;
+router.post('/', idempotent((req, res) => {
+  let { wechat_name, phone, remark } = req.body;
+  phone=typeof phone==='string'?phone.trim():phone;
+  if(phone && getDb().prepare('SELECT id FROM customers WHERE trim(phone)=? AND id<>?').get(phone,Number(req.params.id)||0)) return res.status(409).json({success:false,message:'该手机号已有会员，请选择已有会员'});
   if (!wechat_name && !phone) return res.json({ success: false, message: '微信名或手机号至少填一个' });
   if (phone && !/^1[3-9]\d{9}$/.test(phone)) return res.json({ success: false, message: '手机号格式不正确' });
   const db = getDb();
   const result = db.prepare('INSERT INTO customers (wechat_name, phone, remark) VALUES (?, ?, ?)').run(wechat_name || '', phone || '', remark || '');
   res.json({ success: true, data: { id: result.lastInsertRowid } });
-});
+}));
 
 router.put('/:id', (req, res) => {
-  const { wechat_name, phone, remark } = req.body;
+  let { wechat_name, phone, remark } = req.body;
+  phone=typeof phone==='string'?phone.trim():phone;
+  if(phone && getDb().prepare('SELECT id FROM customers WHERE trim(phone)=? AND id<>?').get(phone,Number(req.params.id)||0)) return res.status(409).json({success:false,message:'该手机号已有会员，请选择已有会员'});
   if (phone && !/^1[3-9]\d{9}$/.test(phone)) return res.json({ success: false, message: '手机号格式不正确' });
   const db = getDb();
   db.prepare('UPDATE customers SET wechat_name = ?, phone = ?, remark = ? WHERE id = ?').run(wechat_name, phone, remark, req.params.id);
@@ -83,7 +88,7 @@ router.delete('/:id', roleMiddleware('admin'), (req, res) => {
 
 router.get('/:id/purchases', (req, res) => {
   const db = getDb();
-  const sales = db.prepare('SELECT s.*, l.name as location_name FROM sales s JOIN locations l ON s.location_id = l.id WHERE s.customer_id = ? ORDER BY s.created_at DESC').all(req.params.id);
+  const sales = db.prepare('SELECT s.*, l.name as location_name FROM sales s JOIN locations l ON s.location_id = l.id WHERE s.customer_id = ? AND (? IS NULL OR s.location_id=?) ORDER BY s.created_at DESC').all(req.params.id,req.user.role==='admin'?null:req.user.location_id,req.user.location_id);
   for (const sale of sales) {
     sale.items = db.prepare('SELECT si.*, s.volume, p.name as product_name FROM sale_items si JOIN skus s ON si.sku_id = s.id JOIN products p ON s.product_id = p.id WHERE si.sale_id = ?').all(sale.id);
   }

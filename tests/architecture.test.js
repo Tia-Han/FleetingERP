@@ -40,3 +40,32 @@ test('failed backup download is not saved as a database file',async()=>{
   const ctx=apiContext(async()=>({status:403,ok:false,json:async()=>({message:'无权限'})}));
   await ctx.api.backup(); // No DOM/Blob provided: a download attempt would fail the test.
 });
+test('web coalesces clicks, retains retry key after a lost response, and starts a fresh intentional write',async()=>{
+ const requests=[]; const ctx=apiContext((url,options)=>new Promise((resolve,reject)=>requests.push({options,resolve,reject})));
+ ctx.api.setToken('test');
+ const a=ctx.api.createLocation({name:'B',type:'store'}), b=ctx.api.createLocation({name:'B',type:'store'});
+ assert.equal(requests.length,1);
+ const key=requests[0].options.headers['Idempotency-Key'];assert.ok(key);
+ requests[0].reject(new Error('lost response'));
+ assert.equal((await a).uncertain,true);await b;
+ const retry=ctx.api.createLocation({name:'B',type:'store'});
+ assert.equal(requests[1].options.headers['Idempotency-Key'],key);
+ requests[1].resolve({status:200,ok:true,json:async()=>({success:true,data:{id:1}})});await retry;
+ const next=ctx.api.createLocation({name:'B',type:'store'});
+ assert.notEqual(requests[2].options.headers['Idempotency-Key'],key);
+ requests[2].resolve({status:409,ok:false,json:async()=>({success:false,message:'exists'})});await next;
+});
+test('mini-program coalesces clicks and preserves operation key after timeout',async()=>{
+ const storage=new Map(),requests=[];
+ const wx={getStorageSync:k=>storage.get(k),setStorageSync:(k,v)=>storage.set(k,v),removeStorageSync:k=>storage.delete(k),request:o=>requests.push(o),showToast(){}};
+ const ctx=vm.createContext({wx,getApp:()=>({globalData:{token:'test',userInfo:{id:1},apiBase:'https://test/api'}}),module:{exports:{}}});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../miniprogram/utils/request.js'),'utf8'),ctx);
+ const api=ctx.module.exports;
+ const a=api.post('/stock-in',{location_id:1}),b=api.post('/stock-in',{location_id:1});
+ const outcomes=Promise.allSettled([a,b]);assert.equal(requests.length,1);
+ const key=requests[0].header['Idempotency-Key'];
+ requests[0].fail({errMsg:'timeout'});await outcomes;
+ const retry=api.post('/stock-in',{location_id:1});
+ assert.equal(requests[1].header['Idempotency-Key'],key);
+ requests[1].success({statusCode:200,data:{success:true}});await retry;
+});

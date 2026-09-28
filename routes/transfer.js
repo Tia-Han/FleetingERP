@@ -1,10 +1,11 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
 const { authorize, validateMovement } = require('../middleware/business');
-router.use(authMiddleware, authorize('transfer'));
+router.use(authMiddleware, require('../middleware/scope').scope('transfer'), authorize('transfer'));
 
 router.get('/', (req, res) => {
   const db = getDb();
@@ -13,6 +14,7 @@ router.get('/', (req, res) => {
   const params = [];
   if (from_location_id) { sql += ' AND t.from_location_id = ?'; params.push(from_location_id); }
   if (to_location_id) { sql += ' AND t.to_location_id = ?'; params.push(to_location_id); }
+  if(req.user.role!=='admin') { sql+=' AND (t.from_location_id=? OR t.to_location_id=?)'; params.push(req.user.location_id,req.user.location_id); }
   sql += ' ORDER BY t.created_at DESC';
   const transfers = db.prepare(sql).all(...params);
   for (const t of transfers) {
@@ -29,7 +31,7 @@ router.get('/:id', (req, res) => {
   res.json({success:true,data});
 });
 
-router.post('/',  validateMovement('transfer'), (req, res) => {
+router.post('/',  validateMovement('transfer'), idempotent((req, res) => {
   const { from_location_id, to_location_id, items, operator } = req.body;
   if (!from_location_id || !to_location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '调出场所、调入场所、明细不能为空' });
@@ -81,6 +83,6 @@ router.post('/',  validateMovement('transfer'), (req, res) => {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
     throw err;
   }
-});
+}));
 
 module.exports = router;

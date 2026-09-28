@@ -106,10 +106,11 @@ const SettingsPage = {
     const res = await API.getUsers();
     const div = document.getElementById('se-users');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }
+    this._users=res.data;
     const roleLabels = { admin: '管理员', warehouse_manager: '仓库管理员', store_clerk: '门店店员' };
     div.innerHTML = `<table><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
-      ${res.data.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.name)}</td><td>${roleLabels[u.role] || u.role}</td><td>${Formatter.date(u.created_at)}</td>
-        <td>${u.username !== 'admin' ? `<button class="btn btn-danger btn-sm" ${Formatter.event('click', 'settings-11', u.id)} >删除</button>` : '-'}</td></tr>`).join('')}
+      ${res.data.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.name)}</td><td>${u.location_name ? esc(u.location_name)+(u.role==='store_clerk'?'店员':'管理员') : roleLabels[u.role] || esc(u.role)}${u.enabled?'':'（停用）'}${u.role!=='admin'&&!u.location_id?'（待绑定）':''}</td><td>${Formatter.date(u.created_at)}</td>
+        <td>${u.username !== 'admin' ? `<button class="btn btn-sm" ${Formatter.event('click', 'user-edit', u.id)}>修改权限</button><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'settings-11', u.id)} >删除</button>` : '-'}</td></tr>`).join('')}
     </tbody></table>`;
   },
 
@@ -143,15 +144,23 @@ const SettingsPage = {
     } else App.toast(res.message, 'error');
   },
 
-  showAddUser() {
+  async showAddUser(editId=null) {
+    const locations=await API.getLocations();
+    if(!locations.success) return App.toast(locations.message,'error');
+    const user=editId ? this._users.find(u=>u.id===editId) : null;
+    this._editingUser=editId;
+    const selected=user ? user.role+(user.location_id ? ':'+user.location_id : '') : '';
+    const choices=[{value:'admin',label:'管理员'},...locations.data.map(l=>({value:(l.type==='store'?'store_clerk':'warehouse_manager')+':'+l.id,label:l.name+(l.type==='store'?'店员':'管理员')+'（场所编号 '+l.id+'）'}))];
+    const options='<option value="">请选择角色和场所</option>'+choices.map(c=>`<option value="${esc(c.value)}" ${selected===c.value?'selected':''}>${esc(c.label)}</option>`).join('');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card">
-      <h2>新增用户</h2>
-      <div class="form-group"><label>用户名</label><input type="text" id="u-username" placeholder="登录用户名"></div>
-      <div class="form-group"><label>密码</label><input type="password" id="u-password" placeholder="登录密码"></div>
-      <div class="form-group"><label>姓名</label><input type="text" id="u-name" placeholder="显示姓名"></div>
-      <div class="form-group"><label>角色</label><select id="u-role"><option value="admin">管理员</option><option value="warehouse_manager">仓库管理员</option><option value="store_clerk">门店店员</option></select></div>
+      <h2>${user?'修改用户权限':'新增用户'}</h2>
+      <div class="form-group"><label>用户名</label><input type="text" id="u-username" value="${esc(user?.username||'')}" ${user?'disabled':''} placeholder="登录用户名"></div>
+      <div class="form-group"><label>密码</label><input type="password" id="u-password" ${user?'disabled':''} placeholder="${user?'权限修改无需密码':'登录密码'}"></div>
+      <div class="form-group"><label>姓名</label><input type="text" id="u-name" value="${esc(user?.name||'')}" ${user?'disabled':''} placeholder="显示姓名"></div>
+      <div class="form-group"><label>角色</label><select id="u-role">${options}</select></div>
+      ${user?`<label>状态<select id="u-enabled"><option value="1" ${user.enabled?'selected':''}>启用</option><option value="0" ${!user.enabled?'selected':''}>停用</option></select></label>`:''}
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" ${Formatter.event('click', 'settings-9')} >取消</button>
         <button class="btn btn-primary" ${Formatter.event('click', 'settings-13')} >确认</button>
@@ -166,9 +175,12 @@ const SettingsPage = {
       name: document.getElementById('u-name').value.trim(),
       role: document.getElementById('u-role').value
     };
-    if (!data.username || !data.password || !data.name) return App.toast('请填写完整信息', 'error');
-    const res = await API.createUser(data);
-    if (res.success) { App.toast('用户创建成功'); document.querySelector('.modal-overlay').remove(); this.loadUsers(); } else App.toast(res.message, 'error');
+    const [role,location]=data.role.split(':');
+    data.role=role; data.location_id=location?Number(location):null;
+    data.enabled=this._editingUser?Number(document.getElementById('u-enabled').value):1;
+    if (!data.username || (!this._editingUser&&!data.password) || !data.name) return App.toast('请填写完整信息', 'error');
+    const res = this._editingUser ? await API.updateUser(this._editingUser,data) : await API.createUser(data);
+    if (res.success) { App.toast('用户已保存'); document.querySelector('.modal-overlay').remove(); this.loadUsers(); } else App.toast(res.message, 'error');
   },
 
   async deleteUser(id) {
@@ -256,3 +268,5 @@ Formatter.onEvent("settings-11", function(event, arg0) { return SettingsPage.del
 Formatter.onEvent("settings-12", function(event) { return SettingsPage.submitChangePassword(); });
 Formatter.onEvent("settings-13", function(event) { return SettingsPage.submitUser(); });
 Formatter.onEvent("settings-14", function(event, arg0) { return SettingsPage.restoreBackup(arg0); });
+
+Formatter.onEvent('user-edit',function(event,id){ return SettingsPage.showAddUser(id); });

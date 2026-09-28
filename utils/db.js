@@ -95,6 +95,8 @@ function initDatabase({ restoring = false } = {}) {
 
       db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_openid ON users(openid) WHERE openid IS NOT NULL');
 
+      if (!db.pragma('table_info(users)').some(c=>c.name==='location_id')) db.exec('ALTER TABLE users ADD COLUMN location_id INTEGER REFERENCES locations(id)');
+      if (!db.pragma('table_info(users)').some(c=>c.name==='enabled')) db.exec('ALTER TABLE users ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1');
       // Existing users are assigned a fresh session generation on migration.
       if (!db.pragma('table_info(users)').some(c => c.name === 'session_version')) {
         db.exec("ALTER TABLE users ADD COLUMN session_version TEXT NOT NULL DEFAULT ''");

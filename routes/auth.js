@@ -5,6 +5,31 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../utils/db');
 const { authMiddleware, SECRET } = require('../middleware/auth');
 
+// A role grants actions; the location limits which records those actions affect.
+function accountError(user) {
+  if (!user.enabled) return '账号已停用，请联系管理员';
+  if (user.role === 'admin') return null;
+  const location = getDb().prepare('SELECT type FROM locations WHERE id=?').get(user.location_id);
+  if (!location || location.type !== (user.role === 'store_clerk' ? 'store' : 'warehouse')) return '请管理员先绑定正确的场所';
+  return null;
+}
+function startSession(user) {
+  user.session_version = require('crypto').randomBytes(16).toString('hex');
+  getDb().prepare('UPDATE users SET session_version=? WHERE id=?').run(user.session_version,user.id);
+  return {
+    token: jwt.sign({id:user.id,version:user.session_version},SECRET,{expiresIn:'2h'}),
+    user:{id:user.id,username:user.username,role:user.role,name:user.name,location_id:user.location_id}
+  };
+}
+function binding(body) {
+  if (!['admin','warehouse_manager','store_clerk'].includes(body.role)) throw new Error('角色无效');
+  if (body.role === 'admin') return null;
+  const id=Number(body.location_id);
+  const location=Number.isSafeInteger(id) && getDb().prepare('SELECT type FROM locations WHERE id=?').get(id);
+  if (!location || location.type !== (body.role === 'store_clerk' ? 'store' : 'warehouse')) throw new Error('请选择角色对应的场所');
+  return id;
+}
+
 /**
  * @swagger
  * /auth/login:
@@ -131,15 +156,9 @@ router.post('/login', (req, res) => {
   clearAttempts(ip, loginAttemptsByIP);
   clearAttempts(username, loginAttemptsByUser);
 
-  const token = jwt.sign(
-    { id: user.id, username: user.username, role: user.role, name: user.name, version: user.session_version },
-    SECRET,
-    { expiresIn: '2h' }
-  );
-  res.json({
-    success: true,
-    data: { token, user: { id: user.id, username: user.username, role: user.role, name: user.name } }
-  });
+  const error=accountError(user);
+  if(error) return res.status(403).json({success:false,message:error});
+  res.json({success:true,data:startSession(user)});
 });
 
 router.put('/change-password', authMiddleware, (req, res) => {
@@ -213,15 +232,12 @@ router.post('/wx-login', async (req, res) => {
     }
 
     const db = getDb();
-    const user = db.prepare('SELECT id, username, role, name, session_version FROM users WHERE openid = ?').get(openid);
+    const user = db.prepare('SELECT * FROM users WHERE openid = ?').get(openid);
 
     if (user) {
-      const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role, name: user.name, version: user.session_version },
-        SECRET,
-        { expiresIn: '2h' }
-      );
-      return res.json({ success: true, data: { status: 'bound', token, user: { id: user.id, username: user.username, role: user.role, name: user.name } } });
+      const error=accountError(user);
+      if(error) return res.status(403).json({success:false,message:error});
+      return res.json({success:true,data:{status:'bound',...startSession(user)}});
     }
 
     return res.json({ success: true, data: { status: 'unbound', openid } });
@@ -285,14 +301,10 @@ router.post('/wx-bind', async (req, res) => {
       return res.json({ success: false, message: '该微信已绑定其他账号，请联系管理员' });
     }
 
+    const error=accountError(user);
+    if(error) return res.status(403).json({success:false,message:error});
     db.prepare('UPDATE users SET openid = ? WHERE id = ?').run(openid, user.id);
-
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role, name: user.name, version: user.session_version },
-      SECRET,
-      { expiresIn: '2h' }
-    );
-    return res.json({ success: true, data: { status: 'bound', token, user: { id: user.id, username: user.username, role: user.role, name: user.name } } });
+    return res.json({success:true,data:{status:'bound',...startSession(user)}});
   } catch (err) {
     return res.json({ success: false, message: `绑定异常：${err.message}` });
   }
@@ -303,7 +315,7 @@ router.get('/users', authMiddleware, (req, res) => {
     return res.json({ success: false, message: '无权限' });
   }
   const db = getDb();
-  const users = db.prepare('SELECT id, username, role, name, created_at FROM users ORDER BY id').all();
+  const users = db.prepare('SELECT u.id,u.username,u.role,u.name,u.created_at,u.location_id,u.enabled,l.name location_name FROM users u LEFT JOIN locations l ON l.id=u.location_id ORDER BY u.id').all();
   res.json({ success: true, data: users });
 });
 
@@ -312,20 +324,35 @@ router.post('/users', authMiddleware, (req, res) => {
     return res.json({ success: false, message: '无权限' });
   }
   const { username, password, role, name } = req.body;
-  if (typeof username !== 'string' || typeof password !== 'string' || typeof name !== 'string' || !username || !name || !role || password.length < 8 || password.length > 200) {
+  if (typeof username !== 'string' || typeof password !== 'string' || typeof name !== 'string' || !username.trim() || !name.trim() || username.length>100 || name.length>100 || !role || password.length < 8 || password.length > 200) {
     return res.json({ success: false, message: '用户名、密码、角色、姓名不能为空' });
   }
   if (!['admin', 'warehouse_manager', 'store_clerk'].includes(role)) {
     return res.json({ success: false, message: '角色无效' });
   }
   const db = getDb();
-  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+  const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username.trim());
   if (existing) {
     return res.json({ success: false, message: '用户名已存在' });
   }
+  let locationId;
+  try { locationId=binding(req.body); } catch(e) { return res.status(400).json({success:false,message:e.message}); }
   const hash = bcrypt.hashSync(password, 10);
-  const result = db.prepare('INSERT INTO users (username, password_hash, role, name) VALUES (?, ?, ?, ?)').run(username, hash, role, name);
+  const result = db.prepare('INSERT INTO users (username, password_hash, role, name, location_id) VALUES (?, ?, ?, ?, ?)').run(username.trim(), hash, role, name.trim(), locationId);
   res.json({ success: true, data: { id: result.lastInsertRowid }, message: '用户创建成功' });
+});
+
+router.put('/users/:id', authMiddleware, (req,res)=>{
+  if(req.user.role!=='admin') return res.status(403).json({success:false,message:'无权限'});
+  const db=getDb(), id=Number(req.params.id);
+  const user=db.prepare('SELECT * FROM users WHERE id=?').get(id);
+  if(!user) return res.status(404).json({success:false,message:'用户不存在'});
+  if(id===req.user.id || user.username==='admin') return res.status(400).json({success:false,message:'不能修改当前账号或系统管理员的权限'});
+  let locationId;
+  try { locationId=binding(req.body); } catch(e) { return res.status(400).json({success:false,message:e.message}); }
+  if(![0,1].includes(req.body.enabled)) return res.status(400).json({success:false,message:'状态无效'});
+  db.prepare('UPDATE users SET role=?,location_id=?,enabled=?,session_version=lower(hex(randomblob(16))) WHERE id=?').run(req.body.role,locationId,req.body.enabled,id);
+  res.json({success:true,message:'权限已更新，该用户需要重新登录'});
 });
 
 router.delete('/users/:id', authMiddleware, (req, res) => {

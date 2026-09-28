@@ -187,3 +187,36 @@ CREATE INDEX IF NOT EXISTS idx_stock_movements_created ON stock_movements(create
 CREATE INDEX IF NOT EXISTS idx_skus_barcode ON skus(barcode);
 CREATE INDEX IF NOT EXISTS idx_sale_items_sale ON sale_items(sale_id);
 CREATE INDEX IF NOT EXISTS idx_stock_in_items_order ON stock_in_items(order_id);
+
+CREATE TABLE IF NOT EXISTS request_results (
+ user_id INTEGER NOT NULL,
+ request_key TEXT NOT NULL,
+ endpoint TEXT NOT NULL,
+ body_hash TEXT NOT NULL,
+ status INTEGER NOT NULL,
+ response TEXT NOT NULL,
+ created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+ PRIMARY KEY(user_id,request_key)
+);
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_locations_insert BEFORE INSERT ON locations
+WHEN (1) AND EXISTS(SELECT 1 FROM locations WHERE lower(trim(name))=lower(trim(NEW.name)))
+BEGIN SELECT RAISE(ABORT, 'duplicate locations'); END;
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_locations_update BEFORE UPDATE OF name ON locations
+WHEN (1) AND EXISTS(SELECT 1 FROM locations WHERE lower(trim(name))=lower(trim(NEW.name)) AND id<>NEW.id)
+BEGIN SELECT RAISE(ABORT, 'duplicate locations'); END;
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_brands_insert BEFORE INSERT ON brands
+WHEN (NEW.is_deleted=0) AND EXISTS(SELECT 1 FROM brands WHERE lower(trim(name))=lower(trim(NEW.name)) AND is_deleted=0)
+BEGIN SELECT RAISE(ABORT, 'duplicate brands'); END;
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_brands_update BEFORE UPDATE OF name, is_deleted ON brands
+WHEN (NEW.is_deleted=0) AND EXISTS(SELECT 1 FROM brands WHERE lower(trim(name))=lower(trim(NEW.name)) AND id<>NEW.id AND is_deleted=0)
+BEGIN SELECT RAISE(ABORT, 'duplicate brands'); END;
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_customers_insert BEFORE INSERT ON customers
+WHEN (trim(NEW.phone)<>'') AND EXISTS(SELECT 1 FROM customers WHERE lower(trim(phone))=lower(trim(NEW.phone)))
+BEGIN SELECT RAISE(ABORT, 'duplicate customers'); END;
+CREATE TRIGGER IF NOT EXISTS prevent_duplicate_customers_update BEFORE UPDATE OF phone ON customers
+WHEN (trim(NEW.phone)<>'') AND EXISTS(SELECT 1 FROM customers WHERE lower(trim(phone))=lower(trim(NEW.phone)) AND id<>NEW.id)
+BEGIN SELECT RAISE(ABORT, 'duplicate customers'); END;
+-- Non-unique indexes keep historical duplicates readable while accelerating prevention.
+CREATE INDEX IF NOT EXISTS idx_locations_normalized_name ON locations(lower(trim(name)));
+CREATE INDEX IF NOT EXISTS idx_brands_normalized_name ON brands(lower(trim(name))) WHERE is_deleted=0;
+CREATE INDEX IF NOT EXISTS idx_customers_normalized_phone ON customers(lower(trim(phone)));

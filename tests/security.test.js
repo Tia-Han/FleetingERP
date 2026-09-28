@@ -19,9 +19,9 @@ function token(role = 'admin') {
   const u = db.prepare('SELECT * FROM users WHERE role = ?').get(role);
   return jwt.sign({ id:u.id, role:u.role, version:u.session_version }, process.env.JWT_SECRET, {expiresIn:'2h'});
 }
-function call(module, method, url, body = {}, credential = token()) {
+function call(module, method, url, body = {}, credential = token(), requestKey = require('crypto').randomUUID()) {
   return new Promise(resolve => {
-    const req = { method, url, body, headers: { authorization: credential ? 'Bearer '+credential : '' }, query:Object.fromEntries(new URL(url, 'http://test').searchParams), clientSource:'web', ip:'127.0.0.1' };
+    const req = { method, url, body, idempotencyResource:module, headers: { 'idempotency-key':requestKey, authorization: credential ? 'Bearer '+credential : '' }, query:Object.fromEntries(new URL(url, 'http://test').searchParams), clientSource:'web', ip:'127.0.0.1' };
     const res = { statusCode:200, status(n){this.statusCode=n;return this;}, json(data){resolve({status:this.statusCode,...data});} };
     require('../routes/'+module).handle(req,res,error=>resolve({success:false,status:error?.status || (error?.code === 'BUSINESS_ERROR' ? 400 : 500),error:error?.message}));
   });
@@ -40,6 +40,7 @@ beforeEach(()=>{
     INSERT INTO stock_balances(location_id,sku_id,quantity) VALUES(1,1,10);
     INSERT INTO customers(id,wechat_name,points) VALUES(1,'Customer',100);`);
   for (const [i,role] of ['admin','warehouse_manager','store_clerk'].entries()) db.prepare('INSERT INTO users(id,username,password_hash,role,name) VALUES(?,?,?,?,?)').run(i+1,role,hash,role,role);
+  db.exec("UPDATE users SET location_id=1 WHERE role='warehouse_manager'; UPDATE users SET location_id=2 WHERE role='store_clerk'");
 });
 after(()=>{ dbModule.closeDatabase(); });
 test('store clerk denied warehouse writes; warehouse manager denied sales',async()=>{
@@ -260,4 +261,93 @@ test('inventory query carries product identity and check records the adjustment 
  const res=await call('stock','POST','/check',{location_id:1,items:[{sku_id:1,actual_quantity:9}],remark:'破损漏登记'});
  assert.equal(res.success,true);assert.equal(quantity(),9);
  assert.match(db.prepare("SELECT remark FROM stock_movements WHERE movement_type='check_out'").get().remark,/破损漏登记/);
+});
+
+test('same operation key replays once; changed payload is rejected; independent sales remain allowed',async()=>{
+ const key=require('crypto').randomUUID();
+ const first=await call('sales','POST','/',sale(),token(),key);
+ assert.equal(first.success,true);
+ assert.deepEqual(await call('sales','POST','/',sale(),token(),key),first);
+ assert.equal(quantity(),9);
+ assert.equal((await call('sales','POST','/',sale({remark:'changed'}),token(),key)).status,409);
+ assert.equal((await call('sales','POST','/',sale())).success,true);
+ assert.equal(quantity(),8);
+ assert.equal(db.prepare('SELECT count(*) n FROM sales').get().n,2);
+});
+test('replayed inbound and transfers do not duplicate stock movements',async()=>{
+ for(const [route,body] of [['stockIn',{location_id:1,items:[{sku_id:1,quantity:2,unit_cost:1}]}],['transfer',{from_location_id:1,to_location_id:2,items:[{sku_id:1,quantity:1}]}]]) {
+  const key=require('crypto').randomUUID();
+  const first=await call(route,'POST','/',body,token(),key);
+  assert.equal(first.success,true);
+  const q=quantity(), n=db.prepare('SELECT count(*) n FROM stock_movements').get().n;
+  assert.deepEqual(await call(route,'POST','/',body,token(),key),first);
+  assert.equal(quantity(),q);assert.equal(db.prepare('SELECT count(*) n FROM stock_movements').get().n,n);
+ }
+});
+test('location and brand duplicates rejected even with different operation IDs or direct SQL',async()=>{
+ for(const [route,body,table] of [['locations',{name:'门店B',type:'store'},'locations'],['brands',{name:'New Brand'},'brands']]) {
+  const key=require('crypto').randomUUID();
+  const first=await call(route,'POST','/',body,token(),key);
+  assert.equal(first.success,true);
+  assert.deepEqual(await call(route,'POST','/',body,token(),key),first);
+  assert.equal((await call(route,'POST','/',{...body,name:' '+body.name+' '})).success,false);
+  assert.equal(db.prepare(`SELECT count(*) n FROM ${table} WHERE name=?`).get(body.name).n,1);
+ }
+ assert.throws(()=>db.prepare("INSERT INTO locations(name,type) VALUES('门店B','store')").run());
+ assert.throws(()=>db.prepare("UPDATE locations SET name='门店B' WHERE id=1").run());
+});
+test('member phone identifies an existing member; blank phone and shared names are allowed',async()=>{
+ const body={wechat_name:'Member',phone:'13800138000'};
+ assert.equal((await call('customers','POST','/',body)).success,true);
+ assert.equal((await call('customers','POST','/',body)).status,409);
+ for(let i=0;i<2;i++) assert.equal((await call('customers','POST','/',{wechat_name:'Member'})).success,true);
+ assert.throws(()=>db.prepare("INSERT INTO customers(wechat_name,phone) VALUES('other','13800138000')").run());
+});
+test('new password login revokes the previous session and invalid credentials do not',async()=>{
+ const body={username:'admin',password:'test-password'};
+ const first=await call('auth','POST','/login',body,'');
+ const second=await call('auth','POST','/login',body,'');
+ assert.equal(first.success,true);assert.equal(second.success,true);
+ assert.equal((await call('auth','GET','/me',{},first.data.token)).status,401);
+ assert.equal((await call('auth','GET','/me',{},second.data.token)).success,true);
+ await call('auth','POST','/login',{...body,password:'wrong'},'');
+ assert.equal((await call('auth','GET','/me',{},second.data.token)).success,true);
+});
+test('staff binding blocks other locations in lists, details, writes and transfer sources',async()=>{
+ const clerk=token('store_clerk');
+ const sold=await call('sales','POST','/',sale());
+ assert.equal((await call('sales','GET','/'+sold.data.id,{},clerk)).status,403);
+ for(const [route,url] of [['stock','/balances'],['sales','/'],['stockIn','/history'],['stockOut','/'],['system','/dashboard']]) {
+  assert.equal((await call(route,'GET',url+'?location_id=1',{},clerk)).status,403,route);
+ }
+ const locations=await call('locations','GET','/',{},clerk);
+ assert.deepEqual(locations.data.map(l=>l.id),[2]);
+ assert.equal((await call('locations','GET','/?destinations=1',{},clerk)).data.length,2);
+ assert.equal((await call('sales','POST','/',sale(),clerk)).status,403);
+ assert.equal((await call('transfer','POST','/',{from_location_id:1,to_location_id:2,items:[{sku_id:1,quantity:1}]},clerk)).status,403);
+ const balances=await call('stock','GET','/balances',{},clerk);
+ assert.equal(balances.success,true);assert.equal(JSON.stringify(balances.data).includes('Warehouse'),false);
+});
+test('account role must match a location; permissions update revokes session; bound locations cannot be removed',async()=>{
+ const body={username:'new-clerk',password:'test-password',name:'新员工',role:'store_clerk',location_id:1};
+ assert.equal((await call('auth','POST','/users',body)).success,false);
+ assert.equal((await call('auth','POST','/users',{...body,location_id:2})).success,true);
+ const old=token('store_clerk');
+ assert.equal((await call('auth','PUT','/users/3',{role:'store_clerk',location_id:2,enabled:0})).success,true);
+ assert.equal((await call('auth','GET','/me',{},old)).status,401);
+ assert.equal((await call('auth','POST','/login',{username:'store_clerk',password:'test-password'},'')).status,403);
+ assert.equal((await call('locations','DELETE','/2')).status,409);
+ assert.equal((await call('locations','PUT','/2',{name:'Store',type:'warehouse'})).success,false);
+});
+test('upgrade preserves historical duplicate locations and requires explicit staff binding',()=>{
+ db.exec('DROP TRIGGER prevent_duplicate_locations_insert');
+ db.exec("INSERT INTO locations(name,type) VALUES('门店B','store'),('门店B','store'),('门店B','store')");
+ dbModule.closeDatabase();dbModule.initDatabase();db=dbModule.getDb();
+ assert.equal(db.prepare("SELECT count(*) n FROM locations WHERE name='门店B'").get().n,3);
+ assert.throws(()=>db.prepare("INSERT INTO locations(name,type) VALUES('门店B','store')").run());
+ assert.deepEqual(db.pragma('foreign_key_check'),[]);
+});
+test('alternative numeric detail paths cannot bypass staff location scope',async()=>{
+ const created=await call('sales','POST','/',sale());
+ assert.equal((await call('sales','GET','/'+created.data.id+'.0',{},token('store_clerk'))).status,403);
 });

@@ -9,7 +9,7 @@ const App = {
       const res = await API.getMe();
       if (res.success) {
         this.currentUser = res.data;
-        this.currentLocation = localStorage.getItem('currentLocation') || '';
+        this.currentLocation = this.currentUser.role==='admin' ? (localStorage.getItem('currentLocation') || '') : String(this.currentUser.location_id);
         this.renderSidebar();
         this.navigate('dashboard');
       } else { this.renderLogin(); }
@@ -43,7 +43,7 @@ const App = {
       if (!res.success) { this.toast(res.message || '登录失败，请重试', 'error'); return; }
       API.setToken(res.data.token);
       this.currentUser = res.data.user;
-      this.currentLocation = localStorage.getItem('currentLocation') || '';
+      this.currentLocation = this.currentUser.role==='admin' ? (localStorage.getItem('currentLocation') || '') : String(this.currentUser.location_id);
       await this.renderSidebar();
       this.navigate('dashboard');
     } catch (error) {
@@ -79,12 +79,12 @@ const App = {
     const visibleItems = navItems.filter(item => item.roles.includes(role));
     const locRes = await API.getLocations();
     if (locRes.success) {
-      const locOptions = locRes.data.map(l => `<option value="${l.id}" ${l.id == this.currentLocation ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
+      const locOptions = locRes.data.filter(l=>this.currentUser.role==='admin'||l.id===this.currentUser.location_id).map(l => `<option value="${l.id}" ${l.id == this.currentLocation ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
       document.getElementById('sidebar').innerHTML = `
         <div class="sidebar-header">
           <span class="logo">暗香·Fleeting</span>
           <select class="location-select" ${Formatter.event('change', 'app-2')} >
-            <option value="">全部场所</option>${locOptions}
+            ${role==='admin'?'<option value="">全部场所</option>':''}${locOptions}
           </select>
         </div>
         <div class="nav-items">

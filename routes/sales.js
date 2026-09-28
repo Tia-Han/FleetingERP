@@ -1,10 +1,11 @@
+const {idempotent}=require('../middleware/idempotency');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
 const { authMiddleware } = require('../middleware/auth');
 
 const { authorize, validateMovement } = require('../middleware/business');
-router.use(authMiddleware, authorize('sales'));
+router.use(authMiddleware, require('../middleware/scope').scope('sales'), authorize('sales'));
 router.use(require('../middleware/pagination').validatePagination);
 
 const { money, fail } = require('../middleware/business');
@@ -24,7 +25,7 @@ router.get('/config', (req, res) => {
   });
 });
 
-router.post('/', validateMovement('sales'), (req, res) => {
+router.post('/', validateMovement('sales'), idempotent((req, res) => {
   const { location_id, customer_id, items, discount, points_used, payments, operator, remark } = req.body;
   if (!location_id || !items || items.length === 0) {
     return res.json({ success: false, message: '场所和销售明细不能为空' });
@@ -97,7 +98,7 @@ router.post('/', validateMovement('sales'), (req, res) => {
     if (err.code === 'BUSINESS_ERROR') return res.json({ success: false, message: err.message });
     throw err;
   }
-});
+}));
 
 router.get('/', (req, res) => {
   const db = getDb();
