@@ -1,4 +1,5 @@
 const {idempotent}=require('../middleware/idempotency');
+const {rowRevision, productRevision, checkRevision} = require('../utils/revision');
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../utils/db');
@@ -51,6 +52,8 @@ router.get('/', (req, res) => {
     }
     for (const product of products) {
       product.skus = skuMap[product.id] || [];
+      product.revision = productRevision(product, product.skus);
+      product.skus.forEach(s => { s.revision = rowRevision(s); });
     }
   }
 
@@ -108,6 +111,8 @@ router.get('/:id', (req, res) => {
   }
   const skus = db.prepare('SELECT * FROM skus WHERE product_id = ? AND is_deleted = 0 ORDER BY volume_ml').all(product.id);
   product.skus = skus;
+  product.revision = productRevision(product, skus);
+  skus.forEach(s => { s.revision = rowRevision(s); });
   res.json({ success: true, data: product });
 });
 
@@ -145,6 +150,10 @@ router.put('/:id', (req, res) => {
   const isSplittable = req.body.is_split !== undefined ? req.body.is_split : req.body.is_splittable;
   const db = getDb();
   db.transaction(() => {
+    const current = db.prepare('SELECT * FROM products WHERE id=? AND is_deleted=0').get(req.params.id);
+    if (!current) throw Object.assign(new Error('商品不存在或已删除'), {status:404});
+    const currentSkus = db.prepare('SELECT * FROM skus WHERE product_id=? AND is_deleted=0 ORDER BY id').all(current.id);
+    checkRevision(req.body.revision, productRevision(current, currentSkus));
 
     const updParams = [brand_id, name, category];
     let updSql = 'UPDATE products SET brand_id = ?, name = ?, category = ?';

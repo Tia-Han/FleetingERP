@@ -1,3 +1,4 @@
+const {rowRevision, checkRevision} = require('../utils/revision');
 const express = require('express');
 const router = express.Router();
 const https = require('https');
@@ -93,13 +94,20 @@ router.get('/:id', (req, res) => {
   const db = getDb();
   const sku = db.prepare(`SELECT s.*, p.name as product_name, b.name as brand_name FROM skus s JOIN products p ON s.product_id = p.id JOIN brands b ON p.brand_id = b.id WHERE s.id = ?`).get(req.params.id);
   if (!sku) return res.json({ success: false, message: 'SKU 不存在' });
+  sku.revision = rowRevision(db.prepare('SELECT * FROM skus WHERE id=?').get(sku.id));
   res.json({ success: true, data: sku });
 });
 
 router.put('/:id', (req, res) => {
-  const { barcode, cost_price, retail_price, low_stock_threshold } = req.body;
   const db = getDb();
-  db.prepare('UPDATE skus SET barcode = ?, cost_price = ?, retail_price = ?, low_stock_threshold = ? WHERE id = ?').run(barcode, cost_price, retail_price, low_stock_threshold, req.params.id);
+  db.transaction(() => {
+    const current = db.prepare('SELECT * FROM skus WHERE id=? AND is_deleted=0').get(req.params.id);
+    if (!current) throw Object.assign(new Error('SKU 不存在或已删除'), {status:404});
+    checkRevision(req.body.revision, rowRevision(current));
+    const allowed = ['barcode','spec_type','volume','volume_ml','unit','cost_price','retail_price','low_stock_threshold'];
+    const fields = allowed.filter(key => req.body[key] !== undefined);
+    if (fields.length) db.prepare('UPDATE skus SET '+fields.map(key=>key+'=?').join(',')+' WHERE id=?').run(...fields.map(key=>req.body[key]),current.id);
+  }).immediate();
   res.json({ success: true, message: '更新成功' });
 });
 

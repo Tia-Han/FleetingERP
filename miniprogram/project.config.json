@@ -7,7 +7,7 @@
     "enhance": true,
     "postcss": true,
     "minified": true,
-    "urlCheck": false,
+    "urlCheck": true,
     "newFeature": true
   },
   "compileType": "miniprogram",

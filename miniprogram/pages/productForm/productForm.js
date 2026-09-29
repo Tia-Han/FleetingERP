@@ -64,6 +64,7 @@ Page({
     try {
       const res = await get('/products/' + id);
       const product = res.data || {};
+      this._revision = product.revision;
       const rawSkus = product.skus || [];
       // 后端返回 volume 字段，前端使用 volume_desc，做映射
       const skus = rawSkus.map(sku => ({
@@ -218,7 +219,7 @@ Page({
       };
 
       if (this.data.isEdit) {
-        await put('/products/' + this.data.productId, productData);
+        await put('/products/' + this.data.productId, {...productData, revision:this._revision});
         wx.showToast({ title: '更新成功', icon: 'success' });
       } else {
         await post('/products', productData);

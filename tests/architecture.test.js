@@ -100,3 +100,14 @@ test('view requests reject responses from old navigation, tabs and superseded re
  const fourth=ctx.formatter.viewRequest(owner,'list');
  assert.equal(fourth(),true);
 });
+
+test('database readiness fails during maintenance and real-table query failures',()=>{
+ const {databaseHealth}=require('../utils/health');
+ let queries=[];
+ const getDb=()=>({prepare:sql=>{queries.push(sql);return {get(){}};}});
+ assert.equal(databaseHealth({getDb,isMaintenance:()=>false}),true);
+ assert.equal(queries.length,2);assert.ok(queries.every(q=>q.includes('FROM')));
+ assert.equal(databaseHealth({getDb:()=>{throw Error('closed')},isMaintenance:()=>false}),false);
+ assert.equal(databaseHealth({getDb:()=>{throw Error('must not read')},isMaintenance:()=>true}),false);
+ assert.equal(databaseHealth({getDb:()=>({prepare(){throw Error('missing table')}}),isMaintenance:()=>false}),false);
+});

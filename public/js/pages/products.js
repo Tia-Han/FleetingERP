@@ -211,6 +211,7 @@ const ProductsPage = {
   showEditProduct(id) {
     const p = this._allProducts.find(x => x.id === id);
     if (!p) return;
+    this._editingProductRevision = p.revision;
     const brands = this._allBrands || [];
     const categories = this._allCategories || [];
     const overlay = document.createElement('div');
@@ -245,6 +246,7 @@ const ProductsPage = {
       if (sku) break;
     }
     if (!sku) return;
+    this._editingSkuRevision = sku.revision;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card" style="width:400px">
@@ -264,6 +266,7 @@ const ProductsPage = {
 
   async submitEditSku(skuId) {
     const data = {
+      revision: this._editingSkuRevision,
       spec_type: document.getElementById('es-type').value,
       volume: document.getElementById('es-volume').value.trim(),
       volume_ml: parseFloat(document.getElementById('es-volumeml').value) || 0,
@@ -289,6 +292,7 @@ const ProductsPage = {
 
   async submitEditProduct(id) {
     const data = {
+      revision: this._editingProductRevision,
       brand_id: parseInt(document.getElementById('edit-p-brand').value),
       name: document.getElementById('edit-p-name').value.trim(),
       category: document.getElementById('edit-p-category').value,

@@ -21,7 +21,7 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const os = require('os');
-const { initDatabase, isMaintenance, closeDatabase } = require('./utils/db');
+const { getDb, initDatabase, isMaintenance, closeDatabase } = require('./utils/db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -96,7 +96,9 @@ app.use(`${API_V1}/customers`, require('./routes/customers'));
 app.use(`${API_V1}/system`, require('./routes/system'));
 
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, status: 'ok', timestamp: new Date().toISOString() });
+  const ready = require('./utils/health').databaseHealth({getDb,isMaintenance});
+  res.set('Cache-Control','no-store');
+  res.status(ready ? 200 : 503).json({ success: ready, status: ready ? 'ok' : 'unavailable', timestamp: new Date().toISOString() });
 });
 
 // OPT-8: API 文档（Swagger）

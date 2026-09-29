@@ -31,10 +31,10 @@ test('web API references and all mini-program template event handlers exist',()=
 });
 test('mini-program product edit retains SKU identity and splittable property',async()=>{
  let submitted;
- const page=miniPage('productForm',{get:async()=>({data:{id:1,name:'x',brand_id:1,category:'香水',is_splittable:1,skus:[{id:42,spec_type:'整装',volume:'50ml',unit:'瓶'}]}}),put:async(url,data)=>{submitted=data;}});
+ const page=miniPage('productForm',{get:async()=>({data:{id:1,revision:'loaded-revision',name:'x',brand_id:1,category:'香水',is_splittable:1,skus:[{id:42,spec_type:'整装',volume:'50ml',unit:'瓶'}]}}),put:async(url,data)=>{submitted=data;}});
  page.data.isEdit=true;page.data.productId=1;
  await page.loadProduct(1);assert.equal(page.data.is_split,true);
- await page.submit();assert.equal(submitted.skus[0].id,42);assert.equal(submitted.is_split,1);
+ await page.submit();assert.equal(submitted.revision,'loaded-revision');assert.equal(submitted.skus[0].id,42);assert.equal(submitted.is_split,1);
 });
 test('mini-program percentage discount recalculates when quantity changes',()=>{
  const p=miniPage('sale');p.data.items=[{quantity:1,unit_price:100}];p.data.discountValue='10';p.calcSummary();assert.equal(p.data.discountAmount,10);

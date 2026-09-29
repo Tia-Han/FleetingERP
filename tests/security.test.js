@@ -107,7 +107,7 @@ test('failed product create and edit roll back main row and SKUs',async()=>{
    BEGIN SELECT RAISE(ABORT, 'simulated SKU write failure'); END;`);
  try {
   const r=await call('products','POST','/',{brand_id:1,name:'partial',category:'香水',skus:[{spec_type:'整装',volume:'reject'}]});assert.equal(r.success,false);assert.match(r.error,/simulated/);assert.equal(db.prepare('SELECT COUNT(*) n FROM products').get().n,1);
-  const edit=await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',skus:[{id:1,spec_type:'整装',volume:'reject'}]});assert.equal(edit.success,false);assert.match(edit.error,/simulated/);assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'Test');assert.equal(db.prepare('SELECT is_deleted FROM skus WHERE id=1').get().is_deleted,0);
+  const edit=await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',revision:require('../utils/revision').productRevision(db.prepare('SELECT * FROM products WHERE id=1').get(),db.prepare('SELECT * FROM skus WHERE product_id=1 AND is_deleted=0').all()),skus:[{id:1,spec_type:'整装',volume:'reject'}]});assert.equal(edit.success,false);assert.match(edit.error,/simulated/);assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'Test');assert.equal(db.prepare('SELECT is_deleted FROM skus WHERE id=1').get().is_deleted,0);
  } finally { db.exec('DROP TRIGGER test_reject_sku_insert; DROP TRIGGER test_reject_sku_update'); }
 });
 test('deleted users and legacy JWTs are rejected',async()=>{
@@ -197,7 +197,7 @@ test('generated barcodes are unique in a same-millisecond batch; duplicate impor
 test('stocked products and removed stocked SKUs cannot disappear', async () => {
   assert.equal((await call('products','DELETE','/1')).success,false);
   assert.equal(db.prepare('SELECT is_deleted FROM products WHERE id=1').get().is_deleted,0);
-  assert.equal((await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',skus:[]})).success,false);
+  assert.equal((await call('products','PUT','/1',{brand_id:1,name:'Changed',category:'香水',revision:require('../utils/revision').productRevision(db.prepare('SELECT * FROM products WHERE id=1').get(),db.prepare('SELECT * FROM skus WHERE product_id=1 AND is_deleted=0').all()),skus:[]})).success,false);
   assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'Test');
   db.prepare('UPDATE stock_balances SET quantity=0').run();
   assert.equal((await call('products','DELETE','/1')).success,true);
@@ -400,4 +400,26 @@ test('restore rejects a backup with no enabled administrator without replacing l
  const candidate=new Database(file);candidate.exec("UPDATE users SET enabled=0 WHERE role='admin'");candidate.close();
  await assert.rejects(()=>backups.restoreBackup('fragrance_20260102.db'),/没有启用的管理员/);
  assert.ok(db.prepare("SELECT 1 FROM users WHERE role='admin' AND enabled=1").get());
+});
+
+test('stale product edits reject instead of overwriting another editor',async()=>{
+ const p=(await call('products','GET','/1')).data;
+ const edit={brand_id:p.brand_id,name:'First edit',category:p.category,revision:p.revision};
+ assert.equal((await call('products','PUT','/1',edit)).success,true);
+ assert.equal((await call('products','PUT','/1',{...edit,name:'Lost edit'})).status,409);
+ assert.equal(db.prepare('SELECT name FROM products WHERE id=1').get().name,'First edit');
+ assert.equal((await call('products','PUT','/1',{...edit,revision:undefined})).status,409);
+ const fresh=(await call('products','GET','/1')).data;
+ assert.equal((await call('products','PUT','/1',{...edit,name:'Fresh edit',revision:fresh.revision})).success,true);
+});
+test('SKU edits persist displayed fields, preserve omitted barcode and invalidate stale product snapshots',async()=>{
+ db.prepare('UPDATE skus SET barcode=? WHERE id=1').run('TEST-BARCODE');
+ const p=(await call('products','GET','/1')).data;
+ const sku=p.skus.find(s=>s.id===1);
+ assert.equal((await call('skus','PUT','/1',{revision:sku.revision,volume:'120ml',volume_ml:120,retail_price:35})).success,true);
+ const after=db.prepare('SELECT * FROM skus WHERE id=1').get();
+ assert.equal(after.volume,'120ml');assert.equal(after.volume_ml,120);assert.equal(after.barcode,'TEST-BARCODE');
+ assert.equal((await call('skus','PUT','/1',{revision:sku.revision,retail_price:1})).status,409);
+ assert.equal((await call('products','PUT','/1',{brand_id:1,name:'Old snapshot',category:p.category,revision:p.revision,skus:p.skus})).status,409);
+ assert.equal(db.prepare('SELECT retail_price FROM skus WHERE id=1').get().retail_price,35);
 });
