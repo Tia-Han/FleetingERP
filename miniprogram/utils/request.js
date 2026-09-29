@@ -23,6 +23,7 @@ function send(url, method = 'GET', data = {}, requestKey) {
       },
       timeout: 10000,
       success(res) {
+        if(app && app.globalData.token !== token) { reject({uncertain:true,message:'登录状态已改变，请核实原操作结果'}); return; }
         if (res.statusCode === 401) {
           if (app) app.clearLogin();
           wx.reLaunch({ url: '/pages/login/login' });

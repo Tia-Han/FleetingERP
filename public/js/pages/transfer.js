@@ -2,6 +2,7 @@ const TransferPage = {
   items: [],
 
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     const params = App._navParams || {};
     App._navParams = null;
     this.items = [];
@@ -25,6 +26,7 @@ const TransferPage = {
       </div>
       <div class="card"><h2>调拨记录</h2><div id="tr-history"></div></div>`;
     const locRes = await API.request('GET','/locations?destinations=1');
+    if (!isCurrent()) return;
     if (locRes.success) {
       const opts = locRes.data.map(l => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
       document.getElementById('tr-from').innerHTML = locRes.data.filter(l=>App.currentUser.role==='admin'||l.id===App.currentUser.location_id).map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
@@ -66,11 +68,14 @@ const TransferPage = {
   },
 
   async searchProduct() {
+    const isCurrent=Formatter.viewRequest(this,'searchProduct');
     const keyword = document.getElementById('tr-search').value.trim();
     if (!keyword) return;
     const barcodeRes = await API.getSkuByBarcode(keyword);
+    if (!isCurrent()) return;
     if (barcodeRes.success) { this.addItem(barcodeRes.data); return; }
     const res = await API.getProducts();
+    if (!isCurrent()) return;
     if (res.success) {
       const matched = res.data.filter(p => p.name.includes(keyword));
       const results = document.getElementById('tr-search-results');
@@ -129,7 +134,9 @@ const TransferPage = {
   },
 
   async showDetail(id) {
+    const isCurrent=Formatter.viewRequest(this,'showDetail');
     const res = await API.getTransferDetail(id);
+    if (!isCurrent()) return;
     if (!res.success) return App.toast(res.message || '调拨详情加载失败', 'error');
     const t = res.data;
     const overlay = document.createElement('div');
@@ -142,7 +149,9 @@ const TransferPage = {
     document.body.appendChild(overlay);
   },
   async loadHistory() {
+    const isCurrent=Formatter.viewRequest(this,'loadHistory');
     const res = await API.getTransfers();
+    if (!isCurrent()) return;
     const div = document.getElementById('tr-history');
     if (!res.success || res.data.length === 0) { div.innerHTML = '<p>暂无调拨记录</p>'; return; }
     const recent = res.data.slice(0, 50);

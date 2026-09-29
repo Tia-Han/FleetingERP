@@ -1,9 +1,11 @@
 const DashboardPage = {
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     const content = document.getElementById('content');
     content.innerHTML = '<p>加载中...</p>';
     const params = App.currentLocation ? { location_id: App.currentLocation } : {};
     const res = await API.getDashboard(params);
+    if (!isCurrent()) return;
     if (!res.success) { content.innerHTML = '<p>数据加载失败</p>'; return; }
     const d = res.data;
     content.innerHTML = `
@@ -28,7 +30,6 @@ const DashboardPage = {
         <h2>快捷操作</h2>
         <div style="display:flex;gap:12px">
           <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-2')} >入库</button>
-          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-3')} >分装</button>
           <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-4')} >开单</button>
           <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-5')} >调拨</button>
         </div>

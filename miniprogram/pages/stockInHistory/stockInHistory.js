@@ -142,8 +142,8 @@ Page({
         params.brand = this.data.brand;
       }
 
-      const res = await get('/stock-in', params);
-      const data = res.data || [];
+      const res = await get('/stock-in/history', params);
+      const data = (res.data || []).map(row=>({...row,record_key:row.record_type+':'+row.id}));
       const list = refresh ? data : this.data.list.concat(data);
       const total = res.total || 0;
 
@@ -160,7 +160,7 @@ Page({
   },
 
   onItemTap(e) {
-    const { id } = e.currentTarget.dataset;
-    wx.navigateTo({ url: '/pages/stockInDetail/stockInDetail?id=' + id });
+    const { id, type } = e.currentTarget.dataset;
+    wx.navigateTo({ url: '/pages/stockInDetail/stockInDetail?id=' + id + '&type=' + encodeURIComponent(type || 'in') });
   }
 });

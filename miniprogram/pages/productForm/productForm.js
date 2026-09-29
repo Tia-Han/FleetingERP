@@ -80,7 +80,7 @@ Page({
         brand_name: product.brand_name,
         category: product.category || '',
         categoryIndex: catIdx >= 0 ? catIdx : 0,
-        is_split: product.is_split === 1,
+        is_split: product.is_splittable === 1,
         brandIndex: brandIdx >= 0 ? brandIdx : 0,
         skus: skus.length > 0 ? skus : this.data.skus
       });
@@ -205,6 +205,7 @@ Page({
         category: this.data.category,
         is_split: this.data.is_split ? 1 : 0,
         skus: this.data.skus.map(s => ({
+          ...(s.id ? {id:s.id} : {}),
           spec_type: s.spec_type,
           volume_desc: s.volume_desc,
           volume_ml: parseFloat(s.volume_ml) || 0,

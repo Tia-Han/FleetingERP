@@ -9,6 +9,7 @@ const SearchSuggest = {
     const results = resultsId ? document.getElementById(resultsId) : null;
 
     input.addEventListener('input', () => {
+      this._searchEpoch=(this._searchEpoch||0)+1;
       this._hideDropdown();
       this._activeInputId = inputId;
       clearTimeout(input._ssTimer);
@@ -33,7 +34,10 @@ const SearchSuggest = {
   },
 
   async _doSearch(input, results, keyword, searchFn, renderItem, onSelect, isEnter) {
-    const items = await searchFn(keyword);
+    const epoch=this._searchEpoch=(this._searchEpoch||0)+1;
+    let items;
+    try { items = await searchFn(keyword); } catch { items=[]; }
+    if(epoch!==this._searchEpoch || input.isConnected===false || input.value.trim()!==keyword) return;
     if (items.length === 0) {
       if (results) results.innerHTML = '<p style="color:#999;padding:8px">未找到匹配项</p>';
       this._hideDropdown();
@@ -92,10 +96,18 @@ const SearchSuggest = {
         document.removeEventListener('mousedown', closeHandler);
       }
     };
-    setTimeout(() => document.addEventListener('mousedown', closeHandler), 0);
+    this._closeHandler=closeHandler;
+    this._closeTimer=setTimeout(() => { this._closeTimer=null;document.addEventListener('mousedown', closeHandler); }, 0);
+  },
+
+  cancel() {
+    this._searchEpoch=(this._searchEpoch||0)+1;
+    this._hideDropdown();
   },
 
   _hideDropdown() {
+    if(this._closeTimer) { clearTimeout(this._closeTimer); this._closeTimer=null; }
+    if(this._closeHandler) { document.removeEventListener('mousedown',this._closeHandler); this._closeHandler=null; }
     if (this._activeDropdown) {
       this._activeDropdown.remove();
       this._activeDropdown = null;

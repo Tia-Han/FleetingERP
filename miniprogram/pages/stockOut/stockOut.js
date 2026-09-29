@@ -208,7 +208,7 @@ Page({
 
         this.setData({ submitting: true });
         try {
-          await post('/stock-out/batch', {
+          const result=await post('/stock-out/batch', {
             location_id: location.id,
             out_type: this.data.outType,
             remark: this.data.remark,
@@ -221,6 +221,14 @@ Page({
             }))
           });
 
+          if(result.data?.errors?.length) {
+            const failed=new Set(result.data.errors.map(e=>e.item_index));
+            this.setData({items:this.data.items.filter((item,index)=>failed.has(index))});
+            this.calcTotal();
+            wx.showToast({title:result.message || '部分出库失败，请核实剩余明细',icon:'none'});
+            this.setData({submitting:false});
+            return;
+          }
           wx.showToast({ title: `${typeLabel}成功`, icon: 'success' });
           this.setData({
             items: [],

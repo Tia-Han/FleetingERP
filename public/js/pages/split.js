@@ -3,6 +3,7 @@ const SplitPage = {
   targets: [],
 
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     this.sourceSku = null;
     this.targets = [];
     const locId = App.currentLocation || 1;
@@ -44,6 +45,7 @@ const SplitPage = {
         </div>
       </div>`;
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     if (locRes.success) {
       document.getElementById('sp-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
     }
@@ -76,11 +78,14 @@ const SplitPage = {
   },
 
   async searchSource() {
+    const isCurrent=Formatter.viewRequest(this,'searchSource');
     const keyword = document.getElementById('sp-search').value.trim();
     if (!keyword) return;
     const barcodeRes = await API.getSkuByBarcode(keyword);
+    if (!isCurrent()) return;
     if (barcodeRes.success) { this.setSource(barcodeRes.data); return; }
     const res = await API.getProducts();
+    if (!isCurrent()) return;
     if (res.success) {
       const matched = res.data.filter(p => p.name.includes(keyword));
       const results = document.getElementById('sp-source-info');

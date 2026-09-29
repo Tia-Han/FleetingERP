@@ -29,6 +29,7 @@ function call(module, method, url, body = {}, credential = token(), requestKey =
 function quantity(sku=1) { return db.prepare('SELECT quantity FROM stock_balances WHERE location_id=1 AND sku_id=?').get(sku)?.quantity; }
 function sale(overrides={}) { return { location_id:1, items:[{sku_id:1,quantity:1,unit_price:10}], payments:[{method:'cash',amount:10}], ...overrides }; }
 beforeEach(()=>{
+  process.env.ENABLE_SPLIT='true';
   db = dbModule.getDb();
   db.pragma('foreign_keys=OFF');
   for(const {name} of db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) db.exec(`DELETE FROM "${name}"`);
@@ -350,4 +351,53 @@ test('upgrade preserves historical duplicate locations and requires explicit sta
 test('alternative numeric detail paths cannot bypass staff location scope',async()=>{
  const created=await call('sales','POST','/',sale());
  assert.equal((await call('sales','GET','/'+created.data.id+'.0',{},token('store_clerk'))).status,403);
+});
+test('staff sales summary remains a scoped aggregate, not a detail lookup',async()=>{
+ db.exec('INSERT INTO stock_balances(location_id,sku_id,quantity) VALUES(2,1,5)');
+ await call('sales','POST','/',sale({location_id:2}));
+ await call('sales','POST','/',sale());
+ const result=await call('sales','GET','/summary',{},token('store_clerk'));
+ assert.equal(result.success,true);assert.equal(result.data.order_count,1);assert.equal(result.data.total_amount,10);
+});
+test('pre-location-permissions backups can restore through supported additive migrations',async()=>{
+ fs.mkdirSync(backups.backupDir,{recursive:true});
+ const file=path.join(backups.backupDir,'fragrance_20260101.db');
+ await db.backup(file);
+ const old=new Database(file);
+ old.exec('DROP TABLE request_results; ALTER TABLE users DROP COLUMN location_id; ALTER TABLE users DROP COLUMN enabled;');old.close();
+ await backups.restoreBackup('fragrance_20260101.db');db=dbModule.getDb();
+ assert.ok(db.pragma('table_info(users)').some(c=>c.name==='location_id'));
+ assert.equal(quantity(),10);
+});
+
+test('split is disabled by default without changing existing inventory',async()=>{
+ delete process.env.ENABLE_SPLIT;
+ const result=await call('split','POST','/',{location_id:1,source_sku_id:1,source_quantity:1,bottle_consumed:true,items:[{target_sku_id:2,quantity:20,unit_volume:5}]});
+ assert.equal(result.status,403);assert.equal(quantity(),10);
+ assert.equal(db.prepare('SELECT count(*) n FROM split_orders').get().n,0);
+});
+test('inbound transfer sale and histories conserve stock across roles and retries',async()=>{
+ const warehouse=token('warehouse_manager'),clerk=token('store_clerk');
+ assert.equal((await call('stockIn','POST','/',{location_id:1,items:[{sku_id:1,quantity:2,unit_cost:3}]},warehouse)).success,true);
+ const key=require('crypto').randomUUID(), transfer={from_location_id:1,to_location_id:2,items:[{sku_id:1,quantity:3}]};
+ const moved=await call('transfer','POST','/',transfer,warehouse,key);assert.equal(moved.success,true);
+ assert.deepEqual(await call('transfer','POST','/',transfer,warehouse,key),moved);
+ assert.equal((await call('sales','POST','/',sale({location_id:2}),clerk)).success,true);
+ assert.equal(quantity(),9);assert.equal(db.prepare('SELECT quantity FROM stock_balances WHERE location_id=2 AND sku_id=1').get().quantity,2);
+ assert.equal((await call('stockIn','GET','/history',{},clerk)).data[0].record_type,'transfer_in');
+ assert.equal((await call('stockOut','GET','/',{},warehouse)).data[0].movement_type,'transfer_out');
+ assert.equal((await call('sales','GET','/summary',{},clerk)).data.order_count,1);
+ assert.equal(db.prepare('SELECT SUM(quantity) q FROM stock_movements WHERE sku_id=1').get().q,1);
+});
+test('batch outbound reports failed row indexes without repeating successful rows',async()=>{
+ const r=await call('stockOut','POST','/batch',{location_id:1,items:[{sku_id:1,quantity:2,type:'out'},{sku_id:1,quantity:99,type:'out'}]});
+ assert.equal(r.success,true);assert.equal(r.data.successCount,1);assert.equal(r.data.errors[0].item_index,1);assert.equal(quantity(),8);
+});
+
+test('restore rejects a backup with no enabled administrator without replacing live data',async()=>{
+ const file=path.join(backups.backupDir,'fragrance_20260102.db');
+ await backups.createBackup(file);
+ const candidate=new Database(file);candidate.exec("UPDATE users SET enabled=0 WHERE role='admin'");candidate.close();
+ await assert.rejects(()=>backups.restoreBackup('fragrance_20260102.db'),/没有启用的管理员/);
+ assert.ok(db.prepare("SELECT 1 FROM users WHERE role='admin' AND enabled=1").get());
 });

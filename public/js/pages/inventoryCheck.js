@@ -3,6 +3,7 @@ const InventoryCheckPage = {
   checkData: {},
 
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     this.stockData = [];
     this.checkData = {};
     const params = App._navParams || {};
@@ -10,6 +11,7 @@ const InventoryCheckPage = {
     this.targetSku = params.sku_id || null;
     const locId = params.location_id || App.currentLocation || '';
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     const locations = locRes.success ? locRes.data : [];
     document.getElementById('content').innerHTML = `
       <div class="card">
@@ -33,11 +35,13 @@ const InventoryCheckPage = {
   },
 
   async loadStock() {
+    const isCurrent=Formatter.viewRequest(this,'loadStock');
     const locId = document.getElementById('ic-location').value;
     if (!locId) return;
     const container = document.getElementById('ic-content');
     container.innerHTML = '<p>加载中...</p>';
     const res = await API.getBalances({ location_id: locId, ...(this.targetSku ? {sku_id:this.targetSku} : {}) });
+    if (!isCurrent()) return;
     if (!res.success) { container.innerHTML = '<p>加载失败</p>'; return; }
     this.stockData = res.data;
     this.checkData = {};

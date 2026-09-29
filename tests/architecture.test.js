@@ -69,3 +69,34 @@ test('mini-program coalesces clicks and preserves operation key after timeout',a
  assert.equal(requests[1].header['Idempotency-Key'],key);
  requests[1].success({statusCode:200,data:{success:true}});await retry;
 });
+test('obsolete mini-program 401 cannot clear the replacement login',async()=>{
+ let request,cleared=false;const app={globalData:{token:'old',apiBase:'https://test'},clearLogin(){cleared=true;}};
+ const ctx=vm.createContext({wx:{request:r=>request=r,reLaunch(){},showToast(){}},getApp:()=>app,module:{exports:{}}});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../miniprogram/utils/request.js'),'utf8'),ctx);
+ const result=ctx.module.exports.get('/stock/balances');app.globalData.token='new';request.success({statusCode:401});
+ await assert.rejects(result);assert.equal(cleared,false);assert.equal(app.globalData.token,'new');
+});
+test('slower old search cannot replace the latest suggestions',async()=>{
+ const ctx=vm.createContext({window:{},document:{removeEventListener(){}},setTimeout,clearTimeout});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/utils/searchSuggest.js'),'utf8')+';globalThis.search=SearchSuggest;',ctx);
+ const rendered=[];ctx.search._showDropdown=(input,items)=>rendered.push(items);
+ const input={value:'old',isConnected:true};let oldDone,newDone;
+ const a=ctx.search._doSearch(input,null,'old',()=>new Promise(r=>oldDone=r),()=>{},()=>{});
+ input.value='new';const b=ctx.search._doSearch(input,null,'new',()=>new Promise(r=>newDone=r),()=>{},()=>{});
+ newDone(['new']);await b;oldDone(['old']);await a;assert.deepEqual(rendered,[['new']]);
+});
+
+test('view requests reject responses from old navigation, tabs and superseded reads',()=>{
+ const ctx=vm.createContext({window:{},document:{addEventListener(){}},App:{_viewVersion:1}});
+ vm.runInContext(fs.readFileSync(path.join(__dirname,'../public/js/utils/formatter.js'),'utf8')+'\nglobalThis.formatter=Formatter;',ctx);
+ const owner={currentTab:'new'};
+ const first=ctx.formatter.viewRequest(owner,'list');
+ assert.equal(first(),true);
+ const second=ctx.formatter.viewRequest(owner,'list');
+ assert.equal(first(),false);assert.equal(second(),true);
+ owner.currentTab='history';assert.equal(second(),false);
+ const third=ctx.formatter.viewRequest(owner,'list');
+ ctx.App._viewVersion++;assert.equal(third(),false);
+ const fourth=ctx.formatter.viewRequest(owner,'list');
+ assert.equal(fourth(),true);
+});

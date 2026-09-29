@@ -29,8 +29,10 @@ const CustomersPage = {
   search() { this.loadList(document.getElementById('cu-search').value.trim()); },
 
   async loadList(search) {
+    const isCurrent=Formatter.viewRequest(this,'loadList');
     const params = search ? { search } : {};
     const res = await API.getCustomers(params);
+    if (!isCurrent()) return;
     const div = document.getElementById('cu-list');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }
     if (res.data.length === 0) { div.innerHTML = '<p>暂无客户</p>'; return; }
@@ -106,7 +108,9 @@ const CustomersPage = {
   },
 
   async viewPurchases(id) {
+    const isCurrent=Formatter.viewRequest(this,'viewPurchases');
     const res = await API.getCustomerPurchases(id);
+    if (!isCurrent()) return;
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     if (!res.success || res.data.length === 0) {

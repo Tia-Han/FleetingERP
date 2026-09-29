@@ -6,7 +6,7 @@
   </view>
 
   <view class="info-card">
-    <view class="info-row"><text class="info-label">是否可分装</text><text class="info-val">{{product.is_split == 1 ? '是' : '否'}}</text></view>
+    <view class="info-row"><text class="info-label">分装属性（功能未上线）</text><text class="info-val">{{product.is_splittable == 1 ? '是' : '否'}}</text></view>
     <view class="info-row"><text class="info-label">规格数量</text><text class="info-val">{{skus.length}} 个</text></view>
   </view>
 

@@ -30,6 +30,7 @@
       <view class="type-tab {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">出库</view>
       <view class="type-tab {{typeFilter === 'loss' ? 'active' : ''}}" data-type="loss" bindtap="onTypeTap">损耗</view>
     </view>
+    <view class="type-tab" data-type="transfer_out" bindtap="onTypeTap">调拨出库</view>
     <!-- 操作人筛选 -->
     <view class="filter-row">
       <view class="filter-item flex-1">
@@ -47,7 +48,7 @@
       <view class="record-card" wx:for="{{list}}" wx:key="id">
         <view class="record-header">
           <view class="record-type type-{{item.movement_type}}">
-            {{item.movement_type === 'out' ? '出库' : '损耗'}}
+            {{item.movement_type === 'transfer_out' ? '调拨出库' : (item.movement_type === 'out' ? '出库' : '损耗')}}
           </view>
           <view class="record-date">{{item.created_at}}</view>
         </view>
@@ -62,7 +63,7 @@
               <text class="record-label">场所：</text>
               <text>{{item.location_name}}</text>
             </view>
-            <view class="record-qty">-{{item.quantity}} {{item.unit || ''}}</view>
+            <view class="record-qty">{{item.quantity}} {{item.unit || ''}}</view>
           </view>
           <view class="record-remark" wx:if="{{item.remark}}">
             <text class="record-label">备注：</text>

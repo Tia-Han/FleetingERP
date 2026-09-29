@@ -13,6 +13,8 @@ Page({
     customerLoading: false,
     items: [],
     subtotal: 0,
+    subtotalText: '0.00',
+    discountText: '0.00',
     discountMode: 'percent', // percent / amount
     discountValue: '',
     discountAmount: 0,
@@ -287,7 +289,7 @@ Page({
       subtotal += item.quantity * item.unit_price;
     }
 
-    let discountAmount = this.data.discountAmount;
+    let discountAmount = this.data.discountMode === 'percent' ? subtotal*Math.min(100,Math.max(0,Number(this.data.discountValue)||0))/100 : Math.max(0,Number(this.data.discountValue)||0);
     if (discountAmount > subtotal) discountAmount = subtotal;
 
     subtotal = Math.round(subtotal * 100) / 100;
@@ -298,7 +300,7 @@ Page({
 
     const pointsEarned = Math.floor(finalAmount * this.data.pointsPerYuan);
 
-    this.setData({ subtotal, discountAmount, finalAmount: finalAmount.toFixed(2), pointsEarned });
+    this.setData({ items:this.data.items.map(item=>({...item,lineTotal:(item.quantity*item.unit_price).toFixed(2)})), subtotal, subtotalText:subtotal.toFixed(2), discountText:discountAmount.toFixed(2), discountAmount, finalAmount: finalAmount.toFixed(2), pointsEarned });
   },
 
   // 提交订单
@@ -370,6 +372,8 @@ Page({
           this.setData({
             items: [],
             subtotal: 0,
+    subtotalText: '0.00',
+    discountText: '0.00',
             discountValue: '',
             discountAmount: 0,
             pointsUsed: 0,

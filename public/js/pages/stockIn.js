@@ -42,6 +42,7 @@ const StockInPage = {
 
   // ===== 入库开单 =====
   async renderForm(locId, nowLocal) {
+    const isCurrent=Formatter.viewRequest(this,'renderForm');
     document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
@@ -69,6 +70,7 @@ const StockInPage = {
       </div>`;
 
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     if (locRes.success) {
       document.getElementById('si-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
     }
@@ -106,9 +108,11 @@ const StockInPage = {
   },
 
   async searchProduct() {
+    const isCurrent=Formatter.viewRequest(this,'searchProduct');
     const keyword = document.getElementById('si-search').value.trim();
     if (!keyword) return;
     const barcodeRes = await API.getSkuByBarcode(keyword);
+    if (!isCurrent()) return;
     if (barcodeRes.success) {
       this.addItem(barcodeRes.data);
       const searchEl = document.getElementById('si-search');
@@ -118,6 +122,7 @@ const StockInPage = {
       return;
     }
     const res = await API.getProducts();
+    if (!isCurrent()) return;
     if (res.success) {
       const matched = res.data.filter(p => SearchSuggest.fuzzyMatch(p.name, keyword) || SearchSuggest.fuzzyMatch(p.brand_name, keyword));
       const results = document.getElementById('si-search-results');
@@ -224,6 +229,7 @@ const StockInPage = {
   _searchTimer: null,
 
   async renderHistory() {
+    const isCurrent=Formatter.viewRequest(this,'renderHistory');
     const now = new Date();
     const endDate = now.toISOString().substring(0, 10);
     const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
@@ -241,6 +247,7 @@ const StockInPage = {
     }
 
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     const locations = locRes.success ? locRes.data : [];
     const operatorOptions = ['<option value="">全部操作人</option>']
       .concat(this.historyOperators.map(op => 
@@ -289,6 +296,7 @@ const StockInPage = {
   },
 
   async loadHistory(page = 1) {
+    const isCurrent=Formatter.viewRequest(this,'loadHistory');
     this.historyPage = page;
     const request = this._historyRequest = (this._historyRequest || 0) + 1;
     const listEl = document.getElementById('sih-list');
@@ -298,6 +306,7 @@ const StockInPage = {
     try {
       const params = { ...this.historyFilters, page, limit: 50 };
       const res = await API.getStockInHistory(params);
+      if (!isCurrent()) return;
 
       if (request !== this._historyRequest || !listEl.isConnected) return;
       if (!res.success) throw new Error(res.message || '查询失败');
@@ -346,8 +355,10 @@ const StockInPage = {
   },
 
   async showDetail(orderId) {
+    const isCurrent=Formatter.viewRequest(this,'showDetail');
     try {
       const res = await API.getStockInDetail(orderId);
+      if (!isCurrent()) return;
       if (!res.success) throw new Error(res.message);
       const order = res.data;
 

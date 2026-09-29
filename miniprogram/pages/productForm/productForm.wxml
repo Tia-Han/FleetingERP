@@ -7,7 +7,7 @@
     </view>
     <view class="form-row" bindtap="openBrandPicker">
       <text class="row-label">品牌</text>
-      <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange" catchchange="true">
+      <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange">
         <view class="row-value">{{brands[brandIndex].name || '请选择'}} ▾</view>
       </picker>
     </view>

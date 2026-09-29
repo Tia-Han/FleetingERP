@@ -4,9 +4,11 @@ const MovementsPage = {
   total: 0,
 
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     this.currentPage = 1;
     const locId = App.currentLocation || '';
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     const locations = locRes.success ? locRes.data : [];
     const today = new Date().toISOString().split('T')[0];
     const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
@@ -26,6 +28,7 @@ const MovementsPage = {
   },
 
   async load(page) {
+    const isCurrent=Formatter.viewRequest(this,'load');
     if (page) this.currentPage = page;
     const params = {};
     const start = document.getElementById('mv-start').value;
@@ -41,6 +44,7 @@ const MovementsPage = {
     const div = document.getElementById('mv-results');
     div.innerHTML = '<p>加载中...</p>';
     const [mvRes, sumRes] = await Promise.all([API.getMovements(params), API.getSummary({ ...params, page: undefined, limit: undefined })]);
+    if (!isCurrent()) return;
     if (!mvRes.success) { div.innerHTML = '<p>加载失败</p>'; return; }
     if (mvRes.data.length === 0) { div.innerHTML = '<div class="card"><p>暂无变动记录</p></div>'; return; }
     this.total = mvRes.total || mvRes.data.length;

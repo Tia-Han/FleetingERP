@@ -23,7 +23,7 @@ router.get('/', (req, res) => {
   res.json({ success: true, data: transfers });
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', require('../middleware/scope').scopeDetail('transfer'), (req, res) => {
   const db = getDb();
   const data = db.prepare('SELECT t.*, fl.name AS from_name, tl.name AS to_name FROM transfers t JOIN locations fl ON fl.id=t.from_location_id JOIN locations tl ON tl.id=t.to_location_id WHERE t.id=?').get(req.params.id);
   if (!data) return res.status(404).json({success:false,message:'调拨单不存在'});

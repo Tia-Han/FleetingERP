@@ -34,8 +34,10 @@ const SalesPage = {
   },
 
   async _renderNewSale() {
+    const isCurrent=Formatter.viewRequest(this,'_renderNewSale');
     const locId = App.currentLocation || '';
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     const stores = locRes.success ? locRes.data.filter(l => l.type === 'store') : [];
     document.getElementById('sl-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
@@ -128,11 +130,13 @@ const SalesPage = {
   },
 
   async _renderHistory() {
+    const isCurrent=Formatter.viewRequest(this,'_renderHistory');
     const container = document.getElementById('sl-tab-content');
     container.innerHTML = '<p>加载中...</p>';
     const params = {};
     if (App.currentLocation) params.location_id = App.currentLocation;
     const res = await API.getSales(params);
+    if (!isCurrent()) return;
     if (!res.success) { container.innerHTML = '<p>加载失败</p>'; return; }
     const sales = res.data || [];
     container.innerHTML = `
@@ -266,13 +270,13 @@ const SalesPage = {
     if (res.success) {
       App.toast('客户创建成功，已关联到本单');
       document.querySelector('.modal-overlay').remove();
-      const custRes = await API.getCustomers({ search: data.wechat_name || data.phone });
-      if (custRes.success && custRes.data.length > 0) {
-        this.setCustomer(custRes.data[0]);
+      const custRes = await API.getCustomer(res.data.id);
+      if (custRes.success && custRes.data.id) {
+        this.setCustomer(custRes.data);
         const searchEl = document.getElementById('sl-customer-search');
         if (searchEl) searchEl.value = '';
         const infoEl = document.getElementById('sl-customer-info');
-        if (infoEl) infoEl.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(custRes.data[0].wechat_name || '')} ${esc(custRes.data[0].phone || '')} | 积分余额: ${custRes.data[0].points}</div>`;
+        if (infoEl) infoEl.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(custRes.data.wechat_name || '')} ${esc(custRes.data.phone || '')} | 积分余额: ${custRes.data.points}</div>`;
       }
     } else App.toast(res.message, 'error');
   },
@@ -303,13 +307,13 @@ const SalesPage = {
     if (res.success) {
       App.toast('客户创建成功');
       document.querySelector('.modal-overlay').remove();
-      const custRes = await API.getCustomers({ search: data.wechat_name || data.phone });
-      if (custRes.success && custRes.data.length > 0) {
-        this.setCustomer(custRes.data[0]);
+      const custRes = await API.getCustomer(res.data.id);
+      if (custRes.success && custRes.data.id) {
+        this.setCustomer(custRes.data);
         const searchEl = document.getElementById('sl-customer-search');
         if (searchEl) searchEl.value = data.wechat_name || data.phone;
         const infoEl = document.getElementById('sl-customer-info');
-        if (infoEl) infoEl.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(custRes.data[0].wechat_name || '')} ${esc(custRes.data[0].phone || '')} | 积分余额: ${custRes.data[0].points}</div>`;
+        if (infoEl) infoEl.innerHTML = `<div style="padding:8px;background:#d4edda;border-radius:4px">客户: ${esc(custRes.data.wechat_name || '')} ${esc(custRes.data.phone || '')} | 积分余额: ${custRes.data.points}</div>`;
       }
     } else App.toast(res.message, 'error');
   },

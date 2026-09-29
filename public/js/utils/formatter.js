@@ -83,3 +83,12 @@ Formatter.trackPending=(element,result)=>{
     if(element.tagName==='BUTTON') element.disabled=disabled;
   });
 };
+
+// Async read results belong to a particular view/tab and latest request, not just an element ID.
+Formatter.viewRequest=(owner,key)=>{
+  const version=typeof App==='undefined'?0:App._viewVersion;
+  const tab=owner.currentTab;
+  owner._readRequests ||= Object.create(null);
+  const request=owner._readRequests[key]=(owner._readRequests[key]||0)+1;
+  return ()=>owner._readRequests[key]===request && owner.currentTab===tab && (typeof App==='undefined'||App._viewVersion===version);
+};

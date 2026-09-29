@@ -57,9 +57,9 @@
   <!-- 列表 -->
   <view class="list-container">
     <block wx:if="{{list.length > 0}}">
-      <view class="order-card" wx:for="{{list}}" wx:key="id" data-id="{{item.id}}" bindtap="onItemTap">
+      <view class="order-card" wx:for="{{list}}" wx:key="record_key" data-id="{{item.id}}" data-type="{{item.record_type}}" bindtap="onItemTap">
         <view class="order-header">
-          <view class="order-id">#{{item.id}}</view>
+          <view class="order-id">{{item.record_type === 'transfer_in' ? '调拨入库' : '入库'}} #{{item.id}}</view>
           <view class="order-date">{{item.created_at}}</view>
         </view>
         <view class="order-body">
@@ -75,7 +75,7 @@
             <text class="order-label">商品数：</text>
             <text class="order-value">{{item.item_count}} 种</text>
           </view>
-          <view class="order-row">
+          <view class="order-row" wx:if="{{item.record_type !== 'transfer_in'}}">
             <text class="order-label">总成本：</text>
             <text class="order-value amount">¥{{item.total_cost}}</text>
           </view>

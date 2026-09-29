@@ -37,7 +37,7 @@
         <text class="qty-num">{{item.quantity}}</text>
         <view class="qty-btn" data-index="{{index}}" bindtap="increaseQty">+</view>
       </view>
-      <view class="si-subtotal">¥{{(item.quantity * item.unit_price).toFixed(2)}}</view>
+      <view class="si-subtotal">¥{{item.lineTotal}}</view>
     </view>
   </view>
 
@@ -102,11 +102,11 @@
   <view class="summary-section" wx:if="{{items.length > 0}}">
     <view class="sum-row">
       <text>商品小计</text>
-      <text>¥{{subtotal.toFixed(2)}}</text>
+      <text>¥{{subtotalText}}</text>
     </view>
     <view class="sum-row">
       <text>折扣</text>
-      <text>−¥{{discountAmount.toFixed(2)}}</text>
+      <text>−¥{{discountText}}</text>
     </view>
     <view class="sum-row">
       <text>积分抵扣</text>

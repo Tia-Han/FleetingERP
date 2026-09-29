@@ -10,15 +10,21 @@ function validateBackup(filename, live, forRestore = false) {
   const candidate = new Database(filename, { readonly: true, fileMustExist: true });
   try {
     if (candidate.pragma('integrity_check', { simple: true }) !== 'ok' || candidate.pragma('foreign_key_check').length) throw new Error('备份完整性校验失败');
-    const optional = new Set(['users.session_version', 'users.openid', 'stock_movements.source']);
+    const optional = new Set(forRestore ? ['users.session_version', 'users.openid', 'users.location_id', 'users.enabled', 'stock_movements.source'] : []);
     for (const {name} of live.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all()) {
       const columns = candidate.pragma(`table_info(${JSON.stringify(name)})`).map(c => c.name);
+      // Only this additive internal table may be absent in a supported old backup.
+      if(forRestore && name === 'request_results' && columns.length === 0) continue;
       for (const c of live.pragma(`table_info(${JSON.stringify(name)})`)) {
         if (!columns.includes(c.name) && !optional.has(`${name}.${c.name}`)) throw new Error('备份表结构不兼容');
       }
     }
     if (forRestore && candidate.prepare("SELECT 1 FROM stock_balances WHERE typeof(quantity) != 'integer' OR quantity < 0 LIMIT 1").get()) throw new Error('备份包含无效库存，请先核对数据');
-    if (forRestore && !candidate.prepare("SELECT 1 FROM users WHERE role='admin' LIMIT 1").get()) throw new Error('备份中没有管理员');
+    if (forRestore) {
+      const hasEnabled = candidate.pragma('table_info(users)').some(c => c.name === 'enabled');
+      const activeAdmin = candidate.prepare("SELECT 1 FROM users WHERE role='admin'" + (hasEnabled ? ' AND enabled=1' : '') + ' LIMIT 1').get();
+      if (!activeAdmin) throw new Error('备份中没有启用的管理员');
+    }
     return candidate;
   } catch (e) { candidate.close(); throw e; }
 }

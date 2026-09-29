@@ -17,6 +17,7 @@ const App = {
   },
 
   renderLogin() {
+    this._viewVersion=(this._viewVersion||0)+1;
     document.getElementById('sidebar').innerHTML = '';
     document.getElementById('topbar').innerHTML = '';
     document.getElementById('content').innerHTML = `
@@ -129,6 +130,8 @@ const App = {
   },
 
   navigate(page, params) {
+    if(page==='split') { this.toast('分装业务暂未上线','error'); return; }
+    SearchSuggest.cancel();
     if (params) {
       this._navParams = params;
     } else {
@@ -146,6 +149,7 @@ const App = {
         }
       }
     }
+    this._viewVersion=(this._viewVersion||0)+1;
     this.currentPage = page;
     this.updateNavActive(page);
     const titleMap = {

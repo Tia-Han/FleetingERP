@@ -8,7 +8,10 @@ const { generateSkuCode, generateAvailableBarcode } = require('../utils/barcode'
 const { authorize, validateMovement } = require('../middleware/business');
 router.use(authMiddleware, require('../middleware/scope').scope('split'), authorize('split'));
 
-router.post('/', validateMovement('split'), idempotent((req, res) => {
+router.post('/', (req,res,next)=>{
+  if(process.env.ENABLE_SPLIT !== 'true') return res.status(403).json({success:false,message:'分装业务暂未上线，不记录库存变动'});
+  next();
+}, validateMovement('split'), idempotent((req, res) => {
   const { location_id, source_sku_id, source_quantity, bottle_consumed, waste_volume, items, operator, remark } = req.body;
 
   if (!location_id || !source_sku_id || !source_quantity || !items || items.length === 0) {
@@ -108,7 +111,7 @@ router.post('/', validateMovement('split'), idempotent((req, res) => {
   }
 }));
 
-router.get('/:id', (req, res) => {
+router.get('/:id', require('../middleware/scope').scopeDetail('split'), (req, res) => {
   const db = getDb();
   const order = db.prepare('SELECT so.*, l.name as location_name, s.volume as source_volume, s.sku_code as source_sku_code, p.name as product_name FROM split_orders so JOIN locations l ON so.location_id = l.id JOIN skus s ON so.source_sku_id = s.id JOIN products p ON s.product_id = p.id WHERE so.id = ?').get(req.params.id);
   if (!order) return res.json({ success: false, message: '分装单不存在' });

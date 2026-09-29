@@ -9,9 +9,12 @@ const StockQueryPage = {
     if (action === 'transfer' && ['admin','warehouse_manager','store_clerk'].includes(App.currentUser?.role)) return App.navigate('transfer', {location_id: locationId, sku: {id:skuId,sku_code:row.sku_code,product_name:row.product_name,volume:row.volume}});
   },
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     const locId = App.currentLocation || '';
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     const catRes = await API.getCategories();
+    if (!isCurrent()) return;
     const locations = locRes.success ? locRes.data : [];
     const categories = catRes.success ? catRes.data : [];
     document.getElementById('content').innerHTML = `
@@ -54,7 +57,9 @@ const StockQueryPage = {
   },
 
   async showCategoryManager() {
+    const isCurrent=Formatter.viewRequest(this,'showCategoryManager');
     const catRes = await API.getCategories();
+    if (!isCurrent()) return;
     const categories = catRes.success ? catRes.data : [];
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
@@ -96,7 +101,7 @@ const StockQueryPage = {
     if (!newName || newName === oldName) {
       const catRes = await API.getCategories();
       const cat = catRes.data.find(c => c.name === oldName);
-      if (cat) document.getElementById('cat-cell-' + cat.id).innerHTML = oldName;
+      if (cat) document.getElementById('cat-cell-' + cat.id).textContent = oldName;
       return;
     }
     const res = await API.saveCategory(oldName, newName);
@@ -111,6 +116,7 @@ const StockQueryPage = {
   },
 
   async load() {
+    const isCurrent=Formatter.viewRequest(this,'load');
     const params = {};
     const loc = document.getElementById('sq-location').value;
     const cat = document.getElementById('sq-category').value;
@@ -123,6 +129,7 @@ const StockQueryPage = {
     if (search) params.search = search;
     const request = this._loadRequest = (this._loadRequest || 0) + 1;
     const res = await API.getBalances(params);
+    if (!isCurrent()) return;
     if (request !== this._loadRequest || !document.getElementById('sq-results')) return;
     const div = document.getElementById('sq-results');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }

@@ -99,25 +99,25 @@ router.post('/batch', validateMovement('stockOut'), idempotent((req, res) => {
   const transaction = db.transaction(() => {
     const errors = [];
     let successCount = 0;
-    for (const item of items) {
+    for (const [item_index,item] of items.entries()) {
       const { sku_id, quantity, type, remark } = item;
       if (!sku_id || !quantity || !type) {
-        errors.push({ sku_id, message: '参数不完整' });
+        errors.push({ item_index, sku_id, message: '参数不完整' });
         continue;
       }
       if (!['out', 'loss'].includes(type)) {
-        errors.push({ sku_id, message: '类型无效' });
+        errors.push({ item_index, sku_id, message: '类型无效' });
         continue;
       }
       if (quantity <= 0) {
-        errors.push({ sku_id, message: '数量必须大于0' });
+        errors.push({ item_index, sku_id, message: '数量必须大于0' });
         continue;
       }
       const balance = db.prepare('SELECT quantity FROM stock_balances WHERE location_id = ? AND sku_id = ?').get(location_id, sku_id);
       const currentQty = balance ? balance.quantity : 0;
       if (currentQty < quantity) {
         const sku = db.prepare('SELECT volume FROM skus WHERE id = ?').get(sku_id);
-        errors.push({ sku_id, message: `库存不足：${sku ? sku.volume : ''} 剩余 ${currentQty}，需要 ${quantity}` });
+        errors.push({ item_index, sku_id, message: `库存不足：${sku ? sku.volume : ''} 剩余 ${currentQty}，需要 ${quantity}` });
         continue;
       }
       db.prepare('INSERT INTO stock_movements (location_id, sku_id, movement_type, quantity, ref_type, remark, operator, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')

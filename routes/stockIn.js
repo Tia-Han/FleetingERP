@@ -114,7 +114,7 @@ router.post('/', validateMovement('stockIn'), idempotent((req, res) => {
   }
 }));
 
-router.get('/:id', (req, res) => {
+router.get('/:id', require('../middleware/scope').scopeDetail('stockIn'), (req, res) => {
   const db = getDb();
   const order = db.prepare('SELECT sio.*, l.name as location_name FROM stock_in_orders sio JOIN locations l ON sio.location_id = l.id WHERE sio.id = ?').get(req.params.id);
   if (!order) return res.json({ success: false, message: '入库单不存在' });

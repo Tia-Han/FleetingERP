@@ -139,7 +139,7 @@ router.get('/summary', (req, res) => {
   res.json({ success: true, data: summary });
 });
 
-router.get('/:id', (req, res) => {
+router.get('/:id', require('../middleware/scope').scopeDetail('sales'), (req, res) => {
   const db = getDb();
   const sale = db.prepare('SELECT s.*, l.name as location_name, c.wechat_name as customer_name, c.phone as customer_phone FROM sales s JOIN locations l ON s.location_id = l.id LEFT JOIN customers c ON s.customer_id = c.id WHERE s.id = ?').get(req.params.id);
   if (!sale) return res.json({ success: false, message: '销售单不存在' });

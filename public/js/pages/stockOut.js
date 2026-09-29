@@ -40,6 +40,7 @@ const StockOutPage = {
 
   // ===== 出库开单 =====
   async renderForm(locId) {
+    const isCurrent=Formatter.viewRequest(this,'renderForm');
     document.getElementById('so-tab-content').innerHTML = `
       <div class="card">
         <h2>出库/损耗登记</h2>
@@ -72,6 +73,7 @@ const StockOutPage = {
       </div>`;
 
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     if (locRes.success) {
       document.getElementById('so-location').innerHTML = locRes.data.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('');
     }
@@ -84,11 +86,14 @@ const StockOutPage = {
   },
 
   async searchProduct() {
+    const isCurrent=Formatter.viewRequest(this,'searchProduct');
     const keyword = document.getElementById('so-search').value.trim();
     if (!keyword) return;
     const barcodeRes = await API.getSkuByBarcode(keyword);
+    if (!isCurrent()) return;
     if (barcodeRes.success) { this.addToList(barcodeRes.data); return; }
     const res = await API.getProducts();
+    if (!isCurrent()) return;
     if (res.success) {
       const matched = res.data.filter(p => SearchSuggest.fuzzyMatch(p.name, keyword) || SearchSuggest.fuzzyMatch(p.brand_name, keyword));
       const results = document.getElementById('so-search-results');
@@ -176,8 +181,8 @@ const StockOutPage = {
     if (res.success) {
       App.toast(res.message);
       if (res.data.errors && res.data.errors.length > 0) {
-        const failedSkuIds = new Set(res.data.errors.map(e => e.sku_id));
-        this.batchItems = this.batchItems.filter(b => failedSkuIds.has(b.sku_id));
+        const failedRows = new Set(res.data.errors.map(e => e.item_index));
+        this.batchItems = this.batchItems.filter((b,index) => failedRows.has(index));
         for (const item of this.batchItems) {
           const err = res.data.errors.find(e => e.sku_id === item.sku_id);
           if (err) item.errorMsg = err.message;
@@ -208,6 +213,7 @@ const StockOutPage = {
   _searchTimer: null,
 
   async renderHistory() {
+    const isCurrent=Formatter.viewRequest(this,'renderHistory');
     const now = new Date();
     const endDate = now.toISOString().substring(0, 10);
     const startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
@@ -225,6 +231,7 @@ const StockOutPage = {
     }
 
     const locRes = await API.getLocations();
+    if (!isCurrent()) return;
     const locations = locRes.success ? locRes.data : [];
     const operatorOptions = ['<option value="">全部操作人</option>']
       .concat(this.historyOperators.map(op =>
@@ -281,6 +288,7 @@ const StockOutPage = {
   },
 
   async loadHistory(page = 1) {
+    const isCurrent=Formatter.viewRequest(this,'loadHistory');
     this.historyPage = page;
     const request = this._historyRequest = (this._historyRequest || 0) + 1;
     const listEl = document.getElementById('soh-list');
@@ -290,6 +298,7 @@ const StockOutPage = {
     try {
       const params = { ...this.historyFilters, page, limit: 50 };
       const res = await API.getStockOutList(params);
+      if (!isCurrent()) return;
 
       if (request !== this._historyRequest || !listEl.isConnected) return;
       if (!res.success) throw new Error(res.message || '查询失败');

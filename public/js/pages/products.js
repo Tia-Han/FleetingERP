@@ -1,7 +1,9 @@
 const ProductsPage = {
   async openEditor(id) {
+    const isCurrent=Formatter.viewRequest(this,'openEditor');
     if (!['admin', 'warehouse_manager'].includes(App.currentUser?.role)) return App.toast('无权限编辑商品', 'error');
     const [products, brands, categories] = await Promise.all([API.getProducts(), API.getBrands(), API.getCategories()]);
+    if (!isCurrent()) return;
     if (![products, brands, categories].every(r => r.success)) return App.toast('商品资料加载失败', 'error');
     this._allProducts = products.data; this._allBrands = brands.data; this._allCategories = categories.data;
     if (!this._allProducts.some(p => p.id === id)) return App.toast('商品不存在或已删除', 'error');
@@ -10,9 +12,11 @@ const ProductsPage = {
   _currentSheet: 'products',
 
   async render() {
+    const isCurrent=Formatter.viewRequest(this,'render');
     const content = document.getElementById('content');
     content.innerHTML = '<p>加载中...</p>';
     const [productsRes, brandsRes, catRes] = await Promise.all([API.getProducts(), API.getBrands(), API.getCategories()]);
+    if (!isCurrent()) return;
     if (!productsRes.success) { content.innerHTML = '<p>加载失败</p>'; return; }
     const brands = brandsRes.success ? brandsRes.data : [];
     this._allProducts = productsRes.data;

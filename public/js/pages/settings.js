@@ -38,7 +38,9 @@ const SettingsPage = {
   },
 
   async loadLocations() {
+    const isCurrent=Formatter.viewRequest(this,'loadLocations');
     const res = await API.getLocations();
+    if (!isCurrent()) return;
     const div = document.getElementById('se-locations');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }
     div.innerHTML = `<table><thead><tr><th>名称</th><th>类型</th><th>地址</th><th>操作</th></tr></thead><tbody>
@@ -103,7 +105,9 @@ const SettingsPage = {
   },
 
   async loadUsers() {
+    const isCurrent=Formatter.viewRequest(this,'loadUsers');
     const res = await API.getUsers();
+    if (!isCurrent()) return;
     const div = document.getElementById('se-users');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }
     this._users=res.data;
@@ -222,7 +226,9 @@ const SettingsPage = {
   },
 
   async loadBackups() {
+    const isCurrent=Formatter.viewRequest(this,'loadBackups');
     const res = await API.getBackups();
+    if (!isCurrent()) return;
     const div = document.getElementById('se-backups');
     if (!div) return;
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }

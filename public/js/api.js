@@ -156,6 +156,7 @@ const API = {
   getSale: (id) => API.request('GET', `/sales/${id}`),
 
   getCustomers: (params) => API.request('GET', '/customers' + (params ? '?' + new URLSearchParams(params) : '')),
+  getCustomer: id => API.request('GET', `/customers/${id}`),
   createCustomer: (data) => API.request('POST', '/customers', data),
   updateCustomer: (id, data) => API.request('PUT', `/customers/${id}`, data),
   deleteCustomer: (id) => API.request('DELETE', `/customers/${id}`),
