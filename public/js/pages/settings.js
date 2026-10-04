@@ -193,11 +193,30 @@ const SettingsPage = {
     if (res.success) { App.toast('删除成功'); this.loadUsers(); } else App.toast(res.message, 'error');
   },
 
+  async downloadResponse(path) {
+    const token = API.token;
+    const res = await fetch(`${API_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}`, 'X-Client-Source': 'web' }
+    });
+    if (token !== API.token) throw new Error('登录状态已变更，请重新操作');
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        API.clearToken();
+        App.renderLogin();
+        throw new Error('登录已失效，请重新登录后重试');
+      }
+      const fallback = res.status === 403 ? '当前账号没有导出权限' :
+        res.status === 503 ? '服务暂时不可用，请稍后重试' : '服务器未能完成请求';
+      throw new Error(`${body.message || fallback}（HTTP ${res.status}）`);
+    }
+    return res;
+  },
+
   async backupDb() {
     App.toast('正在生成数据库备份...');
     try {
-      const res = await fetch('/api/system/backup', { headers: { 'Authorization': `Bearer ${API.token}` } });
-      if (!res.ok) throw new Error('备份失败');
+      const res = await this.downloadResponse('/system/backup');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -212,8 +231,7 @@ const SettingsPage = {
   async exportExcel(type) {
     App.toast('正在生成数据...');
     try {
-      const res = await fetch(`/api/system/export-excel?type=${type}`, { headers: { 'Authorization': `Bearer ${API.token}` } });
-      if (!res.ok) throw new Error('导出失败');
+      const res = await this.downloadResponse(`/system/export-excel?type=${encodeURIComponent(type)}`);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
