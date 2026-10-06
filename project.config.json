@@ -1,7 +1,20 @@
 {
-  "description": "FleetingERP 香氛零售门店管理系统",
+  "description": "FleetingERP 个人物品记录",
   "packOptions": {
-    "ignore": [],
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "miniprogram/pages/sale"
+      },
+      {
+        "type": "folder",
+        "value": "miniprogram/pages/customer"
+      },
+      {
+        "type": "folder",
+        "value": "miniprogram/pages/customerDetail"
+      }
+    ],
     "include": []
   },
   "setting": {
@@ -36,12 +49,13 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.3.4",
-  "appid": "wxb21e5f46ec9a9953",
+  "appid": "wx0deb9e12fd5c0e31",
   "projectname": "FleetingERP",
   "condition": {},
   "editorSetting": {
     "tabIndent": "insertSpaces",
     "tabSize": 2
   },
-  "miniprogramRoot": "miniprogram/"
+  "miniprogramRoot": "miniprogram/",
+  "isGameTourist": false
 }

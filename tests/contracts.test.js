@@ -8,7 +8,7 @@ function files(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e
 function miniPage(name,api={}){
  let page;
  const context={Page:p=>page=p,require:()=>api,wx:{showToast(){},navigateBack(){},showModal(){}},getApp:()=>({globalData:{userInfo:{id:1,name:'test'},token:'t'}}),setTimeout:()=>0,clearTimeout(){},console};
- vm.runInNewContext(fs.readFileSync(path.join(root,'miniprogram/pages',name,name.split('/').at(-1)+'.js'),'utf8'),context);
+ vm.runInNewContext(fs.readFileSync(path.join(root,name === 'sale' ? 'legacy/miniprogram' : 'miniprogram/pages',name,name.split('/').at(-1)+'.js'),'utf8'),context);
  page.data=JSON.parse(JSON.stringify(page.data));page.setData=function(update){Object.assign(this.data,update);};return page;
 }
 test('every first-party JS file parses; JSON configurations parse; HTML assets exist',()=>{

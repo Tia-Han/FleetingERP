@@ -15,11 +15,11 @@ const InventoryCheckPage = {
     const locations = locRes.success ? locRes.data : [];
     document.getElementById('content').innerHTML = `
       <div class="card">
-        <h2>库存盘点${this.targetSku ? '（指定 SKU）' : ''}</h2><div class="form-group"><label>差异原因</label><input id="ic-reason" placeholder="例如：实盘数量差异、破损漏登记" maxlength="500"></div>
+        <h2>物品盘点${this.targetSku ? '（指定 SKU）' : ''}</h2><div class="form-group"><label>差异原因</label><input id="ic-reason" placeholder="例如：实盘数量差异、破损漏登记" maxlength="500"></div>
         <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-          <div class="form-group" style="margin:0"><label>盘点场所</label>
+          <div class="form-group" style="margin:0"><label>盘点存放位置</label>
             <select id="ic-location" ${Formatter.event('change', 'inventoryCheck-1')}  style="padding:8px;border:1px solid #ddd;border-radius:4px">
-              <option value="">-- 选择场所 --</option>
+              <option value="">-- 选择存放位置 --</option>
               ${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}
             </select>
           </div>
@@ -28,7 +28,7 @@ const InventoryCheckPage = {
           <button class="btn" style="align-self:flex-end" ${Formatter.event('click', 'inventoryCheck-4')} >全部填系统数</button>
         </div>
         <div id="ic-content">
-          <p style="color:#999;text-align:center;padding:20px">请选择场所后加载库存数据</p>
+          <p style="color:#999;text-align:center;padding:20px">请选择存放位置后加载库存数据</p>
         </div>
       </div>`;
     if (locId) this.loadStock();
@@ -54,16 +54,16 @@ const InventoryCheckPage = {
   renderTable() {
     const container = document.getElementById('ic-content');
     if (this.stockData.length === 0) {
-      container.innerHTML = '<p style="color:#999;text-align:center;padding:20px">该场所暂无库存数据</p>';
+      container.innerHTML = '<p style="color:#999;text-align:center;padding:20px">该存放位置暂无库存数据</p>';
       return;
     }
     container.innerHTML = `
       <div style="display:flex;gap:8px;margin-bottom:12px">
-        <input type="text" id="ic-search" placeholder="搜索商品名/条码" style="flex:1;min-width:150px;padding:8px;border:1px solid #ddd;border-radius:4px" ${Formatter.event('input', 'inventoryCheck-5')} >
+        <input type="text" id="ic-search" placeholder="搜索物品名/条码" style="flex:1;min-width:150px;padding:8px;border:1px solid #ddd;border-radius:4px" ${Formatter.event('input', 'inventoryCheck-5')} >
       </div>
       <div class="table-wrapper">
         <table id="ic-table">
-          <thead><tr><th>商品</th><th>品牌</th><th>规格</th><th>条码</th><th>系统库存</th><th>实盘数量</th><th>差异</th></tr></thead>
+          <thead><tr><th>物品</th><th>品牌</th><th>规格</th><th>条码</th><th>系统库存</th><th>实盘数量</th><th>差异</th></tr></thead>
           <tbody id="ic-body">
             ${this.stockData.map(item => `<tr data-search="${esc((item.product_name + ' ' + (item.barcode || '') + ' ' + (item.brand_name || '')).toLowerCase())}">
               <td>${esc(item.product_name)}</td>
@@ -122,7 +122,7 @@ const InventoryCheckPage = {
 
   async submit() {
     const locId = parseInt(document.getElementById('ic-location').value);
-    if (!locId) return App.toast('请选择场所', 'error');
+    if (!locId) return App.toast('请选择存放位置', 'error');
     const items = this.stockData.map(item => ({
       sku_id: item.sku_id,
       actual_quantity: this.checkData[item.sku_id] ?? item.quantity

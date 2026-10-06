@@ -96,7 +96,7 @@ Page({
     if (productCount > 0) {
       wx.showModal({
         title: '无法删除',
-        content: `该品牌下有 ${productCount} 个商品，请先删除或转移商品`,
+        content: `该品牌下有 ${productCount} 个物品，请先删除或转移物品`,
         showCancel: false
       });
       return;

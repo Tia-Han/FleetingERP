@@ -24,6 +24,15 @@
     <text>扫码添加商品</text>
   </view>
 
+  <view class="product-search">
+    <input placeholder="输入商品名称或条码" value="{{productSearch}}" bindinput="onProductSearchInput" bindconfirm="searchProducts" confirm-type="search" />
+    <button size="mini" bindtap="searchProducts" loading="{{productLoading}}" disabled="{{productLoading}}">搜索</button>
+  </view>
+  <view class="product-result" wx:for="{{productResults}}" wx:key="id">
+    <text>{{item.product_name}} · {{item.volume}} · 库存 {{item.quantity}}</text>
+    <button size="mini" data-index="{{index}}" bindtap="addSearchProduct" disabled="{{item.quantity <= 0}}">添加</button>
+  </view>
+
   <!-- 商品列表 -->
   <view class="items-section" wx:if="{{items.length > 0}}">
     <view class="section-title">商品明细（{{items.length}}）</view>

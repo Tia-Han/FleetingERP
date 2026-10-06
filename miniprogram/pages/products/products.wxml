@@ -2,14 +2,14 @@
 <view class="prod-page">
   <view class="search-bar">
     <text class="search-icon">🔍</text>
-    <input placeholder="搜索商品名称" value="{{searchKey}}" bindinput="onSearchInput" confirm-type="search" />
+    <input placeholder="搜索物品名称" value="{{searchKey}}" bindinput="onSearchInput" confirm-type="search" />
   </view>
 
   <view class="select-bar">
     <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange">
       <view class="select-item">{{brands[brandIndex].name || '全部品牌'}} ▾</view>
     </picker>
-    <view class="add-btn" bindtap="goAdd">+ 新增商品</view>
+    <view class="add-btn" bindtap="goAdd">+ 新增物品</view>
   </view>
 
   <view class="prod-list">
@@ -24,7 +24,7 @@
 
     <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
       <view class="empty-icon">🏷️</view>
-      <view class="empty-text">暂无商品</view>
+      <view class="empty-text">暂无物品</view>
     </view>
 
     <view class="load-more" wx:if="{{loading && list.length > 0}}">加载中...</view>

@@ -18,9 +18,9 @@
     </view>
     <view class="filter-row">
       <view class="filter-item flex-1">
-        <text class="filter-label">场所</text>
+        <text class="filter-label">存放位置</text>
         <picker range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
-          <view class="picker-text">{{locations[locationIndex].name || '全部场所'}}</view>
+          <view class="picker-text">{{locations[locationIndex].name || '全部存放位置'}}</view>
         </picker>
       </view>
       <view class="filter-item flex-1">
@@ -38,9 +38,9 @@
         </view>
       </view>
       <view class="filter-item flex-1">
-        <text class="filter-label">商品名称</text>
+        <text class="filter-label">物品名称</text>
         <view class="search-box">
-          <input class="search-input" placeholder="搜索商品" value="{{product}}" bindinput="onProductInput" confirm-type="search" bindconfirm="onProductSearch" />
+          <input class="search-input" placeholder="搜索物品" value="{{product}}" bindinput="onProductInput" confirm-type="search" bindconfirm="onProductSearch" />
         </view>
       </view>
     </view>
@@ -59,12 +59,12 @@
     <block wx:if="{{list.length > 0}}">
       <view class="order-card" wx:for="{{list}}" wx:key="record_key" data-id="{{item.id}}" data-type="{{item.record_type}}" bindtap="onItemTap">
         <view class="order-header">
-          <view class="order-id">{{item.record_type === 'transfer_in' ? '调拨入库' : '入库'}} #{{item.id}}</view>
+          <view class="order-id">{{item.record_type === 'transfer_in' ? '移动添置' : '添置'}} #{{item.id}}</view>
           <view class="order-date">{{item.created_at}}</view>
         </view>
         <view class="order-body">
           <view class="order-row">
-            <text class="order-label">场所：</text>
+            <text class="order-label">存放位置：</text>
             <text class="order-value">{{item.location_name}}</text>
           </view>
           <view class="order-row" wx:if="{{item.supplier}}">
@@ -72,7 +72,7 @@
             <text class="order-value">{{item.supplier}}</text>
           </view>
           <view class="order-row">
-            <text class="order-label">商品数：</text>
+            <text class="order-label">物品数：</text>
             <text class="order-value">{{item.item_count}} 种</text>
           </view>
           <view class="order-row" wx:if="{{item.record_type !== 'transfer_in'}}">
@@ -95,7 +95,7 @@
     </block>
 
     <view wx:elif="{{!loading}}" class="empty-state">
-      <text class="empty-text">暂无入库记录</text>
+      <text class="empty-text">暂无添置记录</text>
     </view>
 
     <view wx:if="{{loading}}" class="loading-state">

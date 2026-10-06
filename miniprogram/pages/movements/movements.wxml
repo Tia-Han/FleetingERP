@@ -3,18 +3,18 @@
   <!-- 类型筛选 -->
   <scroll-view class="type-bar" scroll-x="{{true}}">
     <view class="type-chip {{typeFilter === 'all' ? 'active' : ''}}" data-type="all" bindtap="onTypeTap">全部</view>
-    <view class="type-chip {{typeFilter === 'in' ? 'active' : ''}}" data-type="in" bindtap="onTypeTap">入库</view>
-    <view class="type-chip {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">出库</view>
+    <view class="type-chip {{typeFilter === 'in' ? 'active' : ''}}" data-type="in" bindtap="onTypeTap">添置</view>
+    <view class="type-chip {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">取用</view>
     <view class="type-chip {{typeFilter === 'loss' ? 'active' : ''}}" data-type="loss" bindtap="onTypeTap">损耗</view>
     <view class="type-chip {{typeFilter === 'check' ? 'active' : ''}}" data-type="check" bindtap="onTypeTap">盘点</view>
   </scroll-view>
 
-  <!-- 日期/场所筛选 -->
+  <!-- 日期/存放位置筛选 -->
   <view class="filter-card">
     <view class="filter-row">
-      <text class="filter-label">场所</text>
+      <text class="filter-label">存放位置</text>
       <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
-        <view class="filter-value">{{locations[locationIndex].name || '全部场所'}} ▾</view>
+        <view class="filter-value">{{locations[locationIndex].name || '全部存放位置'}} ▾</view>
       </picker>
     </view>
     <view class="filter-row">
@@ -34,9 +34,9 @@
     <view class="mv-item" wx:for="{{list}}" wx:key="id">
       <view class="mv-left">
         <view class="mv-type type-{{item.movement_type}}">
-          {{item.movement_type === 'in' ? '入库' : (item.movement_type === 'out' ? '出库' : (item.movement_type === 'loss' ? '损耗' : (item.movement_type === 'check' ? '盘点' : item.movement_type)))}}
+          {{item.movement_type === 'in' ? '添置' : (item.movement_type === 'out' ? '取用' : (item.movement_type === 'loss' ? '损耗' : (item.movement_type === 'check' ? '盘点' : item.movement_type)))}}
         </view>
-        <view class="mv-product">{{item.product_name || '商品'}}</view>
+        <view class="mv-product">{{item.product_name || '物品'}}</view>
         <view class="mv-meta">{{item.location_name}} · {{item.created_at}}</view>
       </view>
       <view class="mv-right">

@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "出库/损耗历史",
+  "navigationBarTitleText": "取用/损耗历史",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark"
 }

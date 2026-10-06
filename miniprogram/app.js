@@ -28,18 +28,14 @@ function bufferToString(buf) {
   return str;
 }
 
-// MNT-04: 环境配置统一管理
-const ENV_CONFIG = {
-  development: { apiBase: 'http://localhost:3000/api/v1' },
-  production: { apiBase: 'https://api.fleetingerp.cn/api/v1' }
-};
-const currentEnv = 'production';
+const environment = require('./utils/environment').resolveEnvironment(wx);
 
 App({
   globalData: {
     token: '',
     userInfo: null,
-    apiBase: ENV_CONFIG[currentEnv].apiBase
+    apiBase: environment.apiBase,
+    localDevelopment: environment.local
   },
 
   onLaunch() {
@@ -58,8 +54,8 @@ App({
       });
     }
 
-    const stored = wx.getStorageSync('t');
-    const userInfo = wx.getStorageSync('userInfo');
+    const stored = wx.getStorageSync(environment.storagePrefix + 't');
+    const userInfo = wx.getStorageSync(environment.storagePrefix + 'userInfo');
     if (stored) {
       this.globalData.token = decodeToken(stored);
       this.globalData.userInfo = userInfo;
@@ -73,14 +69,14 @@ App({
   setLogin(token, user) {
     this.globalData.token = token;
     this.globalData.userInfo = user;
-    wx.setStorageSync('t', encodeToken(token));
-    wx.setStorageSync('userInfo', user);
+    wx.setStorageSync(environment.storagePrefix + 't', encodeToken(token));
+    wx.setStorageSync(environment.storagePrefix + 'userInfo', user);
   },
 
   clearLogin() {
     this.globalData.token = '';
     this.globalData.userInfo = null;
-    wx.removeStorageSync('t');
-    wx.removeStorageSync('userInfo');
+    wx.removeStorageSync(environment.storagePrefix + 't');
+    wx.removeStorageSync(environment.storagePrefix + 'userInfo');
   }
 });

@@ -53,7 +53,7 @@ Page({
       this.setData({ locations, locationIndex });
       this.loadStock(true);
     } catch (e) {
-      wx.showToast({ title: '场所加载失败', icon: 'none' });
+      wx.showToast({ title: '存放位置加载失败', icon: 'none' });
     }
   },
 

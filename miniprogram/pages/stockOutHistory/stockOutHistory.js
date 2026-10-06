@@ -41,7 +41,7 @@ Page({
   async loadLocations() {
     try {
       const res = await get('/locations');
-      const locations = [{ id: '', name: '全部场所' }].concat(res.data || []);
+      const locations = [{ id: '', name: '全部存放位置' }].concat(res.data || []);
       this.setData({ locations });
       this.loadList(true);
     } catch (e) {
@@ -121,7 +121,7 @@ Page({
   },
 
   getTypeLabel(type) {
-    const map = { out: '出库', loss: '损耗' };
+    const map = { out: '取用', loss: '损耗' };
     return map[type] || type;
   }
 });

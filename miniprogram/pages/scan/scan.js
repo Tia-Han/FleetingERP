@@ -22,7 +22,7 @@ Page({
     }
   },
 
-  // 扫码入库
+  // 扫码添置
   async scanStockIn() {
     try {
       const res = await new Promise((resolve, reject) => {
@@ -36,7 +36,7 @@ Page({
     }
   },
 
-  // 扫码出库
+  // 扫码取用
   async scanStockOut() {
     try {
       const res = await new Promise((resolve, reject) => {
@@ -66,8 +66,8 @@ Page({
         }
       } catch (err) {
         wx.showModal({
-          title: '未找到商品',
-          content: '条码：' + barcode + '\n未找到对应商品，请到网页版先创建商品',
+          title: '未找到物品',
+          content: '条码：' + barcode + '\n未找到对应物品，请到网页版先创建物品',
           showCancel: false
         });
       }

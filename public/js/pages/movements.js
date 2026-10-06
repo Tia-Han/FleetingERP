@@ -18,8 +18,8 @@ const MovementsPage = {
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px">
           <div class="form-group" style="margin:0"><label>开始日期</label><input type="date" id="mv-start" value="${weekAgo}"></div>
           <div class="form-group" style="margin:0"><label>结束日期</label><input type="date" id="mv-end" value="${today}"></div>
-          <div class="form-group" style="margin:0"><label>类型</label><select id="mv-type"><option value="">全部</option><option value="in">入库</option><option value="out">出库</option><option value="sale">销售</option><option value="split">分装</option><option value="transfer_in">调入</option><option value="transfer_out">调出</option><option value="loss">损耗</option></select></div>
-          <div class="form-group" style="margin:0"><label>场所</label><select id="mv-location"><option value="">全部</option>${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="margin:0"><label>类型</label><select id="mv-type"><option value="">全部</option><option value="in">添置</option><option value="out">取用</option><option value="transfer_in">调入</option><option value="transfer_out">调出</option><option value="loss">损耗</option></select></div>
+          <div class="form-group" style="margin:0"><label>存放位置</label><select id="mv-location"><option value="">全部</option>${locations.map(l => `<option value="${l.id}" ${l.id == locId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
         </div>
         <button class="btn btn-primary" ${Formatter.event('click', 'movements-1')} >查询</button>
       </div>
@@ -70,7 +70,7 @@ const MovementsPage = {
     }
     div.innerHTML = `<div class="card">
       ${summaryHtml}
-      <div class="table-wrapper"><table><thead><tr><th>时间</th><th>场所</th><th>商品</th><th>规格</th><th>类型</th><th>数量</th><th>成本</th><th>操作人</th><th>供应商/备注</th></tr></thead><tbody>
+      <div class="table-wrapper"><table><thead><tr><th>时间</th><th>存放位置</th><th>物品</th><th>规格</th><th>类型</th><th>数量</th><th>成本</th><th>操作人</th><th>供应商/备注</th></tr></thead><tbody>
         ${mvRes.data.map(m => `<tr>
           <td>${Formatter.date(m.created_at)}</td><td>${esc(m.location_name)}</td><td>${esc(m.product_name)}</td><td>${esc(m.volume)}</td>
           <td><span class="badge ${m.quantity > 0 ? 'badge-success' : 'badge-warning'}">${Formatter.movementTypeLabel(m.movement_type)}</span></td>

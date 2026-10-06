@@ -22,7 +22,7 @@ const StockInPage = {
     document.getElementById('content').innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="tab-bar" style="display:flex;border-bottom:1px solid #e5e7eb">
-          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" ${Formatter.event('click', 'stockIn-1')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">入库开单</div>
+          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" ${Formatter.event('click', 'stockIn-1')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">记录添置</div>
           <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" ${Formatter.event('click', 'stockIn-2')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
         </div>
       </div>
@@ -40,33 +40,33 @@ const StockInPage = {
     this.render();
   },
 
-  // ===== 入库开单 =====
+  // ===== 记录添置 =====
   async renderForm(locId, nowLocal) {
     const isCurrent=Formatter.viewRequest(this,'renderForm');
     document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
 
-          <div class="form-group" style="flex:0 0 200px;margin-bottom:0"><label>入库到场所</label><select id="si-location"></select></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>入库时间</label><input type="date" id="si-date" value="${nowLocal}" style="width:100%"></div>
+          <div class="form-group" style="flex:0 0 200px;margin-bottom:0"><label>添置到存放位置</label><select id="si-location"></select></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>添置时间</label><input type="date" id="si-date" value="${nowLocal}" style="width:100%"></div>
           <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>供应商</label><input type="text" id="si-supplier" placeholder="供应商" style="width:100%"></div>
           <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0"><label>备注</label><input type="text" id="si-remark" placeholder="备注（可选）" style="width:100%"></div>
         </div>
       </div>
       <div class="card">
-        <h2>添加商品</h2>
+        <h2>添加物品</h2>
         <div style="display:flex;gap:8px">
-          <input type="text" id="si-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
+          <input type="text" id="si-search" placeholder="扫码或搜索物品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
           <button class="btn btn-success" ${Formatter.event('click', 'stockIn-3')} >扫码枪</button><button class="btn btn-info" ${Formatter.event('click', 'stockIn-4')} >相机扫码</button>
           <button class="btn btn-primary" ${Formatter.event('click', 'stockIn-5')} >手动添加</button>
         </div>
         <div id="si-search-results" style="margin-top:12px"></div>
       </div>
       <div class="card">
-        <h2>入库明细</h2>
-        <div class="table-wrapper"><table><thead><tr><th>商品</th><th>规格</th><th>数量</th><th>成本单价</th><th>小计</th><th>操作</th></tr></thead><tbody id="si-items-body"></tbody></table></div>
+        <h2>添置明细</h2>
+        <div class="table-wrapper"><table><thead><tr><th>物品</th><th>规格</th><th>数量</th><th>成本单价</th><th>小计</th><th>操作</th></tr></thead><tbody id="si-items-body"></tbody></table></div>
         <div id="si-total" style="margin-top:12px;font-size:16px;font-weight:bold"></div>
-        <button class="btn btn-success" style="margin-top:12px" ${Formatter.event('click', 'stockIn-6')} >确认入库</button>
+        <button class="btn btn-success" style="margin-top:12px" ${Formatter.event('click', 'stockIn-6')} >确认添置</button>
       </div>`;
 
     const locRes = await API.getLocations();
@@ -127,11 +127,11 @@ const StockInPage = {
       const matched = res.data.filter(p => SearchSuggest.fuzzyMatch(p.name, keyword) || SearchSuggest.fuzzyMatch(p.brand_name, keyword));
       const results = document.getElementById('si-search-results');
       if (!results) return;
-      if (matched.length === 0) { results.innerHTML = '<p>未找到匹配商品</p>'; return; }
+      if (matched.length === 0) { results.innerHTML = '<p>未找到匹配物品</p>'; return; }
       results.innerHTML = matched.map(p => p.skus.map(s => {
         const skuData = {id: s.id, product_name: p.name, volume: s.volume, sku_code: s.sku_code, cost_price: s.cost_price, retail_price: s.retail_price};
         return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" ${Formatter.action('stockIn-select', skuData)}>
-          <span>${esc(p.name)} - ${esc(s.volume)} (${esc(s.sku_code)})</span><span>成本 ${Formatter.money(s.cost_price)} / 零售 ${Formatter.money(s.retail_price)}</span></div>`;
+          <span>${esc(p.name)} - ${esc(s.volume)} (${esc(s.sku_code)})</span><span>成本 ${Formatter.money(s.cost_price)}</span></div>`;
       }).join('')).join('');
     }
   },
@@ -153,7 +153,7 @@ const StockInPage = {
     const tbody = document.getElementById('si-items-body');
     if (!tbody) return;
     if (this.items.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999">暂无入库商品</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999">暂无添置物品</td></tr>';
       const totalEl = document.getElementById('si-total');
       if (totalEl) totalEl.textContent = '';
       return;
@@ -166,7 +166,7 @@ const StockInPage = {
       <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'stockIn-9', idx)} >删除</button></td></tr>`).join('');
     const total = this.items.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
     const totalEl = document.getElementById('si-total');
-    if (totalEl) totalEl.textContent = `入库总成本: ${Formatter.money(total)}`;
+    if (totalEl) totalEl.textContent = `添置总成本: ${Formatter.money(total)}`;
   },
 
   updateQty(idx, val) { this.items[idx].quantity = parseInt(val) || 1; this.renderItems(); },
@@ -174,7 +174,7 @@ const StockInPage = {
   removeItem(idx) { this.items.splice(idx, 1); this.renderItems(); },
 
   async submit() {
-    if (this.items.length === 0) return App.toast('请添加入库商品', 'error');
+    if (this.items.length === 0) return App.toast('请添加添置物品', 'error');
     const dateInput = document.getElementById('si-date');
     const stockInDate = dateInput ? dateInput.value : '';
     const data = {
@@ -186,16 +186,16 @@ const StockInPage = {
       items: this.items.map(i => ({ sku_id: i.sku_id, quantity: i.quantity, unit_cost: i.unit_cost }))
     };
     const res = await API.stockIn(data);
-    if (res.success) { App.toast('入库成功'); this.items = []; this.render(); } else App.toast(res.message, 'error');
+    if (res.success) { App.toast('添置成功'); this.items = []; this.render(); } else App.toast(res.message, 'error');
   },
 
   showManualAdd() {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card" style="width:400px">
-      <h2 style="margin-bottom:16px">手动添加商品</h2>
+      <h2 style="margin-bottom:16px">手动添加物品</h2>
       <div class="form-group"><label style="font-size:14px">输入条码</label><input type="text" id="ma-barcode" placeholder="输入条码后回车" style="font-size:16px;padding:10px" autofocus></div>
-      <p style="color:#999;font-size:13px;margin-bottom:16px">输入条码后回车，系统将查询商品。未找到则弹出新品创建界面。</p>
+      <p style="color:#999;font-size:13px;margin-bottom:16px">输入条码后回车，系统将查询物品。未找到则弹出新品创建界面。</p>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" ${Formatter.event('click', 'stockIn-10')} >取消</button>
         <button class="btn btn-primary" id="ma-confirm-btn">查询</button>
@@ -257,15 +257,15 @@ const StockInPage = {
     document.getElementById('si-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-          <div class="form-group" style="margin-bottom:0"><label>场所</label><select id="sih-location" ${Formatter.event('change', 'stockIn-history-location')}><option value="">全部场所</option>${locations.map(l => `<option value="${l.id}" ${String(l.id) === String(this.historyFilters.location_id) ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
-          <div class="form-group" style="margin-bottom:0"><label>业务类型</label><select id="sih-type" ${Formatter.event('change', 'stockIn-history-location')}><option value="">全部</option><option value="in" ${this.historyFilters.type==='in'?'selected':''}>普通入库</option><option value="transfer_in" ${this.historyFilters.type==='transfer_in'?'selected':''}>调拨入库</option></select></div>
+          <div class="form-group" style="margin-bottom:0"><label>存放位置</label><select id="sih-location" ${Formatter.event('change', 'stockIn-history-location')}><option value="">全部存放位置</option>${locations.map(l => `<option value="${l.id}" ${String(l.id) === String(this.historyFilters.location_id) ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="margin-bottom:0"><label>业务类型</label><select id="sih-type" ${Formatter.event('change', 'stockIn-history-location')}><option value="">全部</option><option value="in" ${this.historyFilters.type==='in'?'selected':''}>普通添置</option><option value="transfer_in" ${this.historyFilters.type==='transfer_in'?'selected':''}>移动添置</option></select></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>开始日期</label><input type="date" id="sih-start" value="${this.historyFilters.start_date}" style="width:100%" ${Formatter.event('change', 'stockIn-11')} ></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>结束日期</label><input type="date" id="sih-end" value="${this.historyFilters.end_date}" style="width:100%" ${Formatter.event('change', 'stockIn-11')} ></div>
           <div class="form-group" style="flex:0 0 160px;margin-bottom:0"><label>操作人</label>
             <select id="sih-operator" style="width:100%" ${Formatter.event('change', 'stockIn-12')} >${operatorOptions}</select>
           </div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>供应商</label><input type="text" id="sih-supplier" placeholder="搜索供应商" value="${esc(this.historyFilters.supplier)}" style="width:100%" ${Formatter.event('input', 'stockIn-13')} ></div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="sih-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" ${Formatter.event('input', 'stockIn-14')} ></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>物品名称</label><input type="text" id="sih-product" placeholder="搜索物品" value="${esc(this.historyFilters.product)}" style="width:100%" ${Formatter.event('input', 'stockIn-14')} ></div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="sih-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" ${Formatter.event('input', 'stockIn-15')} ></div>
         </div>
       </div>
@@ -311,7 +311,7 @@ const StockInPage = {
       if (request !== this._historyRequest || !listEl.isConnected) return;
       if (!res.success) throw new Error(res.message || '查询失败');
       if (!res.success || !res.data || res.data.length === 0) {
-        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无入库记录</div>';
+        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无添置记录</div>';
         return;
       }
 
@@ -322,9 +322,9 @@ const StockInPage = {
               <tr>
                 <th>单号</th><th>业务类型</th>
                 <th>日期</th>
-                <th>场所</th>
+                <th>存放位置</th>
                 <th>供应商</th>
-                <th>商品数</th>
+                <th>物品数</th>
                 <th>总成本</th>
                 <th>操作人</th>
                 <th>备注</th>
@@ -334,7 +334,7 @@ const StockInPage = {
             <tbody>
               ${res.data.map(order => `
                 <tr>
-                  <td>${order.record_type === 'transfer_in' ? '调拨' : '入库'} #${order.id}</td><td><span class="badge badge-info">${order.record_type === 'transfer_in' ? '调拨入库' : '普通入库'}</span></td>
+                  <td>${order.record_type === 'transfer_in' ? '移动' : '添置'} #${order.id}</td><td><span class="badge badge-info">${order.record_type === 'transfer_in' ? '移动添置' : '普通添置'}</span></td>
                   <td>${Formatter.dateTime(order.created_at)}</td>
                   <td>${esc(order.location_name)}</td>
                   <td>${order.record_type === 'transfer_in' ? '来自 ' + esc(order.from_name) : esc(order.supplier || '-')}</td>
@@ -365,19 +365,19 @@ const StockInPage = {
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
       overlay.innerHTML = `<div class="modal-card" style="width:600px;max-height:80vh;overflow-y:auto">
-        <h2 style="margin-bottom:16px">入库单详情 #${order.id}</h2>
+        <h2 style="margin-bottom:16px">添置单详情 #${order.id}</h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;font-size:14px">
           <div><span style="color:#6b7d7d">日期：</span>${Formatter.dateTime(order.created_at)}</div>
-          <div><span style="color:#6b7d7d">场所：</span>${esc(order.location_name)}</div>
+          <div><span style="color:#6b7d7d">存放位置：</span>${esc(order.location_name)}</div>
           <div><span style="color:#6b7d7d">供应商：</span>${esc(order.supplier || '-')}</div>
           <div><span style="color:#6b7d7d">操作人：</span>${esc(order.operator || '-')}</div>
           <div style="grid-column:span 2"><span style="color:#6b7d7d">备注：</span>${esc(order.remark || '-')}</div>
         </div>
-        <div style="font-weight:500;margin-bottom:8px">明细商品（${order.items.length} 种）</div>
+        <div style="font-weight:500;margin-bottom:8px">明细物品（${order.items.length} 种）</div>
         <div class="table-wrapper">
           <table>
             <thead>
-              <tr><th>商品</th><th>规格</th><th>SKU编码</th><th>数量</th><th>成本单价</th><th>小计</th></tr>
+              <tr><th>物品</th><th>规格</th><th>SKU编码</th><th>数量</th><th>成本单价</th><th>小计</th></tr>
             </thead>
             <tbody>
               ${order.items.map(item => `

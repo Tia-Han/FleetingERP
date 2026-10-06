@@ -66,15 +66,13 @@ const App = {
     const role = this.currentUser.role;
     const navItems = [
       { key: 'dashboard', label: '仪表盘', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
-      { key: 'products', label: '商品管理', roles: ['admin', 'warehouse_manager'] },
-      { key: 'stockQuery', label: '库存查询', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
-      { key: 'stockIn', label: '入库', roles: ['admin', 'warehouse_manager'] },
-      { key: 'stockOut', label: '出库/损耗', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
-      { key: 'transfer', label: '调拨', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
+      { key: 'products', label: '物品资料', roles: ['admin', 'warehouse_manager'] },
+      { key: 'stockQuery', label: '物品清单', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
+      { key: 'stockIn', label: '添置', roles: ['admin', 'warehouse_manager'] },
+      { key: 'stockOut', label: '取用/损耗', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
+      { key: 'transfer', label: '移动', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
       { key: 'movements', label: '变动流水', roles: ['admin', 'warehouse_manager', 'store_clerk'] },
-      { key: 'inventoryCheck', label: '库存盘点', roles: ['admin', 'warehouse_manager'] },
-      { key: 'sales', label: '销售', roles: ['admin', 'store_clerk'] },
-      { key: 'customers', label: '客户', roles: ['admin', 'store_clerk'] },
+      { key: 'inventoryCheck', label: '物品盘点', roles: ['admin', 'warehouse_manager'] },
       { key: 'settings', label: '设置', roles: ['admin'] },
     ];
     const visibleItems = navItems.filter(item => item.roles.includes(role));
@@ -85,7 +83,7 @@ const App = {
         <div class="sidebar-header">
           <span class="logo">暗香·Fleeting</span>
           <select class="location-select" ${Formatter.event('change', 'app-2')} >
-            ${role==='admin'?'<option value="">全部场所</option>':''}${locOptions}
+            ${role==='admin'?'<option value="">全部存放位置</option>':''}${locOptions}
           </select>
         </div>
         <div class="nav-items">
@@ -123,14 +121,14 @@ const App = {
 
   _getPageObj(page) {
     const map = {
-      stockIn: StockInPage, stockOut: StockOutPage, split: SplitPage,
-      transfer: TransferPage, sales: SalesPage
+      stockIn: StockInPage, stockOut: StockOutPage,
+      transfer: TransferPage
     };
     return map[page];
   },
 
   navigate(page, params) {
-    if(page==='split') { this.toast('分装业务暂未上线','error'); return; }
+    if(['sales','customers','split'].includes(page)) { this.toast('个人物品版不提供此功能','error'); return; }
     SearchSuggest.cancel();
     if (params) {
       this._navParams = params;
@@ -153,9 +151,9 @@ const App = {
     this.currentPage = page;
     this.updateNavActive(page);
     const titleMap = {
-      dashboard: '仪表盘', products: '商品管理', stockIn: '入库', stockOut: '出库/损耗',
-      split: '分装', transfer: '调拨', stockQuery: '库存查询', movements: '变动流水',
-      inventoryCheck: '盘点', sales: '销售', customers: '客户', settings: '设置'
+      dashboard: '仪表盘', products: '物品资料', stockIn: '添置', stockOut: '取用/损耗',
+      split: '分装', transfer: '移动', stockQuery: '物品清单', movements: '变动流水',
+      inventoryCheck: '盘点', settings: '设置'
     };
     const titleEl = document.getElementById('topbar-title');
     if (titleEl) titleEl.textContent = titleMap[page] || page;
@@ -165,10 +163,7 @@ const App = {
       products: () => ProductsPage.render(),
       stockIn: () => StockInPage.render(),
       stockOut: () => StockOutPage.render(),
-      split: () => SplitPage.render(),
       transfer: () => TransferPage.render(),
-      sales: () => SalesPage.render(),
-      customers: () => CustomersPage.render(),
       stockQuery: () => StockQueryPage.render(),
       movements: () => MovementsPage.render(),
       inventoryCheck: () => InventoryCheckPage.render(),
@@ -204,7 +199,7 @@ const App = {
           this.toast('已添加: ' + localRes.data.product_name + ' ' + localRes.data.volume, 'success');
         } catch (e) {
           console.error('onFound回调执行失败:', e);
-          this.toast('添加商品失败: ' + (e.message || '未知错误'), 'error');
+          this.toast('添加物品失败: ' + (e.message || '未知错误'), 'error');
         }
         return;
       }
@@ -241,10 +236,10 @@ const App = {
         const catOptions = categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
 
         overlay.innerHTML = `<div class="modal-card" style="width:520px;max-height:90vh;overflow-y:auto">
-          <h2 style="margin-bottom:16px">新品快速入库</h2>
+          <h2 style="margin-bottom:16px">新品快速添置</h2>
           <div class="form-group"><label style="font-size:14px">条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9;padding:10px" autofocus></div>
-          <p style="color:#999;margin-bottom:16px;font-size:13px">请核对条码无误后填写商品信息，条码将永久关联此商品</p>
-          <div class="form-group"><label style="font-size:14px">商品名</label><input type="text" id="bp-name" placeholder="输入商品名称" style="font-size:16px;padding:10px"></div>
+          <p style="color:#999;margin-bottom:16px;font-size:13px">请核对条码无误后填写物品信息，条码将永久关联此物品</p>
+          <div class="form-group"><label style="font-size:14px">物品名</label><input type="text" id="bp-name" placeholder="输入物品名称" style="font-size:16px;padding:10px"></div>
           <div class="form-group"><label style="font-size:14px">品牌</label>
             <select id="bp-brand" style="font-size:16px;padding:10px">
               <option value="">-- 选择品牌 --</option>
@@ -260,13 +255,13 @@ const App = {
           </div>
           <div class="form-group"><label style="font-size:14px">规格/容量</label><input type="text" id="bp-volume" placeholder="如 100ml" style="font-size:16px;padding:10px"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-            <div class="form-group"><label style="font-size:14px">成本价</label><input type="number" id="bp-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-            <div class="form-group"><label style="font-size:14px">零售价</label><input type="number" id="bp-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-            <div class="form-group"><label style="font-size:14px">入库数量</label><input type="number" id="bp-stock-qty" value="1" min="1" style="font-size:16px;font-weight:bold;color:#27ae60;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">购入价格</label><input type="number" id="bp-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><input type="hidden" id="bp-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">添置数量</label><input type="number" id="bp-stock-qty" value="1" min="1" style="font-size:16px;font-weight:bold;color:#27ae60;padding:10px;width:100%;box-sizing:border-box"></div>
           </div>
           <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
             <button class="btn" id="bp-cancel-btn">取消</button>
-            <button class="btn btn-primary" id="bp-confirm-btn">创建并添加到入库</button>
+            <button class="btn btn-primary" id="bp-confirm-btn">创建并添加到添置</button>
           </div>
         </div>`;
 
@@ -323,9 +318,9 @@ const App = {
           </div>
         </div>
         <div style="border-top:1px solid #eee;padding-top:16px">
-          <h3 style="margin-bottom:12px;color:#34495e;font-size:15px">确认入库信息</h3>
+          <h3 style="margin-bottom:12px;color:#34495e;font-size:15px">确认添置信息</h3>
           <div class="form-group"><label style="font-size:14px">条码（可修改）</label><input type="text" id="bp-barcode" value="${esc(barcode)}" style="font-size:16px;font-weight:bold;color:#2980b9;padding:10px"></div>
-          <div class="form-group"><label style="font-size:14px">商品名</label><input type="text" id="bp-name" value="${esc(name)}" style="font-size:16px;padding:10px"></div>
+          <div class="form-group"><label style="font-size:14px">物品名</label><input type="text" id="bp-name" value="${esc(name)}" style="font-size:16px;padding:10px"></div>
           <div class="form-group"><label style="font-size:14px">品牌</label>
             <select id="bp-brand" style="font-size:16px;padding:10px">
               <option value="">-- 选择品牌 --</option>
@@ -344,9 +339,9 @@ const App = {
           </div>
           <div class="form-group"><label style="font-size:14px">规格/容量</label><input type="text" id="bp-volume" value="${esc(volume)}" placeholder="如 100ml" style="font-size:16px;padding:10px"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
-            <div class="form-group"><label style="font-size:14px">成本价</label><input type="number" id="bp-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-            <div class="form-group"><label style="font-size:14px">零售价</label><input type="number" id="bp-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-            <div class="form-group"><label style="font-size:14px">入库数量</label><input type="number" id="bp-stock-qty" value="1" min="1" style="font-size:16px;font-weight:bold;color:#27ae60;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">购入价格</label><input type="number" id="bp-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><input type="hidden" id="bp-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+            <div class="form-group"><label style="font-size:14px">添置数量</label><input type="number" id="bp-stock-qty" value="1" min="1" style="font-size:16px;font-weight:bold;color:#27ae60;padding:10px;width:100%;box-sizing:border-box"></div>
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
@@ -385,7 +380,7 @@ const App = {
     const stockQty = parseInt(document.getElementById('bp-stock-qty')?.value) || 1;
 
     if (!barcode) { this.toast('条码不能为空', 'error'); return; }
-    if (!name) { this.toast('商品名不能为空', 'error'); return; }
+    if (!name) { this.toast('物品名不能为空', 'error'); return; }
 
     let brandId = brandVal;
     if (brandVal === '__new__') {
@@ -414,7 +409,7 @@ const App = {
     });
 
     if (prodRes.success) {
-      this.toast('商品创建成功', 'success');
+      this.toast('物品创建成功', 'success');
       overlay.remove();
       const skuRes = await API.getSkuByBarcode(barcode);
       if (skuRes.success && onFound) {
@@ -423,7 +418,7 @@ const App = {
         this.toast('已添加: ' + skuRes.data.product_name + ' ' + skuRes.data.volume + ' x' + stockQty, 'success');
       }
     } else {
-      this.toast(prodRes.message || '创建商品失败', 'error');
+      this.toast(prodRes.message || '创建物品失败', 'error');
     }
   }
 };

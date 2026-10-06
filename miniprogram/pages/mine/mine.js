@@ -5,14 +5,13 @@ Page({
     userInfo: null,
     menuGroups: [
       {
-        title: '业务操作',
+        title: '物品操作',
         items: [
-          { icon: '📋', text: '库存盘点', path: '/pages/inventory/inventory' },
-          { icon: '🏷️', text: '商品管理', path: '/pages/products/products' },
+          { icon: '📋', text: '物品盘点', path: '/pages/inventory/inventory' },
+          { icon: '🏷️', text: '物品资料', path: '/pages/products/products' },
           { icon: '🏆', text: '品牌管理', path: '/pages/brands/brands' },
-          { icon: '📤', text: '出库/损耗', path: '/pages/stockOut/stockOut' },
+          { icon: '📤', text: '取用/损耗', path: '/pages/stockOut/stockOut' },
           { icon: '📊', text: '变动流水', path: '/pages/movements/movements' },
-          { icon: '👥', text: '客户', path: '/pages/customer/customer' }
         ]
       },
       {

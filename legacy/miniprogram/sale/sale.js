@@ -4,6 +4,9 @@ const { checkLogin } = require('../../utils/auth');
 
 Page({
   data: {
+    productSearch: '',
+    productResults: [],
+    productLoading: false,
     locations: [],
     locationIndex: 0,
     customer: null,
@@ -77,7 +80,54 @@ Page({
   },
 
   onLocationChange(e) {
-    this.setData({ locationIndex: e.detail.value });
+    this._productRequestId = (this._productRequestId || 0) + 1;
+    this.setData({ locationIndex: e.detail.value, items: [], productResults: [], productSearch: '', productLoading: false });
+    this.calcSummary();
+  },
+
+  onProductSearchInput(e) {
+    this._productRequestId = (this._productRequestId || 0) + 1;
+    this.setData({ productSearch: e.detail.value, productResults: [], productLoading: false });
+  },
+
+  async searchProducts() {
+    const location = this.data.locations[this.data.locationIndex];
+    const keyword = this.data.productSearch.trim();
+    if (!location || !keyword) return;
+    const requestId = this._productRequestId = (this._productRequestId || 0) + 1;
+    this.setData({ productLoading: true, productResults: [] });
+    try {
+      const res = await get('/stock/balances', { location_id: location.id, search: keyword, page: 1, limit: 50 });
+      if (requestId !== this._productRequestId) return;
+      this.setData({ productResults: res.data || [] });
+      if (!(res.data || []).length) wx.showToast({ title: '当前门店无匹配库存', icon: 'none' });
+    } catch (err) {
+      // 请求封装已显示错误，保留搜索词供重试。
+    } finally {
+      if (requestId === this._productRequestId) this.setData({ productLoading: false });
+    }
+  },
+
+  addSearchProduct(e) {
+    const row = this.data.productResults[Number(e.currentTarget.dataset.index)];
+    const location = this.data.locations[this.data.locationIndex];
+    if (!row || !location || row.location_id !== location.id || row.quantity <= 0) return;
+    const items = this.data.items.map(item => ({ ...item }));
+    const existing = items.find(item => item.sku_id === row.sku_id);
+    if (existing) {
+      if (existing.quantity >= row.quantity) {
+        wx.showToast({ title: '所选数量已达到库存上限', icon: 'none' });
+        return;
+      }
+      existing.quantity++;
+      existing.current_qty = row.quantity;
+    } else {
+      items.push({ sku_id: row.sku_id, product_name: row.product_name, brand_name: row.brand_name,
+        volume: row.volume, spec_type: row.spec_type, quantity: 1,
+        unit_price: row.retail_price || 0, cost_price: row.cost_price || 0, current_qty: row.quantity });
+    }
+    this.setData({ items });
+    this.calcSummary();
   },
 
   // 选客户

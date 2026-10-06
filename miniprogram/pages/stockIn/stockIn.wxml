@@ -4,7 +4,7 @@
   <view class="history-entry" bindtap="goToHistory">
     <view class="entry-left">
       <text class="entry-icon">📋</text>
-      <text class="entry-text">入库历史记录</text>
+      <text class="entry-text">添置历史记录</text>
     </view>
     <text class="entry-arrow">查看全部 ›</text>
   </view>
@@ -12,7 +12,7 @@
   <!-- 表单区 -->
   <view class="form-card">
     <view class="form-row">
-      <text class="row-label">场所</text>
+      <text class="row-label">存放位置</text>
       <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
         <view class="row-value">
           {{locations[locationIndex].name || '请选择'}} ▾
@@ -20,7 +20,7 @@
       </picker>
     </view>
     <view class="form-row">
-      <text class="row-label">入库日期</text>
+      <text class="row-label">添置日期</text>
       <picker mode="date" value="{{stockInDate}}" bindchange="onDateChange">
         <view class="row-value">{{stockInDate}} ▾</view>
       </picker>
@@ -38,13 +38,13 @@
   <!-- 扫码按钮 -->
   <view class="scan-btn" bindtap="scanAdd">
     <text class="scan-icon">📷</text>
-    <text>扫码添加商品</text>
+    <text>扫码添加物品</text>
   </view>
 
-  <!-- 入库明细 -->
+  <!-- 添置明细 -->
   <view class="items-card" wx:if="{{items.length > 0}}">
     <view class="items-title">
-      入库明细（{{items.length}}）
+      添置明细（{{items.length}}）
     </view>
     <view class="item-row" wx:for="{{items}}" wx:key="sku_id">
       <view class="item-info">
@@ -78,7 +78,7 @@
   <!-- 空状态 -->
   <view class="empty-state" wx:if="{{items.length === 0}}">
     <view class="empty-icon">📥</view>
-    <view class="empty-text">请扫码或搜索添加商品</view>
+    <view class="empty-text">请扫码或搜索添加物品</view>
   </view>
 
   <!-- 合计区 -->
@@ -96,7 +96,7 @@
   <!-- 提交按钮 -->
   <view class="submit-bar" wx:if="{{items.length > 0}}">
     <button class="btn-primary" bindtap="submitStockIn" disabled="{{submitting}}" loading="{{submitting}}">
-      提交入库
+      提交添置
     </button>
   </view>
 </view>

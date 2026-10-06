@@ -20,7 +20,7 @@ const StockOutPage = {
     document.getElementById('content').innerHTML = `
       <div class="card" style="padding:0;overflow:hidden">
         <div class="tab-bar" style="display:flex;border-bottom:1px solid #e5e7eb">
-          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" ${Formatter.event('click', 'stockOut-1')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">出库/损耗登记</div>
+          <div class="tab-item ${this.currentTab === 'form' ? 'active' : ''}" data-tab="form" ${Formatter.event('click', 'stockOut-1')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'form' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'form' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'form' ? 600 : 400}">取用/损耗登记</div>
           <div class="tab-item ${this.currentTab === 'history' ? 'active' : ''}" data-tab="history" ${Formatter.event('click', 'stockOut-2')}  style="padding:14px 24px;cursor:pointer;border-bottom:2px solid ${this.currentTab === 'history' ? '#0d9488' : 'transparent'};color:${this.currentTab === 'history' ? '#0d9488' : '#6b7d7d'};font-weight:${this.currentTab === 'history' ? 600 : 400}">历史记录</div>
         </div>
       </div>
@@ -38,17 +38,17 @@ const StockOutPage = {
     this.render();
   },
 
-  // ===== 出库开单 =====
+  // ===== 记录取用 =====
   async renderForm(locId) {
     const isCurrent=Formatter.viewRequest(this,'renderForm');
     document.getElementById('so-tab-content').innerHTML = `
       <div class="card">
-        <h2>出库/损耗登记</h2>
+        <h2>取用/损耗登记</h2>
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:12px">
-          <div class="form-group" style="flex:0 0 200px;margin:0"><label>场所</label><select id="so-location" style="width:100%"></select></div>
-          <div class="form-group" style="flex:1;min-width:200px;margin:0"><label>添加商品（扫码或搜索）</label>
+          <div class="form-group" style="flex:0 0 200px;margin:0"><label>存放位置</label><select id="so-location" style="width:100%"></select></div>
+          <div class="form-group" style="flex:1;min-width:200px;margin:0"><label>添加物品（扫码或搜索）</label>
             <div style="display:flex;gap:8px">
-              <input type="text" id="so-search" placeholder="扫码或搜索商品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px" ${Formatter.event('keydown', 'stockOut-3')} >
+              <input type="text" id="so-search" placeholder="扫码或搜索物品" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px" ${Formatter.event('keydown', 'stockOut-3')} >
               <button class="btn btn-primary btn-sm" ${Formatter.event('click', 'stockOut-4')} >搜索</button>
               <button class="btn btn-success btn-sm" ${Formatter.event('click', 'stockOut-5')} >扫码枪</button><button class="btn btn-info btn-sm" ${Formatter.event('click', 'stockOut-6')} >相机</button>
             </div>
@@ -56,12 +56,12 @@ const StockOutPage = {
         </div>
         <div id="so-search-results" style="margin-bottom:12px"></div>
         <div id="so-batch-section">
-          <h3>出库明细</h3>
+          <h3>取用明细</h3>
           <div class="table-wrapper">
             <table id="so-batch-table">
-              <thead><tr><th>商品</th><th>规格</th><th>当前库存</th><th>数量</th><th>类型</th><th>备注</th><th>操作</th></tr></thead>
+              <thead><tr><th>物品</th><th>规格</th><th>当前库存</th><th>数量</th><th>类型</th><th>备注</th><th>操作</th></tr></thead>
               <tbody id="so-batch-body">
-                <tr><td colspan="7" style="text-align:center;color:#999;padding:16px">请添加商品到出库列表</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:#999;padding:16px">请添加物品到取用列表</td></tr>
               </tbody>
             </table>
           </div>
@@ -97,7 +97,7 @@ const StockOutPage = {
     if (res.success) {
       const matched = res.data.filter(p => SearchSuggest.fuzzyMatch(p.name, keyword) || SearchSuggest.fuzzyMatch(p.brand_name, keyword));
       const results = document.getElementById('so-search-results');
-      if (matched.length === 0) { results.innerHTML = '<p>未找到匹配商品</p>'; return; }
+      if (matched.length === 0) { results.innerHTML = '<p>未找到匹配物品</p>'; return; }
       results.innerHTML = matched.flatMap(p => p.skus.map(s => {
         const skuData = {id: s.id, product_name: p.name, volume: s.volume, sku_code: s.sku_code};
         return `<div style="display:flex;justify-content:space-between;padding:8px;border-bottom:1px solid #eee;cursor:pointer" ${Formatter.action('stockOut-select', skuData)}><span>${esc(p.name)} - ${esc(s.volume)}</span><span>${esc(s.sku_code)}</span></div>`;
@@ -115,7 +115,7 @@ const StockOutPage = {
     }
     const existing = this.batchItems.find(b => b.sku_id === sku.id);
     if (existing) {
-      App.toast('该商品已在列表中');
+      App.toast('该物品已在列表中');
       return;
     }
     this.batchItems.push({
@@ -136,7 +136,7 @@ const StockOutPage = {
   renderBatchTable() {
     const tbody = document.getElementById('so-batch-body');
     if (this.batchItems.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:16px">请添加商品到出库列表</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:16px">请添加物品到取用列表</td></tr>';
       return;
     }
     tbody.innerHTML = this.batchItems.map((item, idx) => `
@@ -145,7 +145,7 @@ const StockOutPage = {
         <td>${esc(item.volume)}</td>
         <td>${esc(item.stock)}</td>
         <td><input type="number" value="${esc(item.quantity)}" min="1" style="width:60px;padding:4px" ${Formatter.event('change', 'stockOut-9', idx)} ></td>
-        <td><select style="padding:4px" ${Formatter.event('change', 'stockOut-10', idx)} ><option value="out" ${item.type === 'out' ? 'selected' : ''}>出库</option><option value="loss" ${item.type === 'loss' ? 'selected' : ''}>损耗</option></select></td>
+        <td><select style="padding:4px" ${Formatter.event('change', 'stockOut-10', idx)} ><option value="out" ${item.type === 'out' ? 'selected' : ''}>取用</option><option value="loss" ${item.type === 'loss' ? 'selected' : ''}>损耗</option></select></td>
         <td><input type="text" value="${esc(item.remark)}" style="width:100px;padding:4px" ${Formatter.event('change', 'stockOut-11', idx)} ></td>
         <td><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'stockOut-12', idx)} >删除</button></td>
       </tr>${item.errorMsg ? `<tr style="background:#fff3cd"><td colspan="7" style="color:#e74c3c;font-size:13px;padding:4px 8px">错误: ${esc(item.errorMsg)}</td></tr>` : ''}`).join('');
@@ -167,7 +167,7 @@ const StockOutPage = {
   },
 
   async submitBatch() {
-    if (this.batchItems.length === 0) return App.toast('请先添加商品', 'error');
+    if (this.batchItems.length === 0) return App.toast('请先添加物品', 'error');
     const locId = parseInt(document.getElementById('so-location').value);
     for (const item of this.batchItems) {
       if (!item.quantity || item.quantity <= 0) return App.toast(`${esc(item.product_name)} 数量无效`, 'error');
@@ -241,22 +241,22 @@ const StockOutPage = {
     document.getElementById('so-tab-content').innerHTML = `
       <div class="card" style="background:#f8f9fa;padding:12px 16px">
         <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-          <div class="form-group" style="margin-bottom:0"><label>场所</label><select id="soh-location" ${Formatter.event('change', 'stockOut-history-location')}><option value="">全部场所</option>${locations.map(l => `<option value="${l.id}" ${String(l.id) === String(this.historyFilters.location_id) ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
+          <div class="form-group" style="margin-bottom:0"><label>存放位置</label><select id="soh-location" ${Formatter.event('change', 'stockOut-history-location')}><option value="">全部存放位置</option>${locations.map(l => `<option value="${l.id}" ${String(l.id) === String(this.historyFilters.location_id) ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></div>
 
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>开始日期</label><input type="date" id="soh-start" value="${this.historyFilters.start_date}" style="width:100%" ${Formatter.event('change', 'stockOut-13')} ></div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>结束日期</label><input type="date" id="soh-end" value="${this.historyFilters.end_date}" style="width:100%" ${Formatter.event('change', 'stockOut-13')} ></div>
           <div class="form-group" style="flex:0 0 150px;margin-bottom:0"><label>类型</label>
             <select id="soh-type" style="width:100%" ${Formatter.event('change', 'stockOut-13')} >
               <option value="">全部</option>
-              <option value="out" ${this.historyFilters.type === 'out' ? 'selected' : ''}>出库</option>
-              <option value="transfer_out" ${this.historyFilters.type === 'transfer_out' ? 'selected' : ''}>调拨出库</option>
+              <option value="out" ${this.historyFilters.type === 'out' ? 'selected' : ''}>取用</option>
+              <option value="transfer_out" ${this.historyFilters.type === 'transfer_out' ? 'selected' : ''}>移动取用</option>
               <option value="loss" ${this.historyFilters.type === 'loss' ? 'selected' : ''}>损耗</option>
             </select>
           </div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>操作人</label>
             <select id="soh-operator" style="width:100%" ${Formatter.event('change', 'stockOut-14')} >${operatorOptions}</select>
           </div>
-          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>商品名称</label><input type="text" id="soh-product" placeholder="搜索商品" value="${esc(this.historyFilters.product)}" style="width:100%" ${Formatter.event('input', 'stockOut-15')} ></div>
+          <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>物品名称</label><input type="text" id="soh-product" placeholder="搜索物品" value="${esc(this.historyFilters.product)}" style="width:100%" ${Formatter.event('input', 'stockOut-15')} ></div>
           <div class="form-group" style="flex:0 0 180px;margin-bottom:0"><label>品牌</label><input type="text" id="soh-brand" placeholder="搜索品牌" value="${esc(this.historyFilters.brand)}" style="width:100%" ${Formatter.event('input', 'stockOut-16')} ></div>
         </div>
       </div>
@@ -303,11 +303,11 @@ const StockOutPage = {
       if (request !== this._historyRequest || !listEl.isConnected) return;
       if (!res.success) throw new Error(res.message || '查询失败');
       if (!res.success || !res.data || res.data.length === 0) {
-        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无出库/损耗记录</div>';
+        listEl.innerHTML = '<div style="text-align:center;padding:40px;color:#999">暂无取用/损耗记录</div>';
         return;
       }
 
-      const typeMap = { out: '出库', loss: '损耗', transfer_out: '调拨出库' };
+      const typeMap = { out: '取用', loss: '损耗', transfer_out: '移动取用' };
       const typeClassMap = { out: 'badge-warning', loss: 'badge-danger', transfer_out: 'badge-info' };
 
       listEl.innerHTML = `
@@ -316,8 +316,8 @@ const StockOutPage = {
             <thead>
               <tr>
                 <th>日期</th>
-                <th>场所</th>
-                <th>商品</th>
+                <th>存放位置</th>
+                <th>物品</th>
                 <th>规格</th>
                 <th>类型</th>
                 <th>数量</th>
@@ -335,7 +335,7 @@ const StockOutPage = {
                   <td><span class="badge ${typeClassMap[item.movement_type] || ''}">${typeMap[item.movement_type] || item.movement_type}</span></td>
                   <td style="color:#e74c3c;font-weight:500">${Math.abs(item.quantity)}</td>
                   <td>${esc(item.operator || '-')}</td>
-                  <td>${esc(item.remark || '-')}${item.transfer_id ? `<div>至 ${esc(item.to_name)} <button class="btn btn-sm" ${Formatter.event('click','transfer-detail',item.transfer_id)}>调拨 #${item.transfer_id}</button></div>` : ''}</td>
+                  <td>${esc(item.remark || '-')}${item.transfer_id ? `<div>至 ${esc(item.to_name)} <button class="btn btn-sm" ${Formatter.event('click','transfer-detail',item.transfer_id)}>移动 #${item.transfer_id}</button></div>` : ''}</td>
                 </tr>
               `).join('')}
             </tbody>

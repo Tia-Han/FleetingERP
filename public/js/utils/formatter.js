@@ -20,7 +20,7 @@ const Formatter = {
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   },
   movementTypeLabel(type) {
-    const labels = { 'in': '入库', 'out': '出库', 'sale': '销售', 'split': '分装', 'transfer_in': '调入', 'transfer_out': '调出', 'loss': '损耗', 'check_in': '盘盈', 'check_out': '盘亏' };
+    const labels = { 'in': '添置', 'out': '取用', 'transfer_in': '调入', 'transfer_out': '调出', 'loss': '损耗', 'check_in': '盘盈', 'check_out': '盘亏' };
     return labels[type] || type;
   }
 };

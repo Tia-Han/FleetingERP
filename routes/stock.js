@@ -62,7 +62,7 @@ router.get('/movements', (req, res) => {
   const db = getDb();
   const { location_id, movement_type, start_date, end_date, page, limit } = req.query;
   const hasPagination = page !== undefined;
-  let sql = `SELECT sm.*, s.volume, s.sku_code, p.name as product_name, l.name as location_name, sio.supplier, sio.remark as order_remark, sm.source FROM stock_movements sm JOIN skus s ON sm.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN locations l ON sm.location_id = l.id LEFT JOIN stock_in_orders sio ON sm.ref_type = 'stock_in' AND sm.ref_id = sio.id WHERE 1=1`;
+  let sql = `SELECT sm.*, s.volume, s.sku_code, p.name as product_name, l.name as location_name, sio.supplier, sio.remark as order_remark, sm.source FROM stock_movements sm JOIN skus s ON sm.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN locations l ON sm.location_id = l.id LEFT JOIN stock_in_orders sio ON sm.ref_type = 'stock_in' AND sm.ref_id = sio.id WHERE sm.movement_type NOT IN ('sale','split')`;
   const params = [];
   if (location_id) { sql += ' AND sm.location_id = ?'; params.push(location_id); }
   if (movement_type) { sql += ' AND sm.movement_type = ?'; params.push(movement_type); }
@@ -76,7 +76,7 @@ router.get('/movements', (req, res) => {
 
   if (hasPagination) {
     const offset = (pageNum - 1) * pageSize;
-    let countSql = `SELECT COUNT(*) as total FROM stock_movements sm WHERE 1=1`;
+    let countSql = `SELECT COUNT(*) as total FROM stock_movements sm WHERE sm.movement_type NOT IN ('sale','split')`;
     const countParams = [];
     if (location_id) { countSql += ' AND sm.location_id = ?'; countParams.push(location_id); }
     if (movement_type) { countSql += ' AND sm.movement_type = ?'; countParams.push(movement_type); }
@@ -112,7 +112,7 @@ router.get('/summary', (req, res) => {
   if (location_id) { whereClause += ' AND location_id = ?'; params.push(location_id); }
   if (start_date) { whereClause += ' AND created_at >= ?'; params.push(start_date); }
   if (end_date) { whereClause += ' AND created_at <= ?'; params.push(end_date); }
-  const summary = db.prepare(`SELECT movement_type, COUNT(*) as count, SUM(ABS(quantity)) as total_quantity, SUM(CASE WHEN unit_cost IS NOT NULL THEN ABS(quantity) * unit_cost ELSE 0 END) as total_value FROM stock_movements WHERE ${whereClause} GROUP BY movement_type`).all(...params);
+  const summary = db.prepare(`SELECT movement_type, COUNT(*) as count, SUM(ABS(quantity)) as total_quantity, SUM(CASE WHEN unit_cost IS NOT NULL THEN ABS(quantity) * unit_cost ELSE 0 END) as total_value FROM stock_movements WHERE movement_type NOT IN ('sale','split') AND ${whereClause} GROUP BY movement_type`).all(...params);
   res.json({ success: true, data: summary });
 });
 

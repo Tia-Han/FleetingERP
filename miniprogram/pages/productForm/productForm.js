@@ -181,7 +181,7 @@ Page({
     if (this.data.submitting) return;
 
     if (!this.data.name.trim()) {
-      wx.showToast({ title: '请输入商品名称', icon: 'none' });
+      wx.showToast({ title: '请输入物品名称', icon: 'none' });
       return;
     }
     if (!this.data.brand_id) {

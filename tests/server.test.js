@@ -19,6 +19,10 @@ test('HTTP docs, API 404, health and graceful shutdown work from another working
   assert.equal((await fetch(base+'/api/health')).status,200);
   const docs=await fetch(base+'/api/docs');assert.equal(docs.status,200);assert.ok((await docs.json()).paths['/auth/login']);
   const missing=await fetch(base+'/api/v1/missing');assert.equal(missing.status,404);assert.equal((await missing.json()).success,false);
+  for (const route of ['/api/v1/sales','/api/sales','/api/v1/customers','/api/customers/1','/api/v1/system/export-excel?type=sales','/js/pages/sales.js','/js/pages/customers.js']) {
+    assert.equal((await fetch(base+route)).status,404,route);
+  }
+  for (const route of ['/api/v1/sales','/api/v1/customers']) assert.equal((await fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status,404,route);
   let ack=once(child,'message');child.send({maintenance:true});await ack;
   const unavailable=await fetch(base+'/api/health');assert.equal(unavailable.status,503);assert.equal((await unavailable.json()).success,false);
   ack=once(child,'message');child.send({maintenance:false});await ack;

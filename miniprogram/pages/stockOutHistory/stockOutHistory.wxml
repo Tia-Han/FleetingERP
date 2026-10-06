@@ -18,19 +18,19 @@
     </view>
     <view class="filter-row">
       <view class="filter-item">
-        <text class="filter-label">场所</text>
+        <text class="filter-label">存放位置</text>
         <picker range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
-          <view class="picker-text">{{locations[locationIndex].name || '全部场所'}}</view>
+          <view class="picker-text">{{locations[locationIndex].name || '全部存放位置'}}</view>
         </picker>
       </view>
     </view>
     <!-- 类型筛选 -->
     <view class="type-tabs">
       <view class="type-tab {{typeFilter === 'all' ? 'active' : ''}}" data-type="all" bindtap="onTypeTap">全部</view>
-      <view class="type-tab {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">出库</view>
+      <view class="type-tab {{typeFilter === 'out' ? 'active' : ''}}" data-type="out" bindtap="onTypeTap">取用</view>
       <view class="type-tab {{typeFilter === 'loss' ? 'active' : ''}}" data-type="loss" bindtap="onTypeTap">损耗</view>
     </view>
-    <view class="type-tab" data-type="transfer_out" bindtap="onTypeTap">调拨出库</view>
+    <view class="type-tab" data-type="transfer_out" bindtap="onTypeTap">移动取用</view>
     <!-- 操作人筛选 -->
     <view class="filter-row">
       <view class="filter-item flex-1">
@@ -48,7 +48,7 @@
       <view class="record-card" wx:for="{{list}}" wx:key="id">
         <view class="record-header">
           <view class="record-type type-{{item.movement_type}}">
-            {{item.movement_type === 'transfer_out' ? '调拨出库' : (item.movement_type === 'out' ? '出库' : '损耗')}}
+            {{item.movement_type === 'transfer_out' ? '移动取用' : (item.movement_type === 'out' ? '取用' : '损耗')}}
           </view>
           <view class="record-date">{{item.created_at}}</view>
         </view>
@@ -60,7 +60,7 @@
           <view class="record-spec">{{item.volume || '-'}} · {{item.sku_code}}</view>
           <view class="record-footer">
             <view class="record-location">
-              <text class="record-label">场所：</text>
+              <text class="record-label">存放位置：</text>
               <text>{{item.location_name}}</text>
             </view>
             <view class="record-qty">{{item.quantity}} {{item.unit || ''}}</view>
@@ -78,7 +78,7 @@
     </block>
 
     <view wx:elif="{{!loading}}" class="empty-state">
-      <text class="empty-text">暂无出库/损耗记录</text>
+      <text class="empty-text">暂无取用/损耗记录</text>
     </view>
 
     <view wx:if="{{loading}}" class="loading-state">

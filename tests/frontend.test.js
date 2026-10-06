@@ -7,7 +7,7 @@ function browserContext() {
  const nodes = new Map();const listeners={};
  const document={addEventListener:(n,f)=>{const previous=listeners[n];listeners[n]=event=>{previous?.(event);f(event);};},getElementById:id=>{if(!nodes.has(id))nodes.set(id,{innerHTML:'',value:''});return nodes.get(id);}};
  const context=vm.createContext({document,window:{},console,App:{toast(){}},API:{}});
- const load=file=>vm.runInContext(fs.readFileSync(path.join(__dirname,'..','public/js',file),'utf8'),context);
+ const load=file=>vm.runInContext(fs.readFileSync(file==='pages/sales.js'?path.join(__dirname,'../legacy/web/sales.js'):path.join(__dirname,'..','public/js',file),'utf8'),context);
  load('utils/formatter.js');vm.runInContext('const esc = Formatter.escape;',context);
  return {context,load,nodes,listeners};
 }

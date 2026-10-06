@@ -10,7 +10,8 @@
     "pm2:stop": "pm2 stop fragrance-inventory",
     "pm2:restart": "pm2 restart fragrance-inventory",
     "pm2:logs": "pm2 logs fragrance-inventory",
-    "test": "node --test tests/*.test.js"
+    "test": "node --test tests/*.test.js",
+    "dev:mini": "node scripts/local-mini-server.js"
   },
   "keywords": [],
   "author": "",

@@ -4,7 +4,7 @@
   <view class="search-bar">
     <text class="search-icon">🔍</text>
     <input
-      placeholder="搜索商品名称或条码"
+      placeholder="搜索物品名称或条码"
       value="{{searchKey}}"
       bindinput="onSearchInput"
       confirm-type="search"

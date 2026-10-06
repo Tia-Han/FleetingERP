@@ -4,27 +4,24 @@ const { checkLogin } = require('../../utils/auth');
 
 Page({
   data: {
-    todaySales: 0,
+    itemCount: 0,
     alertCount: 0,
-    todoCount: 0,
+    userName: '',
     loading: true,
     networkError: false,
     gridItems: [
-      { icon: '📷', text: '入库', path: '/pages/stockIn/stockIn', tab: false, iconBg: 'bg-blue' },
-      { icon: '📦', text: '库存查询', path: '/pages/stock/stock', tab: true, iconBg: 'bg-green' },
-      { icon: '📋', text: '库存盘点', path: '/pages/inventory/inventory', tab: false, iconBg: 'bg-purple' },
-      { icon: '💰', text: '销售', path: '/pages/sale/sale', tab: true, iconBg: 'bg-yellow' },
-      { icon: '🏷️', text: '商品管理', path: '/pages/products/products', tab: false, iconBg: 'bg-pink' },
+      { icon: '📷', text: '添置', path: '/pages/stockIn/stockIn', tab: false, iconBg: 'bg-blue' },
+      { icon: '📦', text: '物品清单', path: '/pages/stock/stock', tab: true, iconBg: 'bg-green' },
+      { icon: '📋', text: '物品盘点', path: '/pages/inventory/inventory', tab: false, iconBg: 'bg-purple' },
+      { icon: '🏷️', text: '物品资料', path: '/pages/products/products', tab: false, iconBg: 'bg-pink' },
       { icon: '🏆', text: '品牌管理', path: '/pages/brands/brands', tab: false, iconBg: 'bg-indigo' },
-      { icon: '📤', text: '出库/损耗', path: '/pages/stockOut/stockOut', tab: false, iconBg: 'bg-orange' },
+      { icon: '📤', text: '取用/损耗', path: '/pages/stockOut/stockOut', tab: false, iconBg: 'bg-orange' },
       { icon: '📊', text: '变动流水', path: '/pages/movements/movements', tab: false, iconBg: 'bg-teal' },
-      { icon: '👥', text: '客户', path: '/pages/customer/customer', tab: false, iconBg: 'bg-purple-light' }
     ]
   },
 
   onLoad() {
     if (!checkLogin()) return;
-    this.loadData();
   },
 
   onShow() {
@@ -43,33 +40,37 @@ Page({
   },
 
   async loadData() {
-    this.setData({ loading: true, networkError: false });
+    const requestId = this._requestId = (this._requestId || 0) + 1;
+    this.setData({ loading: true, networkError: false, itemCount: null, alertCount: null });
     try {
       const app = getApp();
       const user = app.globalData.userInfo;
       const locationId = user && user.location_id;
+      this.setData({ userName: user && (user.name || user.username) || '用户' });
 
-      let salesFailed = false;
+      let itemsFailed = false;
       let alertsFailed = false;
 
-      const [salesRes, alertsRes] = await Promise.all([
-        get('/sales/summary', locationId ? { location_id: locationId } : {}).catch(() => { salesFailed = true; return null; }),
+      const [itemsRes, alertsRes] = await Promise.all([
+        get('/stock/balances', { ...(locationId ? { location_id: locationId } : {}), page: 1, limit: 1 }).catch(() => { itemsFailed = true; return null; }),
         get('/stock/alerts', locationId ? { location_id: locationId } : {}).catch(() => { alertsFailed = true; return null; })
       ]);
 
+      if (requestId !== this._requestId) return;
       // ERR-01: 所有接口失败时显示网络异常提示
-      if (salesFailed && alertsFailed) {
+      if (itemsFailed && alertsFailed) {
         this.setData({ loading: false, networkError: true });
         return;
       }
 
       this.setData({
-        todaySales: salesRes && salesRes.data ? salesRes.data.total_amount : 0,
-        alertCount: alertsRes && alertsRes.data ? alertsRes.data.length : 0,
-        todoCount: 0,
+        itemCount: itemsRes && itemsRes.data ? itemsRes.total : null,
+        alertCount: alertsRes && alertsRes.data ? alertsRes.data.length : null,
+        networkError: itemsFailed || alertsFailed,
         loading: false
       });
     } catch (err) {
+      if (requestId !== this._requestId) return;
       this.setData({ loading: false, networkError: true });
     }
   },

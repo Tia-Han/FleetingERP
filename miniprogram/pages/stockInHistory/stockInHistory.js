@@ -57,7 +57,7 @@ Page({
   async loadLocations() {
     try {
       const res = await get('/locations');
-      const locations = [{ id: '', name: '全部场所' }].concat(res.data || []);
+      const locations = [{ id: '', name: '全部存放位置' }].concat(res.data || []);
       this.setData({ locations });
       this.loadList(true);
     } catch (e) {

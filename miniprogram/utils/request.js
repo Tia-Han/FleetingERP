@@ -8,7 +8,8 @@ function logError(type, detail) {
 function send(url, method = 'GET', data = {}, requestKey) {
   const app = getApp();
   const token = app ? app.globalData.token : '';
-  const apiBase = app ? app.globalData.apiBase : 'https://api.fleetingerp.cn/api/v1';
+  const apiBase = app && app.globalData.apiBase;
+  if (!apiBase) return Promise.reject(new Error('接口环境未初始化，停止连接'));
 
   return new Promise((resolve, reject) => {
     wx.request({
@@ -66,7 +67,7 @@ function request(url,method='GET',data={}) {
   if(pending.has(fingerprint)) return pending.get(fingerprint);
   let a=2166136261,b=5381;
   for(const c of fingerprint){a=Math.imul(a^c.charCodeAt(0),16777619);b=Math.imul(b,33)^c.charCodeAt(0);}
-  const storageKey='pending-write-'+(a>>>0).toString(16)+'-'+(b>>>0).toString(16);
+  const storageKey=app.globalData.apiBase+'-pending-write-'+(a>>>0).toString(16)+'-'+(b>>>0).toString(16);
   let key=wx.getStorageSync(storageKey);
   if(!key) {key=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);wx.setStorageSync(storageKey,key);}
   const promise=send(url,method,data,key).then(result=>{wx.removeStorageSync(storageKey);return result;},error=>{if(!error.uncertain) wx.removeStorageSync(storageKey);throw error;}).finally(()=>pending.delete(fingerprint));

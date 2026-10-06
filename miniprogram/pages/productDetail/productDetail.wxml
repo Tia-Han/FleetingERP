@@ -17,11 +17,11 @@
         <view class="sku-spec">{{item.spec_type}} · {{item.volume || ''}}{{item.unit || ''}}</view>
         <view class="sku-barcode" wx:if="{{item.barcode}}">条码：{{item.barcode}}</view>
       </view>
-      <view class="sku-price">¥{{item.retail_price || 0}}</view>
+      <view class="sku-price">¥{{item.cost_price || 0}}</view>
     </view>
   </view>
 
   <view class="edit-bar">
-    <button class="btn-primary" bindtap="goEdit">编辑商品</button>
+    <button class="btn-primary" bindtap="goEdit">编辑物品</button>
   </view>
 </view>

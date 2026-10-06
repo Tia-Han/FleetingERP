@@ -3,23 +3,23 @@
   <!-- 顶部数据卡 -->
   <view class="home-header">
     <view class="greeting">
-      早上好，{{userName || '店员'}} 👋
+      你好，{{userName || '用户'}} 👋
     </view>
     <view class="home-cards">
       <view class="home-card">
-        <view class="card-val">¥{{todaySales}}</view>
-        <view class="card-lbl">今日销售</view>
+        <view class="card-val">{{itemCount === null ? '—' : itemCount}}</view>
+        <view class="card-lbl">物品记录数</view>
       </view>
       <view class="home-card warn">
-        <view class="card-val">{{alertCount}}</view>
+        <view class="card-val">{{alertCount === null ? '—' : alertCount}}</view>
         <view class="card-lbl">预警库存</view>
       </view>
-      <view class="home-card">
-        <view class="card-val">{{todoCount}}</view>
-        <view class="card-lbl">待办事项</view>
-      </view>
+
     </view>
   </view>
+
+  <view wx:if="{{loading}}" class="section-title">正在更新数据…</view>
+  <view wx:if="{{networkError}}" class="section-title">部分数据加载失败，请重试。<button size="mini" bindtap="onRetry">重试</button></view>
 
   <!-- 九宫格功能区 -->
   <view class="grid-section">

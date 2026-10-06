@@ -1,5 +1,5 @@
 {
-  "desc": "FleetingERP 香氛零售门店管理系统小程序版",
+  "desc": "FleetingERP 个人物品记录小程序",
   "projectname": "fleeting-erp-miniprogram",
   "appid": "touristappid",
   "setting": {
@@ -12,5 +12,21 @@
   },
   "compileType": "miniprogram",
   "libVersion": "3.3.4",
-  "miniprogramRoot": "./"
+  "miniprogramRoot": "./",
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "folder",
+        "value": "pages/sale"
+      },
+      {
+        "type": "folder",
+        "value": "pages/customer"
+      },
+      {
+        "type": "folder",
+        "value": "pages/customerDetail"
+      }
+    ]
+  }
 }

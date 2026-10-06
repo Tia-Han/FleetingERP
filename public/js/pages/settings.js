@@ -2,11 +2,11 @@ const SettingsPage = {
   async render() {
     document.getElementById('content').innerHTML = `
       <div class="card">
-        <h2>场所管理</h2>
+        <h2>存放位置管理</h2>
         <div id="se-locations">加载中...</div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
-          <input type="text" id="se-loc-name" placeholder="场所名称" style="flex:1;min-width:120px;padding:8px;border:1px solid #ddd;border-radius:4px">
-          <select id="se-loc-type" style="padding:8px;border:1px solid #ddd;border-radius:4px"><option value="warehouse">仓库</option><option value="store">门店</option></select>
+          <input type="text" id="se-loc-name" placeholder="存放位置名称" style="flex:1;min-width:120px;padding:8px;border:1px solid #ddd;border-radius:4px">
+          <select id="se-loc-type" style="padding:8px;border:1px solid #ddd;border-radius:4px"><option value="warehouse">储存处</option><option value="store">日常存放处</option></select>
           <input type="text" id="se-loc-address" placeholder="地址（可选）" style="flex:1;min-width:120px;padding:8px;border:1px solid #ddd;border-radius:4px">
           <button class="btn btn-success" ${Formatter.event('click', 'settings-1')} >添加</button>
         </div>
@@ -21,9 +21,8 @@ const SettingsPage = {
         <p style="margin-bottom:8px;color:#7f8c8d">系统每日自动备份数据，也可手动导出。</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary" ${Formatter.event('click', 'settings-4')} >导出数据库备份(.db)</button>
-          <button class="btn btn-success" ${Formatter.event('click', 'settings-5')} >导出库存数据(.csv)</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'settings-5')} >导取用存数据(.csv)</button>
           <button class="btn btn-success" ${Formatter.event('click', 'settings-6')} >导出变动流水(.csv)</button>
-          <button class="btn btn-success" ${Formatter.event('click', 'settings-7')} >导出销售记录(.csv)</button>
         </div>
         <p style="margin-top:12px;font-size:13px;color:#7f8c8d">每日自动备份已启用，服务器启动时自动执行。</p>
       </div>
@@ -46,7 +45,7 @@ const SettingsPage = {
     div.innerHTML = `<table><thead><tr><th>名称</th><th>类型</th><th>地址</th><th>操作</th></tr></thead><tbody>
       ${res.data.map(l => `<tr>
         <td>${esc(l.name)}</td>
-        <td>${l.type === 'warehouse' ? '仓库' : '门店'}</td>
+        <td>${l.type === 'warehouse' ? '储存处' : '日常存放处'}</td>
         <td>${esc(l.address) || '-'}</td>
         <td>
           <button class="btn btn-primary btn-sm" ${Formatter.action('location-edit', l.id, l.name, l.type, l.address || '')}>修改</button>
@@ -60,10 +59,10 @@ const SettingsPage = {
     const name = document.getElementById('se-loc-name').value.trim();
     const type = document.getElementById('se-loc-type').value;
     const address = document.getElementById('se-loc-address').value.trim();
-    if (!name) return App.toast('请输入场所名称', 'error');
+    if (!name) return App.toast('请输入存放位置名称', 'error');
     const res = await API.createLocation({ name, type, address });
     if (res.success) {
-      App.toast('场所添加成功');
+      App.toast('存放位置添加成功');
       this.loadLocations();
       document.getElementById('se-loc-name').value = '';
       document.getElementById('se-loc-address').value = '';
@@ -74,9 +73,9 @@ const SettingsPage = {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card">
-      <h2>编辑场所</h2>
+      <h2>编辑存放位置</h2>
       <div class="form-group"><label>名称</label><input type="text" id="el-name" value="${esc(name)}"></div>
-      <div class="form-group"><label>类型</label><select id="el-type"><option value="warehouse" ${type === 'warehouse' ? 'selected' : ''}>仓库</option><option value="store" ${type === 'store' ? 'selected' : ''}>门店</option></select></div>
+      <div class="form-group"><label>类型</label><select id="el-type"><option value="warehouse" ${type === 'warehouse' ? 'selected' : ''}>储存处</option><option value="store" ${type === 'store' ? 'selected' : ''}>日常存放处</option></select></div>
       <div class="form-group"><label>地址</label><input type="text" id="el-address" value="${esc(address)}"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" ${Formatter.event('click', 'settings-9')} >取消</button>
@@ -89,7 +88,7 @@ const SettingsPage = {
     const name = document.getElementById('el-name').value.trim();
     const type = document.getElementById('el-type').value;
     const address = document.getElementById('el-address').value.trim();
-    if (!name) return App.toast('请输入场所名称', 'error');
+    if (!name) return App.toast('请输入存放位置名称', 'error');
     const res = await API.updateLocation(id, { name, type, address });
     if (res.success) {
       App.toast('更新成功');
@@ -99,7 +98,7 @@ const SettingsPage = {
   },
 
   async deleteLocation(id) {
-    if (!confirm('确认删除此场所？如有库存或变动记录将无法删除。')) return;
+    if (!confirm('确认删除此存放位置？如有库存或变动记录将无法删除。')) return;
     const res = await API.deleteLocation(id);
     if (res.success) { App.toast('删除成功'); this.loadLocations(); } else App.toast(res.message, 'error');
   },
@@ -111,9 +110,9 @@ const SettingsPage = {
     const div = document.getElementById('se-users');
     if (!res.success) { div.innerHTML = '<p>加载失败</p>'; return; }
     this._users=res.data;
-    const roleLabels = { admin: '管理员', warehouse_manager: '仓库管理员', store_clerk: '门店店员' };
+    const roleLabels = { admin: '管理员', warehouse_manager: '物品维护者', store_clerk: '位置使用者' };
     div.innerHTML = `<table><thead><tr><th>用户名</th><th>姓名</th><th>角色</th><th>创建时间</th><th>操作</th></tr></thead><tbody>
-      ${res.data.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.name)}</td><td>${u.location_name ? esc(u.location_name)+(u.role==='store_clerk'?'店员':'管理员') : roleLabels[u.role] || esc(u.role)}${u.enabled?'':'（停用）'}${u.role!=='admin'&&!u.location_id?'（待绑定）':''}</td><td>${Formatter.date(u.created_at)}</td>
+      ${res.data.map(u => `<tr><td>${esc(u.username)}</td><td>${esc(u.name)}</td><td>${u.location_name ? esc(u.location_name)+(u.role==='store_clerk'?'使用者':'管理员') : roleLabels[u.role] || esc(u.role)}${u.enabled?'':'（停用）'}${u.role!=='admin'&&!u.location_id?'（待绑定）':''}</td><td>${Formatter.date(u.created_at)}</td>
         <td>${u.username !== 'admin' ? `<button class="btn btn-sm" ${Formatter.event('click', 'user-edit', u.id)}>修改权限</button><button class="btn btn-danger btn-sm" ${Formatter.event('click', 'settings-11', u.id)} >删除</button>` : '-'}</td></tr>`).join('')}
     </tbody></table>`;
   },
@@ -154,8 +153,8 @@ const SettingsPage = {
     const user=editId ? this._users.find(u=>u.id===editId) : null;
     this._editingUser=editId;
     const selected=user ? user.role+(user.location_id ? ':'+user.location_id : '') : '';
-    const choices=[{value:'admin',label:'管理员'},...locations.data.map(l=>({value:(l.type==='store'?'store_clerk':'warehouse_manager')+':'+l.id,label:l.name+(l.type==='store'?'店员':'管理员')+'（场所编号 '+l.id+'）'}))];
-    const options='<option value="">请选择角色和场所</option>'+choices.map(c=>`<option value="${esc(c.value)}" ${selected===c.value?'selected':''}>${esc(c.label)}</option>`).join('');
+    const choices=[{value:'admin',label:'管理员'},...locations.data.map(l=>({value:(l.type==='store'?'store_clerk':'warehouse_manager')+':'+l.id,label:l.name+(l.type==='store'?'使用者':'管理员')+'（存放位置编号 '+l.id+'）'}))];
+    const options='<option value="">请选择角色和存放位置</option>'+choices.map(c=>`<option value="${esc(c.value)}" ${selected===c.value?'selected':''}>${esc(c.label)}</option>`).join('');
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card">

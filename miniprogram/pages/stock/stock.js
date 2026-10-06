@@ -24,11 +24,11 @@ Page({
     if (!checkLogin()) return;
     this.loadBrands();
     this.loadCategories();
-    this.loadList(true);
   },
 
   onShow() {
     if (!checkLogin()) return;
+    this.loadList(true);
   },
 
   onUnload() {
@@ -54,7 +54,7 @@ Page({
 
   // PERF-04: 品牌列表本地缓存
   async loadBrands() {
-    const cached = wx.getStorageSync('cache_brands');
+    const cached = wx.getStorageSync(getApp().globalData.apiBase + ':cache_brands');
     if (cached && Date.now() - cached.time < 300000) {
       this.setData({ brands: [{ id: '', name: '全部品牌' }].concat(cached.data) });
       return;
@@ -62,13 +62,13 @@ Page({
     try {
       const res = await get('/brands');
       const brands = res.data || [];
-      wx.setStorageSync('cache_brands', { data: brands, time: Date.now() });
+      wx.setStorageSync(getApp().globalData.apiBase + ':cache_brands', { data: brands, time: Date.now() });
       this.setData({ brands: [{ id: '', name: '全部品牌' }].concat(brands) });
     } catch (e) {}
   },
 
   async loadCategories() {
-    const cached = wx.getStorageSync('cache_categories');
+    const cached = wx.getStorageSync(getApp().globalData.apiBase + ':cache_categories');
     if (cached && Date.now() - cached.time < 300000) {
       this.setData({ categories: [{ name: '全部品类' }].concat(cached.data) });
       return;
@@ -76,13 +76,14 @@ Page({
     try {
       const res = await get('/products/categories');
       const cats = res.data || [];
-      wx.setStorageSync('cache_categories', { data: cats, time: Date.now() });
+      wx.setStorageSync(getApp().globalData.apiBase + ':cache_categories', { data: cats, time: Date.now() });
       this.setData({ categories: [{ name: '全部品类' }].concat(cats) });
     } catch (e) {}
   },
 
   async loadList(refresh = false) {
-    if (this.data.loading) return;
+    if (this.data.loading && !refresh) return;
+    const requestId = this._requestId = (this._requestId || 0) + 1;
     const page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
@@ -102,6 +103,7 @@ Page({
       if (this.data.filterCategory) params.category = this.data.filterCategory;
 
       const res = await get('/stock/balances', params);
+      if (requestId !== this._requestId) return;
       const data = res.data || [];
       const list = refresh ? data : this.data.list.concat(data);
       const total = res.total || 0;
@@ -113,6 +115,7 @@ Page({
         loading: false
       });
     } catch (err) {
+      if (requestId !== this._requestId) return;
       this.setData({ loading: false });
     }
   },

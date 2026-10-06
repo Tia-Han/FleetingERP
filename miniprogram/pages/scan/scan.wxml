@@ -10,16 +10,16 @@
     <view class="scan-btn primary" bindtap="scanStockIn">
       <view class="scan-btn-icon">📥</view>
       <view class="scan-btn-text">
-        <view class="scan-btn-title">扫码入库</view>
-        <view class="scan-btn-desc">扫条码添加入库商品</view>
+        <view class="scan-btn-title">扫码添置</view>
+        <view class="scan-btn-desc">扫条码添加添置物品</view>
       </view>
     </view>
 
     <view class="scan-btn warn" bindtap="scanStockOut">
       <view class="scan-btn-icon">📤</view>
       <view class="scan-btn-text">
-        <view class="scan-btn-title">扫码出库</view>
-        <view class="scan-btn-desc">扫条码添加出库商品</view>
+        <view class="scan-btn-title">扫码取用</view>
+        <view class="scan-btn-desc">扫条码添加取用物品</view>
       </view>
     </view>
 
@@ -27,7 +27,7 @@
       <view class="scan-btn-icon">🔍</view>
       <view class="scan-btn-text">
         <view class="scan-btn-title">扫码查询</view>
-        <view class="scan-btn-desc">扫条码查看商品详情</view>
+        <view class="scan-btn-desc">扫条码查看物品详情</view>
       </view>
     </view>
   </view>

@@ -36,7 +36,7 @@ Page({
       }
       this.setData({ locations, locationIndex });
     } catch (e) {
-      wx.showToast({ title: '场所加载失败', icon: 'none' });
+      wx.showToast({ title: '存放位置加载失败', icon: 'none' });
     }
   },
 
@@ -50,7 +50,7 @@ Page({
     if (this.data.items.length > 0) {
       wx.showModal({
         title: '切换类型',
-        content: '切换类型将清空已添加的商品，确认切换？',
+        content: '切换类型将清空已添加的物品，确认切换？',
         success: (res) => {
           if (res.confirm) {
             this.setData({ outType: type, items: [], totalQty: 0 });
@@ -90,7 +90,7 @@ Page({
       const res = await get('/skus/barcode/' + barcode);
       const sku = res.data;
       if (!sku || !sku.id) {
-        wx.showModal({ title: '未找到商品', content: '条码：' + barcode, showCancel: false });
+        wx.showModal({ title: '未找到物品', content: '条码：' + barcode, showCancel: false });
         return;
       }
 
@@ -104,7 +104,7 @@ Page({
       } catch (e) {}
 
       if (currentQty === 0) {
-        wx.showToast({ title: '该商品当前库存为0', icon: 'none' });
+        wx.showToast({ title: '该物品当前库存为0', icon: 'none' });
         return;
       }
 
@@ -139,7 +139,7 @@ Page({
       this.calcTotal();
       wx.vibrateShort && wx.vibrateShort();
     } catch (err) {
-      wx.showModal({ title: '未找到商品', content: '条码：' + barcode, showCancel: false });
+      wx.showModal({ title: '未找到物品', content: '条码：' + barcode, showCancel: false });
     }
   },
 
@@ -185,7 +185,7 @@ Page({
   async submitStockOut() {
     if (this.data.submitting) return;
     if (this.data.items.length === 0) {
-      wx.showToast({ title: '请先添加商品', icon: 'none' });
+      wx.showToast({ title: '请先添加物品', icon: 'none' });
       return;
     }
 
@@ -198,11 +198,11 @@ Page({
     const app = getApp();
     const user = app.globalData.userInfo;
     const location = this.data.locations[this.data.locationIndex];
-    const typeLabel = this.data.outType === 'loss' ? '损耗' : '出库';
+    const typeLabel = this.data.outType === 'loss' ? '损耗' : '取用';
 
     wx.showModal({
       title: `确认${typeLabel}`,
-      content: `共 ${this.data.totalQty} 件商品`,
+      content: `共 ${this.data.totalQty} 件物品`,
       success: async (res) => {
         if (!res.confirm) return;
 
@@ -225,7 +225,7 @@ Page({
             const failed=new Set(result.data.errors.map(e=>e.item_index));
             this.setData({items:this.data.items.filter((item,index)=>failed.has(index))});
             this.calcTotal();
-            wx.showToast({title:result.message || '部分出库失败，请核实剩余明细',icon:'none'});
+            wx.showToast({title:result.message || '部分取用失败，请核实剩余明细',icon:'none'});
             this.setData({submitting:false});
             return;
           }

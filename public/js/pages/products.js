@@ -1,12 +1,12 @@
 const ProductsPage = {
   async openEditor(id) {
     const isCurrent=Formatter.viewRequest(this,'openEditor');
-    if (!['admin', 'warehouse_manager'].includes(App.currentUser?.role)) return App.toast('无权限编辑商品', 'error');
+    if (!['admin', 'warehouse_manager'].includes(App.currentUser?.role)) return App.toast('无权限编辑物品', 'error');
     const [products, brands, categories] = await Promise.all([API.getProducts(), API.getBrands(), API.getCategories()]);
     if (!isCurrent()) return;
-    if (![products, brands, categories].every(r => r.success)) return App.toast('商品资料加载失败', 'error');
+    if (![products, brands, categories].every(r => r.success)) return App.toast('物品资料加载失败', 'error');
     this._allProducts = products.data; this._allBrands = brands.data; this._allCategories = categories.data;
-    if (!this._allProducts.some(p => p.id === id)) return App.toast('商品不存在或已删除', 'error');
+    if (!this._allProducts.some(p => p.id === id)) return App.toast('物品不存在或已删除', 'error');
     this.showEditProduct(id);
   },
   _currentSheet: 'products',
@@ -30,7 +30,7 @@ const ProductsPage = {
   _renderShell() {
     document.getElementById('content').innerHTML = `
       <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #eee">
-        <div class="pp-tab" data-sheet="products" ${Formatter.event('click', 'products-1')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid #3498db;font-weight:bold;margin-bottom:-2px">商品管理</div>
+        <div class="pp-tab" data-sheet="products" ${Formatter.event('click', 'products-1')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid #3498db;font-weight:bold;margin-bottom:-2px">物品资料</div>
         <div class="pp-tab" data-sheet="brands" ${Formatter.event('click', 'products-2')}  style="padding:12px 24px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px">品牌管理</div>
       </div>
       <div id="pp-sheet-content"></div>`;
@@ -52,12 +52,12 @@ const ProductsPage = {
     document.getElementById('pp-sheet-content').innerHTML = `
       <div class="card">
         <div style="display:flex;gap:8px;margin-bottom:12px">
-          <input type="text" id="p-search" placeholder="搜索商品名/品牌/品类" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
+          <input type="text" id="p-search" placeholder="搜索物品名/品牌/品类" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:400px">
           <button class="btn btn-primary" ${Formatter.event('click', 'products-3')} >搜索</button>
-          <button class="btn btn-success" ${Formatter.event('click', 'products-4')} >+ 新增商品</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'products-4')} >+ 新增物品</button>
         </div>
         <div id="p-search-results"></div>
-        <div class="table-wrapper"><div id="p-table"><table><thead><tr><th>品牌</th><th>商品名</th><th>品类</th><th>可分装</th><th>SKU 变体</th><th>操作</th></tr></thead><tbody>
+        <div class="table-wrapper"><div id="p-table"><table><thead><tr><th>品牌</th><th>物品名</th><th>品类</th><th>可分装</th><th>SKU 变体</th><th>操作</th></tr></thead><tbody>
           ${this._renderProductRows(this._allProducts)}
         </tbody></table></div></div>
       </div>`;
@@ -87,7 +87,7 @@ const ProductsPage = {
           <input type="text" id="brand-name" placeholder="品牌名称" style="flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;max-width:300px">
           <button class="btn btn-success" ${Formatter.event('click', 'products-5')} >添加品牌</button>
         </div>
-        <div class="table-wrapper"><table><thead><tr><th>品牌</th><th>商品数</th><th>操作</th></tr></thead><tbody>
+        <div class="table-wrapper"><table><thead><tr><th>品牌</th><th>物品数</th><th>操作</th></tr></thead><tbody>
           ${brands.map(b => `<tr><td>${esc(b.name)}</td><td>${b.product_count}</td><td>
             <button class="btn btn-primary btn-sm" ${Formatter.action('brand-edit', b.id, b.name)}>修改</button>
             <button class="btn btn-danger btn-sm" ${Formatter.event('click', 'products-6', b.id)} >删除</button>
@@ -98,7 +98,7 @@ const ProductsPage = {
 
   _renderProductRows(products) {
     return products.map(p => `<tr><td>${esc(p.brand_name)}</td><td>${esc(p.name)}</td><td>${esc(p.category)}</td><td>${p.is_splittable ? '是' : '否'}</td>
-      <td>${p.skus.map(s => `<span class="badge badge-success" style="margin-right:4px">${esc(s.volume)} ${Formatter.money(s.retail_price)}</span>`).join('') || '<span style="color:#999">无</span>'}</td>
+      <td>${p.skus.map(s => `<span class="badge badge-success" style="margin-right:4px">${esc(s.volume)} ${Formatter.money(s.cost_price)}</span>`).join('') || '<span style="color:#999">无</span>'}</td>
       <td>
         <button class="btn btn-primary btn-sm" ${Formatter.event('click', 'products-7', p.id)} >修改</button>
         <button class="btn btn-sm" ${Formatter.event('click', 'products-8', p.id)} >+SKU</button>
@@ -116,7 +116,7 @@ const ProductsPage = {
       SearchSuggest.fuzzyMatch(p.name, kw) || SearchSuggest.fuzzyMatch(p.brand_name, kw) || SearchSuggest.fuzzyMatch(p.category, kw));
     document.getElementById('p-table').querySelector('tbody').innerHTML = matched.length ?
       this._renderProductRows(matched) :
-      '<tr><td colspan="6" style="text-align:center;color:#999">未找到匹配商品</td></tr>';
+      '<tr><td colspan="6" style="text-align:center;color:#999">未找到匹配物品</td></tr>';
   },
 
   async addBrand() {
@@ -174,7 +174,7 @@ const ProductsPage = {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card" style="width:520px;max-height:90vh;overflow-y:auto">
-      <h2 style="margin-bottom:16px">新增商品</h2>
+      <h2 style="margin-bottom:16px">新增物品</h2>
       <div class="form-group"><label style="font-size:14px">条码</label><input type="text" id="p-barcode" placeholder="扫码或输入条码（可选）" style="font-size:16px;padding:10px"></div>
       <div class="form-group"><label style="font-size:14px">品牌</label>
         <select id="p-brand" style="font-size:16px;padding:10px">
@@ -184,7 +184,7 @@ const ProductsPage = {
         </select>
         <input type="text" id="p-new-brand" placeholder="输入新品牌名" style="display:none;margin-top:8px;font-size:16px;padding:10px">
       </div>
-      <div class="form-group"><label style="font-size:14px">商品名</label><input type="text" id="p-name" placeholder="如：蓝风铃香水" style="font-size:16px;padding:10px"></div>
+      <div class="form-group"><label style="font-size:14px">物品名</label><input type="text" id="p-name" placeholder="如：蓝风铃香水" style="font-size:16px;padding:10px"></div>
       <div class="form-group"><label style="font-size:14px">品类</label>
         <select id="p-category" style="font-size:16px;padding:10px">
           ${categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('')}
@@ -217,16 +217,16 @@ const ProductsPage = {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.innerHTML = `<div class="modal-card" style="width:600px;max-height:85vh;overflow-y:auto">
-      <h2>修改商品</h2>
+      <h2>修改物品</h2>
       <div class="form-group"><label>品牌</label><select id="edit-p-brand">${brands.map(b => `<option value="${b.id}" ${b.id === p.brand_id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></div>
-      <div class="form-group"><label>商品名</label><input type="text" id="edit-p-name" value="${esc(p.name)}"></div>
+      <div class="form-group"><label>物品名</label><input type="text" id="edit-p-name" value="${esc(p.name)}"></div>
       <div class="form-group"><label>品类</label><select id="edit-p-category">${categories.map(c => `<option value="${esc(c.name)}" ${c.name===p.category?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
       <div class="form-group"><label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="edit-p-splittable" style="width:18px;height:18px" ${p.is_splittable ? 'checked' : ''}>可分装（整装香水可分装为小规格）</label></div>
       <div style="border-top:1px solid #eee;padding-top:12px;margin-top:8px">
         <h3 style="margin-bottom:8px;color:#34495e">SKU 变体</h3>
-        <table style="font-size:13px"><thead><tr><th>规格</th><th>容量(ml)</th><th>成本价</th><th>零售价</th><th>库存预警</th><th>操作</th></tr></thead><tbody>
+        <table style="font-size:13px"><thead><tr><th>规格</th><th>容量(ml)</th><th>购入价格</th><th>库存预警</th><th>操作</th></tr></thead><tbody>
           ${p.skus.map(s => `<tr>
-            <td>${esc(s.volume)}</td><td>${esc(s.volume_ml)}</td><td>${Formatter.money(s.cost_price)}</td><td>${Formatter.money(s.retail_price)}</td><td>${esc(s.low_stock_threshold)}</td>
+            <td>${esc(s.volume)}</td><td>${esc(s.volume_ml)}</td><td>${Formatter.money(s.cost_price)}</td><td>${esc(s.low_stock_threshold)}</td>
             <td><button class="btn btn-primary btn-sm" ${Formatter.event('click', 'products-13', s.id)} >改</button></td>
           </tr>`).join('') || '<tr><td colspan="6" style="color:#999;text-align:center">无SKU</td></tr>'}
         </tbody></table>
@@ -254,8 +254,8 @@ const ProductsPage = {
       <div class="form-group"><label>规格类型</label><select id="es-type"><option value="整装" ${sku.spec_type==='整装'?'selected':''}>整装</option><option value="分装" ${sku.spec_type==='分装'?'selected':''}>分装</option></select></div>
       <div class="form-group"><label>容量描述</label><input type="text" id="es-volume" value="${esc(sku.volume)}"></div>
       <div class="form-group"><label>容量数值(ml)</label><input type="number" id="es-volumeml" value="${esc(sku.volume_ml)}" step="0.5"></div>
-      <div class="form-group"><label>成本价</label><input type="number" id="es-cost" value="${esc(sku.cost_price)}" step="0.01"></div>
-      <div class="form-group"><label>零售价</label><input type="number" id="es-retail" value="${esc(sku.retail_price)}" step="0.01"></div>
+      <div class="form-group"><label>购入价格</label><input type="number" id="es-cost" value="${esc(sku.cost_price)}" step="0.01"></div>
+      <div class="form-group"><input type="hidden" id="es-retail" value="${esc(sku.retail_price)}" step="0.01"></div>
       <div class="form-group"><label>库存预警</label><input type="number" id="es-threshold" value="${esc(sku.low_stock_threshold)}"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>
@@ -285,7 +285,7 @@ const ProductsPage = {
   },
 
   async deleteProduct(id) {
-    if (!confirm('确认删除此商品？相关的SKU和库存记录也将被标记删除。')) return;
+    if (!confirm('确认删除此物品？相关的SKU和库存记录也将被标记删除。')) return;
     const res = await API.deleteProduct(id);
     if (res.success) { App.toast('删除成功'); await this._refreshProducts(); this._renderProductsSheet(); } else App.toast(res.message, 'error');
   },
@@ -298,9 +298,9 @@ const ProductsPage = {
       category: document.getElementById('edit-p-category').value,
       is_splittable: document.getElementById('edit-p-splittable').checked
     };
-    if (!data.name) return App.toast('请输入商品名', 'error');
+    if (!data.name) return App.toast('请输入物品名', 'error');
     const res = await API.updateProduct(id, data);
-    if (res.success) { App.toast('商品修改成功'); document.querySelector('.modal-overlay').remove(); await this._refreshProducts(); this._renderProductsSheet(); } else App.toast(res.message, 'error');
+    if (res.success) { App.toast('物品修改成功'); document.querySelector('.modal-overlay').remove(); await this._refreshProducts(); this._renderProductsSheet(); } else App.toast(res.message, 'error');
   },
 
   addSkuRow() {
@@ -309,9 +309,9 @@ const ProductsPage = {
     row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;align-items:end';
     row.innerHTML = `
       <div><label style="font-size:14px">规格/容量</label><input type="text" class="sku-volume" placeholder="如 100ml" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-      <div><label style="font-size:14px">入库数量</label><input type="number" class="sku-stock-qty" value="1" min="1" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-      <div><label style="font-size:14px">成本价</label><input type="number" class="sku-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
-      <div><label style="font-size:14px">零售价</label><input type="number" class="sku-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+      <div><label style="font-size:14px">添置数量</label><input type="number" class="sku-stock-qty" value="1" min="1" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+      <div><label style="font-size:14px">购入价格</label><input type="number" class="sku-cost" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
+      <div><input type="hidden" class="sku-retail" value="0" step="0.01" style="font-size:16px;padding:10px;width:100%;box-sizing:border-box"></div>
       <input type="hidden" class="sku-type" value="整装">
       <input type="hidden" class="sku-volumeml" value="0">
     `;
@@ -340,7 +340,7 @@ const ProductsPage = {
       is_splittable: document.getElementById('p-splittable').checked,
       skus: []
     };
-    if (!data.name) return App.toast('请输入商品名', 'error');
+    if (!data.name) return App.toast('请输入物品名', 'error');
     const barcode = document.getElementById('p-barcode').value.trim();
     const skuRows = document.querySelectorAll('#p-sku-list > div');
     for (const row of skuRows) {
@@ -367,15 +367,15 @@ const ProductsPage = {
         await API.request('POST', '/stock-in', {
           location_id: parseInt(locId),
           supplier: '',
-          remark: '商品管理-新增入库',
+          remark: '物品资料-新增添置',
           items: [{ sku_id: sku.id, quantity: stockQty, unit_cost: sku.cost_price }]
         });
-        App.toast('商品创建成功，已入库 ' + stockQty + ' 件');
+        App.toast('物品创建成功，已添置 ' + stockQty + ' 件');
       } catch (e) {
-        App.toast('商品创建成功，但自动入库失败，请手动入库', 'error');
+        App.toast('物品创建成功，但自动添置失败，请手动添置', 'error');
       }
     } else {
-      App.toast('商品创建成功');
+      App.toast('物品创建成功');
     }
     document.querySelector('.modal-overlay').remove();
     await this._refreshProducts();
@@ -391,8 +391,8 @@ const ProductsPage = {
       <div class="form-group"><label>容量描述</label><input type="text" id="s-volume" placeholder="如：100ml、2ml"></div>
       <div class="form-group"><label>容量数值(ml)</label><input type="number" id="s-volumeml" placeholder="如：100" step="0.5"></div>
       <div class="form-group"><label>单位</label><input type="text" id="s-unit" value="瓶"></div>
-      <div class="form-group"><label>成本价</label><input type="number" id="s-cost" value="0" step="0.01"></div>
-      <div class="form-group"><label>零售价</label><input type="number" id="s-retail" value="0" step="0.01"></div>
+      <div class="form-group"><label>购入价格</label><input type="number" id="s-cost" value="0" step="0.01"></div>
+      <div class="form-group"><input type="hidden" id="s-retail" value="0" step="0.01"></div>
       <div class="form-group"><label>库存预警</label><input type="number" id="s-threshold" value="0"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
         <button class="btn" ${Formatter.event('click', 'products-10')} >取消</button>

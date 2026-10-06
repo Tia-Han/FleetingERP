@@ -16,7 +16,7 @@
       <block wx:else>
         <view class="brand-info">
           <view class="brand-name">{{item.name}}</view>
-          <view class="brand-count">{{item.product_count || 0}} 个商品</view>
+          <view class="brand-count">{{item.product_count || 0}} 个物品</view>
         </view>
         <view class="brand-actions">
           <text class="action-edit" data-id="{{item.id}}" data-name="{{item.name}}" bindtap="editBrand">编辑</text>

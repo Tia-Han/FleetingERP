@@ -4,7 +4,7 @@ const path = require('path');
 // 环境配置加载：优先 .env.{NODE_ENV}，回退到 .env
 const envFile = `.env.${process.env.NODE_ENV || 'development'}`;
 const envPaths = [path.join(__dirname, envFile), path.join(__dirname, '.env')];
-for (const envPath of envPaths) {
+for (const envPath of (process.env.LOCAL_DEV_ISOLATED === '1' ? [] : envPaths)) {
   if (fs.existsSync(envPath)) {
     const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
     for (const line of lines) {
@@ -62,6 +62,15 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '10mb' }));
 
+// Personal inventory edition: commercial modules are not published.
+app.use((req, res, next) => {
+  const blocked = /^\/api\/(?:v1\/)?(?:sales|customers|split)(?:\/|$)/i.test(req.path)
+    || /^\/api\/(?:v1\/)?system\/export-excel\/?$/i.test(req.path) && req.query.type === 'sales'
+    || /^\/js\/pages\/(sales|customers|split)\.js$/i.test(req.path);
+  if (blocked) return res.status(404).json({ success: false, message: '个人物品版不提供此功能' });
+  next();
+});
+
 // OPT-9: 静态文件缓存策略 — HTML 不缓存，CSS/JS/图片设置 7 天缓存
 app.use(express.static(path.join(__dirname, 'public'), {
   maxAge: 0,
@@ -89,10 +98,7 @@ app.use(`${API_V1}/locations`, require('./routes/locations'));
 app.use(`${API_V1}/stock`, require('./routes/stock'));
 app.use(`${API_V1}/stock-in`, require('./routes/stockIn'));
 app.use(`${API_V1}/stock-out`, require('./routes/stockOut'));
-app.use(`${API_V1}/split`, require('./routes/split'));
 app.use(`${API_V1}/transfer`, require('./routes/transfer'));
-app.use(`${API_V1}/sales`, require('./routes/sales'));
-app.use(`${API_V1}/customers`, require('./routes/customers'));
 app.use(`${API_V1}/system`, require('./routes/system'));
 
 app.get('/api/health', (req, res) => {
@@ -111,7 +117,7 @@ try {
       info: {
         title: 'FleetingERP API',
         version: '1.0.0',
-        description: '香氛零售门店 ERP 系统 API 文档',
+        description: '个人物品记录 API 文档',
       },
       servers: [{ url: '/api/v1' }],
       components: {
@@ -121,7 +127,7 @@ try {
       },
       security: [{ bearerAuth: [] }],
     },
-    apis: [path.join(__dirname, 'routes', '*.js')],
+    apis: ['auth','brands','products','skus','locations','stock','stockIn','stockOut','transfer','system'].map(name => path.join(__dirname, 'routes', name + '.js')),
   });
 } catch (e) {
   // swagger-jsdoc 可选依赖，不影响运行
@@ -169,7 +175,7 @@ const backupTimer = setInterval(runBackup, 60 * 60 * 1000);
 backupTimer.unref();
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`\n香氛库存管理系统运行中:\n`);
+  console.log(`\n个人物品记录运行中:\n`);
   console.log(`  环境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`  本机访问:   http://localhost:${PORT}`);
   const lanIPs = getLanIPs();

@@ -1,9 +1,9 @@
 <!--pages/inventory/inventory.wxml-->
 <view class="inv-page">
-  <!-- 场所选择 -->
+  <!-- 存放位置选择 -->
   <view class="form-card">
     <view class="form-row">
-      <text class="row-label">盘点场所</text>
+      <text class="row-label">盘点存放位置</text>
       <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange">
         <view class="row-value">{{locations[locationIndex].name || '请选择'}} ▾</view>
       </picker>
@@ -19,7 +19,7 @@
   <!-- 列表 -->
   <view class="inv-table" wx:if="{{loaded}}">
     <view class="inv-header">
-      <view class="col-name">商品</view>
+      <view class="col-name">物品</view>
       <view class="col-sys">系统</view>
       <view class="col-actual">实盘</view>
       <view class="col-diff">差异</view>

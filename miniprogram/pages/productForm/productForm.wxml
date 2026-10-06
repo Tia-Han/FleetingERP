@@ -2,8 +2,8 @@
 <view class="form-page">
   <view class="form-card">
     <view class="form-row">
-      <text class="row-label">商品名称</text>
-      <input class="row-input" placeholder="请输入商品名称" value="{{name}}" bindinput="onNameInput" />
+      <text class="row-label">物品名称</text>
+      <input class="row-input" placeholder="请输入物品名称" value="{{name}}" bindinput="onNameInput" />
     </view>
     <view class="form-row" bindtap="openBrandPicker">
       <text class="row-label">品牌</text>
@@ -51,12 +51,8 @@
         <input class="row-input" placeholder="瓶/支/盒" value="{{item.unit}}" data-index="{{idx}}" data-field="unit" bindinput="onSkuInput" />
       </view>
       <view class="form-row">
-        <text class="row-label">成本价</text>
+        <text class="row-label">购入价格</text>
         <input class="row-input" type="digit" placeholder="0.00" value="{{item.cost_price}}" data-index="{{idx}}" data-field="cost_price" bindinput="onSkuInput" />
-      </view>
-      <view class="form-row">
-        <text class="row-label">零售价</text>
-        <input class="row-input" type="digit" placeholder="0.00" value="{{item.retail_price}}" data-index="{{idx}}" data-field="retail_price" bindinput="onSkuInput" />
       </view>
       <view class="form-row">
         <text class="row-label">预警阈值</text>
@@ -71,7 +67,7 @@
 
   <view class="submit-bar">
     <button class="btn-primary" bindtap="submit" disabled="{{submitting}}" loading="{{submitting}}">
-      {{isEdit ? '保存修改' : '创建商品'}}
+      {{isEdit ? '保存修改' : '创建物品'}}
     </button>
   </view>
 </view>

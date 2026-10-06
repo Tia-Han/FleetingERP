@@ -27,7 +27,7 @@ const Scanner = {
     overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);z-index:10000;display:flex;align-items:center;justify-content:center';
     overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:32px;max-width:400px;width:90%;text-align:center">' +
       '<h3 style="margin-bottom:16px">扫码枪模式</h3>' +
-      '<p style="color:#666;margin-bottom:16px">请用 USB 扫码枪扫描商品条码</p>' +
+      '<p style="color:#666;margin-bottom:16px">请用 USB 扫码枪扫描物品条码</p>' +
       '<div style="border:2px dashed #3498db;border-radius:8px;padding:24px;margin-bottom:16px">' +
       '<p style="color:#999;margin:0">等待扫码中...</p></div>' +
       '<p style="color:#999;font-size:13px;margin-bottom:12px">没有扫码枪？可手动输入条码：</p>' +

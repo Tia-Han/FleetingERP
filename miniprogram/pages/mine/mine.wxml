@@ -9,8 +9,8 @@
       <view class="mine-name">{{userInfo.name || '用户'}}</view>
       <view class="mine-role">
         <block wx:if="{{userInfo.role === 'admin'}}">管理员</block>
-        <block wx:elif="{{userInfo.role === 'warehouse_manager'}}">仓库管理员</block>
-        <block wx:else>店员</block>
+        <block wx:elif="{{userInfo.role === 'warehouse_manager'}}">物品维护者</block>
+        <block wx:else>使用者</block>
       </view>
     </view>
   </view>

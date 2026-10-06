@@ -22,7 +22,7 @@ Page({
     this.setData({ stockInDate: today });
 
     this.loadLocations().then(() => {
-      // 如果从扫码跳转过来，自动添加商品
+      // 如果从扫码跳转过来，自动添加物品
       if (options.barcode) {
         this.addSkuByBarcode(options.barcode);
       }
@@ -42,7 +42,7 @@ Page({
       }
       this.setData({ locations, locationIndex });
     } catch (e) {
-      wx.showToast({ title: '场所加载失败', icon: 'none' });
+      wx.showToast({ title: '存放位置加载失败', icon: 'none' });
     }
   },
 
@@ -86,8 +86,8 @@ Page({
       const sku = res.data;
       if (!sku || !sku.id) {
         wx.showModal({
-          title: '未找到商品',
-          content: '条码：' + barcode + '\n未找到对应商品，请到网页版先创建商品',
+          title: '未找到物品',
+          content: '条码：' + barcode + '\n未找到对应物品，请到网页版先创建物品',
           showCancel: false
         });
         return;
@@ -132,8 +132,8 @@ Page({
       wx.vibrateShort && wx.vibrateShort();
     } catch (err) {
       wx.showModal({
-        title: '未找到商品',
-        content: '条码：' + barcode + '\n未找到对应商品',
+        title: '未找到物品',
+        content: '条码：' + barcode + '\n未找到对应物品',
         showCancel: false
       });
     }
@@ -153,7 +153,7 @@ Page({
   onCostChange(e) {
     const { index } = e.currentTarget.dataset;
     let val = parseFloat(e.detail.value) || 0;
-    // ERR-02: 入库单价边界校验
+    // ERR-02: 添置单价边界校验
     if (val < 0) val = 0;
     if (val > 999999) val = 999999;
     const items = [...this.data.items];
@@ -184,7 +184,7 @@ Page({
   async submitStockIn() {
     if (this.data.submitting) return;
     if (this.data.items.length === 0) {
-      wx.showToast({ title: '请先添加商品', icon: 'none' });
+      wx.showToast({ title: '请先添加物品', icon: 'none' });
       return;
     }
 
@@ -199,8 +199,8 @@ Page({
     const location = this.data.locations[this.data.locationIndex];
 
     wx.showModal({
-      title: '确认入库',
-      content: `共 ${this.data.totalQty} 件商品，合计 ¥${this.data.totalCost}`,
+      title: '确认添置',
+      content: `共 ${this.data.totalQty} 件物品，合计 ¥${this.data.totalCost}`,
       success: async (res) => {
         if (!res.confirm) return;
 
@@ -219,7 +219,7 @@ Page({
             }))
           });
 
-          wx.showToast({ title: '入库成功', icon: 'success' });
+          wx.showToast({ title: '添置成功', icon: 'success' });
           this.setData({
             items: [],
             totalQty: 0,
@@ -237,7 +237,7 @@ Page({
             wx.navigateBack();
           }, 1000);
         } catch (err) {
-          wx.showToast({ title: err.message || '入库失败', icon: 'none' });
+          wx.showToast({ title: err.message || '添置失败', icon: 'none' });
         }
         this.setData({ submitting: false });
       }

@@ -12,11 +12,10 @@ const DashboardPage = {
       <div class="stats-grid">
         <div class="stat-card"><div class="label">SKU 总数</div><div class="value">${d.sku_count}</div></div>
         <div class="stat-card"><div class="label">库存总价值</div><div class="value">${Formatter.money(d.stock_value)}</div></div>
-        <div class="stat-card"><div class="label">今日销售额</div><div class="value">${Formatter.money(d.today_sales_amount)}</div></div>
       </div>
       <div class="card">
         <h2>库存预警 (${d.alerts.length})</h2>
-        ${d.alerts.length === 0 ? '<p>暂无预警</p>' : `<table><thead><tr><th>商品</th><th>规格</th><th>当前库存</th><th>阈值</th><th>场所</th></tr></thead><tbody>
+        ${d.alerts.length === 0 ? '<p>暂无预警</p>' : `<table><thead><tr><th>物品</th><th>规格</th><th>当前库存</th><th>阈值</th><th>存放位置</th></tr></thead><tbody>
           ${d.alerts.map(a => `<tr><td>${esc(a.product_name)}</td><td>${esc(a.volume)}</td><td><span class="badge badge-warning">${esc(a.quantity)}</span></td><td>${esc(a.low_stock_threshold)}</td><td>${esc(a.location_name)}</td></tr>`).join('')}
         </tbody></table>`}
       </div>
@@ -29,9 +28,8 @@ const DashboardPage = {
       <div class="card">
         <h2>快捷操作</h2>
         <div style="display:flex;gap:12px">
-          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-2')} >入库</button>
-          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-4')} >开单</button>
-          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-5')} >调拨</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-2')} >添置</button>
+          <button class="btn btn-primary" ${Formatter.event('click', 'dashboard-5')} >移动</button>
         </div>
       </div>`;
   },
@@ -47,9 +45,6 @@ const DashboardPage = {
         break;
       case 'loss':
         App.navigate('stockOut', { tab: 'history', filters: { start_date: today, end_date: today, type: 'loss' } });
-        break;
-      case 'sale':
-        App.navigate('sales');
         break;
       case 'split':
         App.navigate('split');
@@ -71,6 +66,4 @@ const DashboardPage = {
 // CSP-compatible event handlers; template arguments remain JSON data.
 Formatter.onEvent("dashboard-1", function(event, arg0) { DashboardPage.jumpToMovement(arg0);return false; });
 Formatter.onEvent("dashboard-2", function(event) { return App.navigate('stockIn'); });
-Formatter.onEvent("dashboard-3", function(event) { return App.navigate('split'); });
-Formatter.onEvent("dashboard-4", function(event) { return App.navigate('sales'); });
 Formatter.onEvent("dashboard-5", function(event) { return App.navigate('transfer'); });
