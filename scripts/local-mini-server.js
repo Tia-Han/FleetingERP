@@ -9,7 +9,7 @@ Object.assign(process.env,{LOCAL_DEV_ISOLATED:'1',NODE_ENV:'development',HOST:'1
 const {initDatabase}=require('../utils/db');
 const db=initDatabase(),bcrypt=require('bcryptjs');
 db.transaction(()=>{
- db.prepare("INSERT OR IGNORE INTO locations (id,name,type) VALUES (3,'门店B','store')").run();
+ if (!db.prepare("SELECT id FROM locations WHERE id=3").get()) db.prepare("INSERT INTO locations (id,name,type) VALUES (3,'门店B','store')").run();
  for(const [username,role,location] of [['dev_store_a','store_clerk',2],['dev_store_b','store_clerk',3],['dev_warehouse','warehouse_manager',1]]) {
   if(!db.prepare('SELECT id FROM users WHERE username=?').get(username)) db.prepare('INSERT INTO users(username,password_hash,role,name,location_id) VALUES(?,?,?,?,?)').run(username,bcrypt.hashSync(credentials.password,10),role,username,location);
  }
