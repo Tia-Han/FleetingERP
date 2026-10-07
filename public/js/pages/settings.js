@@ -21,7 +21,7 @@ const SettingsPage = {
         <p style="margin-bottom:8px;color:#7f8c8d">系统每日自动备份数据，也可手动导出。</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-primary" ${Formatter.event('click', 'settings-4')} >导出数据库备份(.db)</button>
-          <button class="btn btn-success" ${Formatter.event('click', 'settings-5')} >导取用存数据(.csv)</button>
+          <button class="btn btn-success" ${Formatter.event('click', 'settings-5')} >导出库存数据(.csv)</button>
           <button class="btn btn-success" ${Formatter.event('click', 'settings-6')} >导出变动流水(.csv)</button>
         </div>
         <p style="margin-top:12px;font-size:13px;color:#7f8c8d">每日自动备份已启用，服务器启动时自动执行。</p>
