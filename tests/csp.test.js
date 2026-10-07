@@ -10,9 +10,9 @@ function setup() {
  const context=vm.createContext({document,window:{},console,localStorage:{getItem:()=>null},API:{}});
  const load=name=>vm.runInContext(fs.readFileSync(path.join(root,'js',name),'utf8'),context);
  load('utils/formatter.js');
- const fire=(type,name,args=[],value='')=>{
+ const fire=(type,name,args=[],value='',target=null)=>{
   const attrs={[`data-ui-${type}`]:name,[`data-ui-${type}-args`]:JSON.stringify(args)};
-  const element={value,getAttribute:k=>attrs[k],closest:selector=>selector.includes('data-ui-')?element:null};
+  const element=Object.assign(target||{},{value,getAttribute:k=>attrs[k],closest:selector=>selector.includes('data-ui-')?element:null});
   const event={target:element,preventDefault(){this.prevented=true;}};
   for(const listener of listeners[type]||[])listener(event);
   return event;
@@ -49,17 +49,17 @@ test('login click sends one request, displays failure and permits retry',async()
  const b=setup();b.load('app.js');
  for(const id of ['sidebar','topbar','content'])b.nodes.set(id,{innerHTML:''});
  b.nodes.set('login-username',{value:'admin'});b.nodes.set('login-password',{value:'example'});
- const button={};b.nodes.set('login-submit',button);
+ const button={tagName:"BUTTON",disabled:false};b.nodes.set('login-submit',button);
  let resolve,calls=0,message;
  b.context.API.login=()=>{calls++;return new Promise(r=>resolve=r);};
  b.context.capture=v=>message=v;
  vm.runInContext('App.toast=message=>capture(message);App.renderLogin()',b.context);
  const action=b.nodes.get('content').innerHTML.match(/data-ui-click="([^"]+)"/)[1];
- b.fire('click',action);b.fire('click',action);
+ b.fire('click',action,[],'',button);b.fire('click',action,[],'',button);
  assert.equal(calls,1);assert.equal(button.disabled,true);assert.equal(button.textContent,'登录中…');
  resolve({success:false,message:'用户名或密码错误'});
  await new Promise(r=>setImmediate(r));
  assert.equal(message,'用户名或密码错误');assert.equal(button.disabled,false);
- b.fire('click',action);assert.equal(calls,2);resolve({success:false,message:'重试'});
+ b.fire('click',action,[],'',button);assert.equal(calls,2);resolve({success:false,message:'重试'});
  await new Promise(r=>setImmediate(r));
 });

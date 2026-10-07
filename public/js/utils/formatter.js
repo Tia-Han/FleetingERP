@@ -76,11 +76,11 @@ for (const type of ['click', 'change', 'input', 'keydown', 'error']) {
 Formatter.trackPending=(element,result)=>{
   if(!result || typeof result.then!=='function') return;
   element._pendingAction=true;
-  const disabled=element.disabled;
-  if(element.tagName==='BUTTON') element.disabled=true;
+  const ownsDisabled=element.tagName==='BUTTON' && !element.disabled;
+  if(ownsDisabled) element.disabled=true;
   Promise.resolve(result).catch(error=>console.error(error)).finally(()=>{
     element._pendingAction=false;
-    if(element.tagName==='BUTTON') element.disabled=disabled;
+    if(ownsDisabled) element.disabled=false;
   });
 };
 
