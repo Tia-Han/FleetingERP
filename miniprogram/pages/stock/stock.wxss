@@ -48,6 +48,7 @@
 }
 
 .select-bar {
+  flex-wrap: wrap;
   display: flex;
   gap: 16rpx;
   padding: 0 16rpx 12rpx;
@@ -153,4 +154,11 @@
 
 .load-more.end {
   color: #bbb;
+}
+
+.row-location {
+  color: #0d766e;
+  font-size: 24rpx;
+  margin-bottom: 6rpx;
+  overflow-wrap: break-word;
 }

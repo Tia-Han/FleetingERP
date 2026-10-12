@@ -12,7 +12,7 @@
   </view>
 
   <!-- 筛选栏 - 预警状态 -->
-  <scroll-view class="filter-bar" scroll-x="{{true}}">
+  <scroll-view class="filter-bar" scroll-x="{{true}}" enable-flex="{{true}}">
     <view
       class="filter-chip {{filterAlert === 'all' ? 'active' : ''}}"
       data-type="all"
@@ -45,6 +45,12 @@
     >分装</view>
   </scroll-view>
 
+  <view class="select-bar" wx:if="{{canSelectLocation}}">
+    <picker mode="selector" range="{{locations}}" range-key="name" value="{{locationIndex}}" bindchange="onLocationChange" disabled="{{!locations.length}}">
+      <view class="select-item">存放位置：{{locations[locationIndex].name || '位置列表暂不可用'}} ▾</view>
+    </picker>
+  </view>
+
   <!-- 品牌/品类筛选 -->
   <view class="select-bar">
     <picker mode="selector" range="{{brands}}" range-key="name" value="{{brandIndex}}" bindchange="onBrandChange">
@@ -59,6 +65,9 @@
     </picker>
   </view>
 
+  <view class="load-more" wx:if="{{loadError}}">库存加载失败，请下拉刷新重试</view>
+  <view class="load-more" wx:if="{{loading && list.length === 0}}">正在加载库存…</view>
+
   <!-- 列表 -->
   <view class="stock-list">
     <block wx:for="{{list}}" wx:key="id">
@@ -68,6 +77,7 @@
         bindtap="onItemTap"
       >
         <view class="row-info">
+          <view class="row-location">{{item.location_name || '位置未标注'}}</view>
           <view class="row-name">{{item.product_name}}</view>
           <view class="row-spec">{{item.volume}} {{item.spec_type}} · {{item.brand_name}}</view>
         </view>
@@ -85,7 +95,7 @@
     </block>
 
     <!-- 空状态 -->
-    <view class="empty-state" wx:if="{{!loading && list.length === 0}}">
+    <view class="empty-state" wx:if="{{!loading && !loadError && list.length === 0}}">
       <view class="empty-icon">📦</view>
       <view class="empty-text">暂无库存记录</view>
     </view>

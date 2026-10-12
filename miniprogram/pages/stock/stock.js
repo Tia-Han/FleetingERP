@@ -17,7 +17,12 @@ Page({
     brands: [],
     categories: [],
     brandIndex: 0,
-    catIndex: 0
+    catIndex: 0,
+    locations: [],
+    locationIndex: 0,
+    filterLocation: '',
+    canSelectLocation: false,
+    loadError: false
   },
 
   onLoad() {
@@ -28,7 +33,38 @@ Page({
 
   onShow() {
     if (!checkLogin()) return;
+    const user = getApp().globalData.userInfo;
+    const canSelectLocation = !!user && user.role === 'admin';
+    this.setData({ canSelectLocation });
+    if (canSelectLocation) this.loadLocations();
+    else this.setData({ filterLocation: '', locationIndex: 0, locations: [] });
     this.loadList(true);
+  },
+
+  async loadLocations() {
+    try {
+      const res = await get('/locations');
+      if (!this.data.canSelectLocation) return;
+      const locations = [{ id: '', name: '全部位置' }].concat(res.data || []);
+      const index = locations.findIndex(item => String(item.id) === String(this.data.filterLocation));
+      this.setData({ locations, locationIndex: Math.max(0, index) });
+      if (index < 0) {
+        this.setData({ filterLocation: '' });
+        this.loadList(true);
+      }
+    } catch (err) {
+      // 保留已选择的位置，避免加载失败时静默扩大查询范围。
+    }
+  },
+
+  onLocationChange(e) {
+    const user = getApp().globalData.userInfo;
+    if (!user || user.role !== 'admin') return;
+    const index = Number(e.detail.value);
+    const location = this.data.locations[index];
+    if (!location) return;
+    this.setData({ locationIndex: index, filterLocation: location.id });
+    return this.loadList(true);
   },
 
   onUnload() {
@@ -85,7 +121,9 @@ Page({
     if (this.data.loading && !refresh) return;
     const requestId = this._requestId = (this._requestId || 0) + 1;
     const page = refresh ? 1 : this.data.page;
-    this.setData({ loading: true });
+    this.setData(refresh
+      ? { loading: true, loadError: false, list: [], page: 1, hasMore: false }
+      : { loading: true, loadError: false });
 
     try {
       const app = getApp();
@@ -94,7 +132,11 @@ Page({
         page: page,
         limit: this.data.pageSize
       };
-      if (user && user.location_id) params.location_id = user.location_id;
+      if (user && user.role === 'admin') {
+        if (this.data.filterLocation) params.location_id = this.data.filterLocation;
+      } else if (user && user.location_id) {
+        params.location_id = user.location_id;
+      }
       if (this.data.searchKey) params.search = this.data.searchKey;
       if (this.data.filterAlert === 'low') params.alert_type = 'low';
       if (this.data.filterAlert === 'empty') params.alert_type = 'empty';
@@ -116,7 +158,7 @@ Page({
       });
     } catch (err) {
       if (requestId !== this._requestId) return;
-      this.setData({ loading: false });
+      this.setData({ loading: false, loadError: true });
     }
   },
 
