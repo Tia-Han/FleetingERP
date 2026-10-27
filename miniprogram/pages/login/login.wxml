@@ -5,11 +5,13 @@
   </view>
   <text class="login-title">暗香·Fleeting</text>
 
+  <view wx:if="{{errorMessage}}" class="login-error">{{errorMessage}}</view>
+
   <view wx:if="{{localDevelopment}}" class="account-login">
     <text>本机测试环境 · 独立测试数据</text>
     <input class="account-input" placeholder="用户名" value="{{username}}" bindinput="onUsernameInput" />
     <input class="account-input" placeholder="密码" password value="{{password}}" bindinput="onPasswordInput" />
-    <button class="login-btn-account" bindtap="accountLogin" disabled="{{loading}}" loading="{{loading}}">登录</button>
+    <button class="login-btn-account" bindtap="accountLogin" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在登录…' : '登录'}}</button>
   </view>
 
   <view wx:if="{{!localDevelopment}}" class="divider"><text>或</text></view>

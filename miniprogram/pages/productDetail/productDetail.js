@@ -16,11 +16,14 @@ Page({
       return;
     }
     this.setData({ productId: options.id });
-    this.loadDetail();
+  },
+
+  onShow() {
+    if (getApp().isLoggedIn() && this.data.productId) return this.loadDetail();
   },
 
   async loadDetail() {
-    this.setData({ loading: true });
+    this.setData({ loading: true, product: null, skus: [] });
     try {
       const res = await get('/products/' + this.data.productId);
       const product = res.data || {};

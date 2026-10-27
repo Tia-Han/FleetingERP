@@ -1,3 +1,4 @@
+const { localDate } = require('../../utils/date');
 // pages/movements/movements.js
 const { get } = require('../../utils/request');
 
@@ -23,8 +24,8 @@ Page({
     }
 
     const today = new Date();
-    const end = today.toISOString().substring(0, 10);
-    const startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+    const end = localDate(today);
+    const startDate = localDate(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
 
     this.setData({ startDate, endDate: end });
     this.loadLocations();
@@ -52,7 +53,9 @@ Page({
   },
 
   async loadList(refresh = false) {
-    if (this.data.loading) return;
+    if (this.data.loading && !refresh) return;
+    const requestId = this._listRequestId = (this._listRequestId || 0) + 1;
+    if (refresh) this.setData({ list: [], page: 1, hasMore: true });
     const page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
@@ -71,7 +74,15 @@ Page({
       }
 
       const res = await get('/stock/movements', params);
-      const data = res.data || [];
+      if (requestId !== this._listRequestId) return;
+      const labels = { in: '添置', out: '取用', loss: '损耗', check: '盘点', check_in: '盘盈', check_out: '盘亏', transfer_in: '移入', transfer_out: '移出' };
+      const refs = { stock_in: '添置记录', stock_out: '取用记录', inventory_check: '盘点调整', transfer: '位置移动' };
+      const data = (res.data || []).map(item => ({ ...item,
+        typeLabel: labels[item.movement_type] || '其他变动',
+        refLabel: refs[item.ref_type] || '',
+        quantityText: Number(item.quantity) > 0 ? '+' + item.quantity : String(item.quantity),
+        quantityClass: Number(item.quantity) > 0 ? 'in' : 'out'
+      }));
       const list = refresh ? data : this.data.list.concat(data);
       const total = res.total || 0;
 
@@ -82,6 +93,7 @@ Page({
         loading: false
       });
     } catch (err) {
+      if (requestId !== this._listRequestId) return;
       this.setData({ loading: false });
     }
   },

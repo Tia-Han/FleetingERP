@@ -423,3 +423,34 @@ test('SKU edits persist displayed fields, preserve omitted barcode and invalidat
  assert.equal((await call('products','PUT','/1',{brand_id:1,name:'Old snapshot',category:p.category,revision:p.revision,skus:p.skus})).status,409);
  assert.equal(db.prepare('SELECT retail_price FROM skus WHERE id=1').get().retail_price,35);
 });
+
+
+test('stale inventory count rejects the whole batch without overwriting newer stock', async () => {
+  db.prepare('INSERT INTO stock_balances(location_id,sku_id,quantity) VALUES(1,2,5)').run();
+  const result = await call('stock', 'POST', '/check', {location_id:1,items:[
+    {sku_id:1,expected_quantity:10,actual_quantity:8},
+    {sku_id:2,expected_quantity:4,actual_quantity:3}
+  ]});
+  assert.equal(result.status,409);
+  assert.equal(quantity(1),10);
+  assert.equal(quantity(2),5);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM stock_movements').get().n,0);
+  const valid = await call('stock','POST','/check',{location_id:1,items:[{sku_id:1,expected_quantity:10,actual_quantity:8}]});
+  assert.equal(valid.success,true);
+  assert.equal(quantity(1),8);
+});
+
+
+test('movement dates include the full end day and count filters match rows', async () => {
+  const insert = db.prepare("INSERT INTO stock_movements(location_id,sku_id,movement_type,quantity,ref_type,created_at) VALUES(1,1,?,?, 'inventory_check',?)");
+  insert.run('check_in',1,'2026-10-26 00:00:00');
+  insert.run('check_out',-1,'2026-10-26 23:59:59.999');
+  insert.run('check_in',1,'2026-10-27 00:00:00');
+  insert.run('out',-1,'2026-10-26 12:00:00');
+  const rows = await call('stock','GET','/movements?start_date=2026-10-26&end_date=2026-10-26&movement_type=check&page=1&limit=20');
+  assert.equal(rows.success,true); assert.equal(rows.total,2); assert.equal(rows.data.length,2);
+  const all = await call('stock','GET','/movements?start_date=2026-10-26&end_date=2026-10-26');
+  assert.equal(all.data.length,3);
+  const summary = await call('stock','GET','/summary?start_date=2026-10-26&end_date=2026-10-26');
+  assert.equal(summary.data.reduce((n,r)=>n+r.count,0),3);
+});

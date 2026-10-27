@@ -29,6 +29,7 @@
       />
     </view>
 
+    <view wx:if="{{errorMessage}}" style="color: #b91c1c; margin-top: 24rpx;">{{errorMessage}}</view>
     <button class="btn-primary" style="margin-top: 48rpx;" bindtap="doBind" disabled="{{loading}}" loading="{{loading}}">
       确认绑定
     </button>

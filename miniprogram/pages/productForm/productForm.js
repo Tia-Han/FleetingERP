@@ -29,15 +29,14 @@ Page({
     submitting: false
   },
 
-  onLoad(options) {
+  async onLoad(options) {
     const app = getApp();
     if (!app.isLoggedIn()) {
       wx.reLaunch({ url: '/pages/login/login' });
       return;
     }
 
-    this.loadBrands();
-    this.loadCategories();
+    await Promise.all([this.loadBrands(), this.loadCategories()]);
 
     if (options.id) {
       this.setData({ isEdit: true, productId: options.id });

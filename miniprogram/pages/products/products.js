@@ -15,7 +15,7 @@ Page({
     brandIndex: 0
   },
 
-  onLoad() {
+  onShow() {
     if (!checkLogin()) return;
     this.loadBrands();
     this.loadList(true);
@@ -37,21 +37,20 @@ Page({
 
   // PERF-04: 品牌列表本地缓存
   async loadBrands() {
-    const cached = wx.getStorageSync('cache_brands');
-    if (cached && Date.now() - cached.time < 300000) {
-      this.setData({ brands: [{ id: '', name: '全部品牌' }].concat(cached.data) });
-      return;
-    }
     try {
       const res = await get('/brands');
       const brands = res.data || [];
-      wx.setStorageSync('cache_brands', { data: brands, time: Date.now() });
-      this.setData({ brands: [{ id: '', name: '全部品牌' }].concat(brands) });
+      const options = [{ id: '', name: '全部品牌' }].concat(brands);
+      const index = options.findIndex(item => item.id === this.data.filterBrand);
+      this.setData({ brands: options, brandIndex: Math.max(0, index) });
+      if (index < 0) { this.setData({ filterBrand: '' }); this.loadList(true); }
     } catch (e) {}
   },
 
   async loadList(refresh = false) {
-    if (this.data.loading) return;
+    if (this.data.loading && !refresh) return;
+    const requestId = this._listRequestId = (this._listRequestId || 0) + 1;
+    if (refresh) this.setData({ list: [], page: 1, hasMore: true });
     const page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
@@ -61,6 +60,7 @@ Page({
       if (this.data.filterBrand) params.brand_id = this.data.filterBrand;
 
       const res = await get('/products', params);
+      if (requestId !== this._listRequestId) return;
       const data = res.data || [];
       const list = refresh ? data : this.data.list.concat(data);
       const total = res.total || 0;
@@ -72,6 +72,7 @@ Page({
         loading: false
       });
     } catch (err) {
+      if (requestId !== this._listRequestId) return;
       this.setData({ loading: false });
     }
   },

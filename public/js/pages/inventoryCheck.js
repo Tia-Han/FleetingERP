@@ -125,6 +125,7 @@ const InventoryCheckPage = {
     if (!locId) return App.toast('请选择存放位置', 'error');
     const items = this.stockData.map(item => ({
       sku_id: item.sku_id,
+      expected_quantity: item.quantity,
       actual_quantity: this.checkData[item.sku_id] ?? item.quantity
     }));
     const diffs = items.filter(i => {

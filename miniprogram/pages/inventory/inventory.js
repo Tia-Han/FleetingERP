@@ -25,6 +25,11 @@ Page({
     this.loadLocations();
   },
 
+  onUnload() {
+    clearTimeout(this._searchTimer);
+    this._stockRequestId = (this._stockRequestId || 0) + 1;
+  },
+
   onPullDownRefresh() {
     if (this.data.loaded) {
       this.loadStock(true).then(() => wx.stopPullDownRefresh()).catch(() => wx.stopPullDownRefresh());
@@ -73,6 +78,9 @@ Page({
     const location = this.data.locations[this.data.locationIndex];
     if (!location) return;
 
+    if (this.data.loading && !refresh) return;
+    const requestId = this._stockRequestId = (this._stockRequestId || 0) + 1;
+    if (refresh) this.setData({ items: [], loaded: false, diffCount: 0, gainCount: 0, lossCount: 0 });
     const page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
@@ -85,6 +93,7 @@ Page({
       if (this.data.searchKey) params.search = this.data.searchKey;
 
       const res = await get('/stock/balances', params);
+      if (requestId !== this._stockRequestId) return;
       const data = res.data || [];
       const newItems = data.map(d => ({
         sku_id: d.sku_id,
@@ -111,6 +120,7 @@ Page({
       });
       this.calcDiff();
     } catch (err) {
+      if (requestId !== this._stockRequestId) return;
       this.setData({ loading: false });
       wx.showToast({ title: '库存加载失败', icon: 'none' });
     }
@@ -215,6 +225,7 @@ Page({
             operator: user ? user.name : '',
             items: diffItems.map(it => ({
               sku_id: it.sku_id,
+              expected_quantity: it.system_qty,
               actual_quantity: it.actual_qty
             }))
           });

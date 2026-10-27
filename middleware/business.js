@@ -74,6 +74,7 @@ function validateMovement(kind) {
           item.sku_id = sku(db, item.sku_id).id;
           if (kind === 'stock') {
             number(item.actual_quantity, '实盘数量', {integer:true});
+            if (item.expected_quantity !== undefined) number(item.expected_quantity, '盘点基准数量', {integer:true});
             if (seen.has(item.sku_id)) fail('同一 SKU 不能重复盘点');
             seen.add(item.sku_id);
           } else number(item.quantity, '数量', {min:1, integer:true});

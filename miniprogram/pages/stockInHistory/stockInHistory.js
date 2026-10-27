@@ -1,3 +1,4 @@
+const { localDate } = require('../../utils/date');
 // pages/stockInHistory/stockInHistory.js
 const { get } = require('../../utils/request');
 const { checkLogin } = require('../../utils/auth');
@@ -25,8 +26,8 @@ Page({
     if (!checkLogin()) return;
     
     const today = new Date();
-    const endDate = today.toISOString().substring(0, 10);
-    const startDate = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10);
+    const endDate = localDate(today);
+    const startDate = localDate(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000));
     
     this.setData({ startDate, endDate });
     this.loadOperators();
@@ -113,7 +114,9 @@ Page({
   },
 
   async loadList(refresh = false) {
-    if (this.data.loading) return;
+    if (this.data.loading && !refresh) return;
+    const requestId = this._listRequestId = (this._listRequestId || 0) + 1;
+    if (refresh) this.setData({ list: [], page: 1, hasMore: true });
     const page = refresh ? 1 : this.data.page;
     this.setData({ loading: true });
 
@@ -143,6 +146,7 @@ Page({
       }
 
       const res = await get('/stock-in/history', params);
+      if (requestId !== this._listRequestId) return;
       const data = (res.data || []).map(row=>({...row,record_key:row.record_type+':'+row.id}));
       const list = refresh ? data : this.data.list.concat(data);
       const total = res.total || 0;
@@ -154,6 +158,7 @@ Page({
         loading: false
       });
     } catch (err) {
+      if (requestId !== this._listRequestId) return;
       this.setData({ loading: false });
       wx.showToast({ title: '加载失败', icon: 'none' });
     }

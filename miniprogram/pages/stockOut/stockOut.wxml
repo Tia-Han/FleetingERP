@@ -31,6 +31,13 @@
     <text>扫码添加物品</text>
   </view>
 
+  <view class="form-card">
+    <view class="form-row">
+      <input class="barcode-input" placeholder="输入物品条码" value="{{barcodeInput}}" bindinput="onBarcodeInput" bindconfirm="addManualBarcode" confirm-type="done" />
+      <button size="mini" bindtap="addManualBarcode" disabled="{{adding || submitting}}" loading="{{adding}}">添加</button>
+    </view>
+  </view>
+
   <!-- 取用明细 -->
   <view class="items-card" wx:if="{{items.length > 0}}">
     <view class="items-title">取用明细（{{items.length}}）</view>
@@ -61,7 +68,7 @@
   <!-- 空状态 -->
   <view class="empty-state" wx:if="{{items.length === 0}}">
     <view class="empty-icon">📤</view>
-    <view class="empty-text">请扫码或搜索添加物品</view>
+    <view class="empty-text">请扫码或输入条码添加物品</view>
   </view>
 
   <!-- 备注 -->

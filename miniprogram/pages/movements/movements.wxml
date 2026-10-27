@@ -34,16 +34,17 @@
     <view class="mv-item" wx:for="{{list}}" wx:key="id">
       <view class="mv-left">
         <view class="mv-type type-{{item.movement_type}}">
-          {{item.movement_type === 'in' ? '添置' : (item.movement_type === 'out' ? '取用' : (item.movement_type === 'loss' ? '损耗' : (item.movement_type === 'check' ? '盘点' : item.movement_type)))}}
+          {{item.typeLabel}}
         </view>
         <view class="mv-product">{{item.product_name || '物品'}}</view>
+        <view wx:if="{{item.remark}}">{{item.remark}}</view>
         <view class="mv-meta">{{item.location_name}} · {{item.created_at}}</view>
       </view>
       <view class="mv-right">
-        <view class="mv-qty {{item.movement_type === 'in' ? 'in' : 'out'}}">
-          {{item.movement_type === 'in' ? '+' : '-'}}{{item.quantity}}
+        <view class="mv-qty {{item.quantityClass}}">
+          {{item.quantityText}}
         </view>
-        <view class="mv-ref">{{item.ref_type || ''}}</view>
+        <view class="mv-ref">{{item.refLabel}}</view>
       </view>
     </view>
 

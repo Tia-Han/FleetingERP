@@ -65,9 +65,13 @@ router.get('/movements', (req, res) => {
   let sql = `SELECT sm.*, s.volume, s.sku_code, p.name as product_name, l.name as location_name, sio.supplier, sio.remark as order_remark, sm.source FROM stock_movements sm JOIN skus s ON sm.sku_id = s.id JOIN products p ON s.product_id = p.id JOIN locations l ON sm.location_id = l.id LEFT JOIN stock_in_orders sio ON sm.ref_type = 'stock_in' AND sm.ref_id = sio.id WHERE sm.movement_type NOT IN ('sale','split')`;
   const params = [];
   if (location_id) { sql += ' AND sm.location_id = ?'; params.push(location_id); }
-  if (movement_type) { sql += ' AND sm.movement_type = ?'; params.push(movement_type); }
+  if (movement_type === 'check') { sql += " AND sm.movement_type IN ('check','check_in','check_out')"; }
+  else if (movement_type) { sql += ' AND sm.movement_type = ?'; params.push(movement_type); }
   if (start_date) { sql += ' AND sm.created_at >= ?'; params.push(start_date); }
-  if (end_date) { sql += ' AND sm.created_at <= ?'; params.push(end_date); }
+  if (end_date) {
+    sql += /^\d{4}-\d{2}-\d{2}$/.test(end_date) ? " AND sm.created_at < datetime(?, '+1 day')" : ' AND sm.created_at <= ?';
+    params.push(end_date);
+  }
 
   const pageNum = parseInt(page) || 1;
   const pageSize = parseInt(limit) || 50;
@@ -79,9 +83,13 @@ router.get('/movements', (req, res) => {
     let countSql = `SELECT COUNT(*) as total FROM stock_movements sm WHERE sm.movement_type NOT IN ('sale','split')`;
     const countParams = [];
     if (location_id) { countSql += ' AND sm.location_id = ?'; countParams.push(location_id); }
-    if (movement_type) { countSql += ' AND sm.movement_type = ?'; countParams.push(movement_type); }
+    if (movement_type === 'check') { countSql += " AND sm.movement_type IN ('check','check_in','check_out')"; }
+    else if (movement_type) { countSql += ' AND sm.movement_type = ?'; countParams.push(movement_type); }
     if (start_date) { countSql += ' AND sm.created_at >= ?'; countParams.push(start_date); }
-    if (end_date) { countSql += ' AND sm.created_at <= ?'; countParams.push(end_date); }
+    if (end_date) {
+    countSql += /^\d{4}-\d{2}-\d{2}$/.test(end_date) ? " AND sm.created_at < datetime(?, '+1 day')" : ' AND sm.created_at <= ?';
+    countParams.push(end_date);
+  }
     total = db.prepare(countSql).get(...countParams).total;
     const paginatedSql = sql + ' ORDER BY sm.created_at DESC LIMIT ? OFFSET ?';
     movements = db.prepare(paginatedSql).all(...params, pageSize, offset);
@@ -111,7 +119,10 @@ router.get('/summary', (req, res) => {
   const params = [];
   if (location_id) { whereClause += ' AND location_id = ?'; params.push(location_id); }
   if (start_date) { whereClause += ' AND created_at >= ?'; params.push(start_date); }
-  if (end_date) { whereClause += ' AND created_at <= ?'; params.push(end_date); }
+  if (end_date) {
+    whereClause += /^\d{4}-\d{2}-\d{2}$/.test(end_date) ? " AND created_at < datetime(?, '+1 day')" : ' AND created_at <= ?';
+    params.push(end_date);
+  }
   const summary = db.prepare(`SELECT movement_type, COUNT(*) as count, SUM(ABS(quantity)) as total_quantity, SUM(CASE WHEN unit_cost IS NOT NULL THEN ABS(quantity) * unit_cost ELSE 0 END) as total_value FROM stock_movements WHERE movement_type NOT IN ('sale','split') AND ${whereClause} GROUP BY movement_type`).all(...params);
   res.json({ success: true, data: summary });
 });
@@ -131,6 +142,11 @@ router.post('/check', validateMovement('stock'), idempotent((req, res) => {
       if (!sku_id || actual_quantity == null) continue;
       const balance = db.prepare('SELECT quantity FROM stock_balances WHERE location_id = ? AND sku_id = ?').get(location_id, sku_id);
       const systemQty = balance ? balance.quantity : 0;
+      if (item.expected_quantity !== undefined && item.expected_quantity !== systemQty) {
+        const error = new Error('库存已发生变化，请刷新库存后重新核对盘点');
+        error.status = 409;
+        throw error;
+      }
       const diff = actual_quantity - systemQty;
       if (diff === 0) continue;
       const sku = db.prepare('SELECT volume FROM skus WHERE id = ?').get(sku_id);
@@ -150,7 +166,7 @@ router.post('/check', validateMovement('stock'), idempotent((req, res) => {
     const result = transaction.immediate();
     res.json({ success: true, data: result, message: `盘点完成，调整 ${result.adjustedCount} 项` });
   } catch (err) {
-    res.json({ success: false, message: '盘点失败: ' + err.message });
+    res.status(err.status || 500).json({ success: false, message: '盘点失败: ' + err.message });
   }
 }));
 

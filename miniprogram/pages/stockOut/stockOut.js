@@ -10,7 +10,9 @@ Page({
     remark: '',
     items: [],
     totalQty: 0,
-    submitting: false
+    submitting: false,
+    barcodeInput: '',
+    adding: false
   },
 
   onLoad(options) {
@@ -41,7 +43,8 @@ Page({
   },
 
   onLocationChange(e) {
-    this.setData({ locationIndex: e.detail.value });
+    if (this.data.adding || this.data.submitting) return;
+    this.setData({ locationIndex: e.detail.value, items: [], totalQty: 0 });
   },
 
   onTypeTap(e) {
@@ -72,6 +75,19 @@ Page({
     wx.navigateTo({ url: '/pages/stockOutHistory/stockOutHistory' });
   },
 
+  onBarcodeInput(e) {
+    this.setData({ barcodeInput: e.detail.value });
+  },
+
+  async addManualBarcode() {
+    const barcode = this.data.barcodeInput.trim();
+    if (!barcode) {
+      wx.showToast({ title: '请输入物品条码', icon: 'none' });
+      return;
+    }
+    await this.addSkuByBarcode(barcode);
+  },
+
   // 扫码添加
   async scanAdd() {
     try {
@@ -86,8 +102,14 @@ Page({
   },
 
   async addSkuByBarcode(barcode) {
+    if (this.data.adding || this.data.submitting) return;
+    if (!this.data.locations[this.data.locationIndex]?.id) {
+      wx.showToast({ title: '请先选择存放位置', icon: 'none' });
+      return;
+    }
+    this.setData({ adding: true });
     try {
-      const res = await get('/skus/barcode/' + barcode);
+      const res = await get('/skus/barcode/' + encodeURIComponent(barcode));
       const sku = res.data;
       if (!sku || !sku.id) {
         wx.showModal({ title: '未找到物品', content: '条码：' + barcode, showCancel: false });
@@ -95,13 +117,9 @@ Page({
       }
 
       const locationId = this.data.locations[this.data.locationIndex]?.id;
-      let currentQty = 0;
-      try {
-        const balRes = await get('/stock/balances', { sku_id: sku.id, location_id: locationId });
-        if (balRes.data && balRes.data[0]) {
-          currentQty = balRes.data[0].quantity;
-        }
-      } catch (e) {}
+      const balRes = await get('/stock/balances', { sku_id: sku.id, location_id: locationId });
+      const balance = (balRes.data || []).find(row => row.sku_id === sku.id && row.location_id === locationId);
+      const currentQty = balance ? balance.quantity : 0;
 
       if (currentQty === 0) {
         wx.showToast({ title: '该物品当前库存为0', icon: 'none' });
@@ -139,7 +157,9 @@ Page({
       this.calcTotal();
       wx.vibrateShort && wx.vibrateShort();
     } catch (err) {
-      wx.showModal({ title: '未找到物品', content: '条码：' + barcode, showCancel: false });
+      wx.showModal({ title: '添加失败', content: err.message || '请稍后重试', showCancel: false });
+    } finally {
+      this.setData({ adding: false });
     }
   },
 
@@ -217,7 +237,7 @@ Page({
               sku_id: it.sku_id,
               quantity: it.quantity,
               type: it.out_type,
-              remark: it.remark
+              remark: it.remark || this.data.remark
             }))
           });
 

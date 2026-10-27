@@ -214,3 +214,5 @@
   background: #fff;
   border-top: 1rpx solid #e0e6e4;
 }
+
+.barcode-input { flex: 1; min-width: 0; font-size: 28rpx; margin-right: 16rpx; }

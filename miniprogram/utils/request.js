@@ -25,7 +25,7 @@ function send(url, method = 'GET', data = {}, requestKey) {
       timeout: 10000,
       success(res) {
         if(app && app.globalData.token !== token) { reject({uncertain:true,message:'登录状态已改变，请核实原操作结果'}); return; }
-        if (res.statusCode === 401) {
+        if (res.statusCode === 401 && !url.startsWith('/auth/')) {
           if (app) app.clearLogin();
           wx.reLaunch({ url: '/pages/login/login' });
           reject(new Error('登录已过期'));
@@ -52,8 +52,10 @@ function send(url, method = 'GET', data = {}, requestKey) {
         } else {
           wx.showToast({ title: '网络不可用', icon: 'none' });
         }
-        err.uncertain=true;
-        reject(err);
+        const message = app && app.globalData.localDevelopment
+          ? '无法连接本机测试服务，请启动本机服务后重试（127.0.0.1:3301）'
+          : (err.errMsg && err.errMsg.includes('timeout') ? '连接超时，请重试' : '网络连接失败，请检查网络后重试');
+        reject(Object.assign(new Error(message), {uncertain: true}));
       }
     });
   });

@@ -5,6 +5,7 @@ Page({
   data: {
     localDevelopment: false,
     loading: false,
+    errorMessage: '',
     username: '',
     password: ''
   },
@@ -25,72 +26,67 @@ Page({
     this.setData({ password: e.detail.value });
   },
 
-  // 账号密码登录
+  // Keep failures visible and always release the submit lock.
   async accountLogin() {
-    if (!getApp().globalData.localDevelopment) return;
-    const { username, password, loading } = this.data;
-    if (loading) return;
-
-    if (!username || !password) {
-      wx.showToast({ title: '请输入用户名和密码', icon: 'none' });
+    if (this.data.loading) return;
+    this.setData({ errorMessage: '' });
+    if (!getApp().globalData.localDevelopment) {
+      this.setData({ errorMessage: '当前环境不支持测试账号登录，请重新编译后使用微信登录' });
       return;
     }
-
+    const username = this.data.username.trim();
+    const password = this.data.password;
+    if (!username || !password) {
+      this.setData({ errorMessage: '请输入用户名和密码' });
+      return;
+    }
     this.setData({ loading: true });
-
     try {
       const res = await post('/auth/login', { username, password });
-
-      if (res.data && res.data.token) {
-        const app = getApp();
-        app.setLogin(res.data.token, res.data.user);
-        wx.showToast({ title: '登录成功', icon: 'success' });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/index/index' });
-        }, 500);
-      } else {
-        wx.showToast({ title: '登录失败，返回数据异常', icon: 'none' });
+      if (!res || !res.data || !res.data.token || !res.data.user) {
+        throw new Error('登录返回数据异常，请重试');
       }
+      getApp().setLogin(res.data.token, res.data.user);
+      await new Promise((resolve, reject) => wx.switchTab({
+        url: '/pages/index/index', success: resolve,
+        fail: () => reject(new Error('登录成功，但首页打开失败，请重新编译后重试'))
+      }));
     } catch (err) {
-      wx.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
+      this.setData({ errorMessage: err.message || '登录失败，请重试' });
+    } finally {
+      this.setData({ loading: false });
     }
-    this.setData({ loading: false });
   },
 
   // 微信一键登录
   async wxLogin() {
     if (this.data.loading) return;
-    this.setData({ loading: true });
-
+    this.setData({ loading: true, errorMessage: '' });
     try {
       const loginRes = await new Promise((resolve, reject) => {
         wx.login({ success: resolve, fail: reject });
       });
-
-      if (!loginRes.code) {
-        wx.showToast({ title: '微信授权失败，请重试', icon: 'none' });
-        this.setData({ loading: false });
-        return;
-      }
-
+      if (!loginRes.code) throw new Error('微信授权失败，请重试');
       const res = await post('/auth/wx-login', { code: loginRes.code });
-
-      if (res.data.status === 'bound') {
-        const app = getApp();
-        app.setLogin(res.data.token, res.data.user);
-        wx.showToast({ title: '登录成功', icon: 'success' });
-        setTimeout(() => {
-          wx.switchTab({ url: '/pages/index/index' });
-        }, 500);
-      } else if (res.data.status === 'unbound') {
-        wx.navigateTo({
-          url: '/pages/login/bind/bind?openid=' + res.data.openid + '&code=' + loginRes.code
-        });
+      if (res && res.data && res.data.status === 'bound' && res.data.token && res.data.user) {
+        getApp().setLogin(res.data.token, res.data.user);
+        await new Promise((resolve, reject) => wx.switchTab({
+          url: '/pages/index/index', success: resolve,
+          fail: () => reject(new Error('登录成功，但首页打开失败，请重试'))
+        }));
+      } else if (res && res.data && res.data.status === 'unbound') {
+        await new Promise((resolve, reject) => wx.navigateTo({
+          url: '/pages/login/bind/bind', success: resolve,
+          fail: () => reject(new Error('账号绑定页面打开失败，请重试'))
+        }));
+      } else {
+        throw new Error('登录返回数据异常，请重试');
       }
     } catch (err) {
-      wx.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
+      this.setData({ errorMessage: err.message || '微信登录失败，请重试' });
+    } finally {
+      this.setData({ loading: false });
     }
-    this.setData({ loading: false });
   },
 
   // 跳转账号绑定

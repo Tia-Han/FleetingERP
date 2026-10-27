@@ -1,3 +1,4 @@
+const { localDate } = require('../../utils/date');
 // pages/stockIn/stockIn.js
 const { get, post } = require('../../utils/request');
 const { checkLogin } = require('../../utils/auth');
@@ -18,7 +19,7 @@ Page({
   onLoad(options) {
     if (!checkLogin()) return;
 
-    const today = new Date().toISOString().substring(0, 10);
+    const today = localDate();
     this.setData({ stockInDate: today });
 
     this.loadLocations().then(() => {
