@@ -27,15 +27,18 @@ Page({
   },
 
   // Keep failures visible and always release the submit lock.
-  async accountLogin() {
+  async accountLogin(e) {
     if (this.data.loading) return;
     this.setData({ errorMessage: '' });
     if (!getApp().globalData.localDevelopment) {
       this.setData({ errorMessage: '当前环境不支持测试账号登录，请重新编译后使用微信登录' });
       return;
     }
-    const username = this.data.username.trim();
-    const password = this.data.password;
+    // Read the submitted controls even when input events lag behind autofill/paste.
+    const values = e && e.detail && e.detail.value;
+    const credentials = values && typeof values === 'object' ? values : this.data;
+    const username = typeof credentials.username === 'string' ? credentials.username.trim() : '';
+    const password = typeof credentials.password === 'string' ? credentials.password : '';
     if (!username || !password) {
       this.setData({ errorMessage: '请输入用户名和密码' });
       return;

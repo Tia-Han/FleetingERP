@@ -7,12 +7,12 @@
 
   <view wx:if="{{errorMessage}}" class="login-error">{{errorMessage}}</view>
 
-  <view wx:if="{{localDevelopment}}" class="account-login">
+  <form wx:if="{{localDevelopment}}" class="account-login" bindsubmit="accountLogin">
     <text>本机测试环境 · 独立测试数据</text>
-    <input class="account-input" placeholder="用户名" value="{{username}}" bindinput="onUsernameInput" />
-    <input class="account-input" placeholder="密码" password value="{{password}}" bindinput="onPasswordInput" />
-    <button class="login-btn-account" bindtap="accountLogin" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在登录…' : '登录'}}</button>
-  </view>
+    <input class="account-input" name="username" placeholder="用户名" value="{{username}}" bindinput="onUsernameInput" />
+    <input class="account-input" name="password" placeholder="密码" password value="{{password}}" bindinput="onPasswordInput" />
+    <button class="login-btn-account" form-type="submit" disabled="{{loading}}" loading="{{loading}}">{{loading ? '正在登录…' : '登录'}}</button>
+  </form>
 
   <view wx:if="{{!localDevelopment}}" class="divider"><text>或</text></view>
 

@@ -37,3 +37,31 @@ test('unbound WeChat login opens binding without putting authentication code in 
   assert.equal(destination, '/pages/login/bind/bind');
   assert.equal(p.data.loading, false);
 });
+
+
+test('login submits current form values when input state is stale', async () => {
+  let sent;
+  const p = page(async (url, body) => { sent = body; return {data:{token:'t',user:{id:1}}}; });
+  p.data.username = ''; p.data.password = '';
+  await p.accountLogin({detail:{value:{username:' admin ',password:' pasted password '}}});
+  assert.equal(sent.username, 'admin');
+  assert.equal(sent.password, ' pasted password ');
+  assert.equal(p.data.errorMessage, '');
+});
+
+test('empty submitted controls cannot reuse stale credentials', async () => {
+  let calls = 0;
+  const p = page(async () => { calls++; });
+  await p.accountLogin({detail:{value:{username:'admin',password:''}}});
+  assert.equal(calls, 0);
+  assert.equal(p.data.errorMessage, '请输入用户名和密码');
+});
+
+test('login template uses native named form controls and submit event', () => {
+  const template = fs.readFileSync(root + '/miniprogram/pages/login/login.wxml', 'utf8');
+  assert.match(template, /<form[^>]*bindsubmit="accountLogin"/);
+  assert.match(template, /<input[^>]*name="username"/);
+  assert.match(template, /<input[^>]*name="password"/);
+  assert.match(template, /form-type="submit"/);
+  assert.doesNotMatch(template, /bindtap="accountLogin"/);
+});
